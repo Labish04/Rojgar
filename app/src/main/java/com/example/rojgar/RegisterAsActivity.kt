@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.sp
 import com.example.rojgar.ui.theme.Purple
 
 
-class jobseekerRegisterActivity : ComponentActivity() {
+class RegisterAsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

@@ -1,5 +1,7 @@
 package com.example.rojgar
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +48,9 @@ class JobSeekerProfileActivity : ComponentActivity() {
 
 @Composable
 fun JobSeekerProfileBody() {
+
+    val context = LocalContext.current
+    val activity = context as Activity
 
     Scaffold { padding ->
         Column(
@@ -149,7 +155,11 @@ fun JobSeekerProfileBody() {
                 ) {
 
                     Button (
-                        onClick = {},
+                        onClick = {
+                            val intent = Intent(context,
+                                JobSeekerProfileDetailsActivity::class.java)
+                            context.startActivity(intent)
+                        },
                         shape = RoundedCornerShape(25.dp),
                         modifier = Modifier
                             .width(150.dp)
