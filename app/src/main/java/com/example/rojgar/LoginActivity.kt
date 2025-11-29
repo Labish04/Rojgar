@@ -23,6 +23,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,10 +43,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.rojgar.ui.theme.Blue
+import com.example.rojgar.ui.theme.NormalBlue
 import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.RojgarTheme
 import com.example.rojgar.ui.theme.White
@@ -64,6 +68,8 @@ class LoginActivity : ComponentActivity() {
 fun LoginBody() {
 
     var email by remember { mutableStateOf("") }
+    var password by remember {mutableStateOf("")}
+    var visibility by remember {mutableStateOf(false)}
 
     Scaffold { padding ->
         Column (
@@ -173,20 +179,30 @@ fun LoginBody() {
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = White,
                         unfocusedContainerColor = White,
-                        focusedIndicatorColor = Blue,
-                        unfocusedIndicatorColor = Blue
+                        focusedIndicatorColor = NormalBlue,
+                        unfocusedIndicatorColor = NormalBlue
                     )
                 )
 
             Spacer(modifier = Modifier.height(20.dp))
 
                 OutlinedTextField(
-                    value = email,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email
-                    ),
+                    value = password,
                     onValueChange = { data ->
-                        email = data
+                        password = data
+                    },
+                    visualTransformation = if(visibility) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            visibility = !visibility
+                        }) {
+                            Icon(
+                                painter = if (visibility)
+                                painterResource(R.drawable.baseline_visibility_off_24) else
+                                painterResource(R.drawable.baseline_visibility_24),
+                                contentDescription = null
+                            )
+                        }
                     },
                     placeholder = {
                         Row {
@@ -205,8 +221,8 @@ fun LoginBody() {
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = White,
                         unfocusedContainerColor = White,
-                        focusedIndicatorColor = Blue,
-                        unfocusedIndicatorColor = Blue
+                        focusedIndicatorColor = NormalBlue,
+                        unfocusedIndicatorColor = NormalBlue
                     )
                 )
             Row (
