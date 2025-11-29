@@ -97,6 +97,13 @@ fun JobSeekerProfileDetailsBody() {
                             contentDescription = "Back",
                             tint = Color.White,
                             modifier = Modifier.size(30.dp)
+                                .clickable(interactionSource = remember {
+                                MutableInteractionSource()
+                            },
+                            indication = null    ){
+                            val intent = Intent(context, JobSeekerProfileActivity ::class.java)
+                            context.startActivity(intent)
+                        },
                         )
 
                         Icon(
