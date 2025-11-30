@@ -179,6 +179,8 @@ fun JobSeekerProfileDetailsBody() {
                             val intent = Intent(context, JobSeekerPersonalInformationActivity ::class.java)
                             context.startActivity(intent)
                         },
+
+
                     colors = CardDefaults.cardColors(
                         containerColor = White
                     )
