@@ -87,6 +87,13 @@ fun LoginBody() {
                         .rotate(10f)
                         .size(250.dp)
                 )
+                Image(
+                    painter = painterResource(R.drawable.logo),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .offset(x = 220.dp, y = -60.dp)
+                        .size(300.dp)
+                )
 
                 Row(
                     modifier = Modifier
@@ -101,6 +108,7 @@ fun LoginBody() {
                             .offset(y = 120.dp)
                             .size(200.dp)
                     )
+
                 }
             }
             Row (
