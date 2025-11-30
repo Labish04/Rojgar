@@ -98,7 +98,7 @@ fun LoginBody() {
                         painter = painterResource(R.drawable.mandesign1),
                         contentDescription = null,
                         modifier = Modifier
-                            .offset(y = 150.dp)
+                            .offset(y = 120.dp)
                             .size(200.dp)
                     )
                 }
@@ -106,7 +106,7 @@ fun LoginBody() {
             Row (
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 90.dp),
+                    .padding(top = 60.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ){
@@ -158,19 +158,16 @@ fun LoginBody() {
                     onValueChange = { data ->
                         email = data
                     },
+                    leadingIcon = {
+                        Image(
+                            painter = painterResource(R.drawable.outline_email_24),
+                            contentDescription = null,
+                            modifier = Modifier
+                        )
+                    },
 
-                    placeholder = {
-                        Row (
-                            verticalAlignment = Alignment.CenterVertically
-                        ){
-                            Image(
-                                painter = painterResource(R.drawable.outline_email_24),
-                                contentDescription = null,
-                                modifier = Modifier
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
+                    label = {
                             Text("Email")
-                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -204,15 +201,14 @@ fun LoginBody() {
                             )
                         }
                     },
-                    placeholder = {
-                        Row {
-                            Image(
-                                painter = painterResource(R.drawable.outline_lock_24),
-                                contentDescription = null
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
+                    leadingIcon = {
+                        Image(
+                            painter = painterResource(R.drawable.outline_lock_24),
+                            contentDescription = null
+                        )
+                    },
+                    label = {
                             Text("Password")
-                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -315,12 +311,20 @@ fun LoginBody() {
                     }
                 }
             }
+            Spacer(modifier = Modifier.height(10.dp))
+            Row (
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ){
+                Text("You can only login with google as a JobSeeker.")
+            }
             Image(
                 painter = painterResource(R.drawable.design2),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(300.dp)
-                    .offset(x = 200.dp, y = 60.dp)
+                    .size(400.dp)
+                    .offset(x = 170.dp, y = 40.dp)
             )
         }
     }
