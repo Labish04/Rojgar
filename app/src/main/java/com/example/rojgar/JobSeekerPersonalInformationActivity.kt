@@ -1,11 +1,16 @@
 package com.example.rojgar
 
 import android.app.Activity
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +32,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,8 +44,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.ui.theme.Blue
-import com.example.rojgar.ui.theme.DarkBlue
 import com.example.rojgar.ui.theme.DarkBlue2
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.rememberAsyncImagePainter
 
 class JobSeekerPersonalInformationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,6 +64,16 @@ class JobSeekerPersonalInformationActivity : ComponentActivity() {
 fun JobSeekerPersonalInformationBody() {
     val context = LocalContext.current
     val activity = context as Activity
+
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val launcher = rememberLauncherForActivityResult (
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        selectedImageUri = uri
+    }
+
+
     Scaffold { padding ->
         Column(
             modifier = Modifier
@@ -114,11 +134,14 @@ fun JobSeekerPersonalInformationBody() {
                                 .background(Color.LightGray),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "Add Cover Photo",
-                                color = Color.White,
-                                fontSize = 16.sp
-                            )
+                            if (selectedImageUri != null) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(selectedImageUri),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
 
                             // Camera Icon in top right corner
                             Icon(
@@ -129,6 +152,9 @@ fun JobSeekerPersonalInformationBody() {
                                     .size(60.dp)
                                     .align(Alignment.BottomEnd)
                                     .padding(16.dp)
+                                    .clickable{
+                                        launcher.launch("image/*")
+                                    }
                             )
                         }
                     }
@@ -144,6 +170,14 @@ fun JobSeekerPersonalInformationBody() {
                         Box(
                             modifier = Modifier.fillMaxSize()
                         ) {
+                            if (selectedImageUri != null) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(selectedImageUri),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
 
                         }
 
@@ -155,6 +189,9 @@ fun JobSeekerPersonalInformationBody() {
                         modifier = Modifier
                             .size(35.dp)
                             .offset(x = 120.dp, y = 260.dp)
+                            .clickable{
+                                launcher.launch("image/*")
+                            }
                     )
 
 
