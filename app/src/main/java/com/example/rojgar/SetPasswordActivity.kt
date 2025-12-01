@@ -162,11 +162,11 @@ fun SetPasswordScreen() {
                 onClick = { },
                 modifier = Modifier
                     .width(100.dp)
-                    .height(50.dp),
-                shape = RoundedCornerShape(12.dp),
+                    .height(45.dp),
+                shape = RoundedCornerShape(15.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Purple)
             ) {
-                Text("Done", color = Color.White, fontWeight = FontWeight.Bold)
+                Text("Done", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp )
             }
 
 
