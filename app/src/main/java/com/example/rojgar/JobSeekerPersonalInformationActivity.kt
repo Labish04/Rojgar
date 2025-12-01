@@ -27,6 +27,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -65,8 +67,12 @@ fun JobSeekerPersonalInformationBody() {
     val context = LocalContext.current
     val activity = context as Activity
 
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var gender by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
 
+
+
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     val launcher = rememberLauncherForActivityResult (
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -248,32 +254,64 @@ fun JobSeekerPersonalInformationBody() {
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // GENDER TEXTFIELD
-                OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.gendericon),
-                            contentDescription = "Gender",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(24.dp)
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = gender,
+                        onValueChange = {},
+                        readOnly = true,   // Disable typing, only selection
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.gendericon),
+                                contentDescription = "Gender",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(27.dp)
+                            )
+                        },
+                        label = { Text("Select Your Gender") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                            .clickable { expanded = true },       // Open Dropdown on click
+                        shape = RoundedCornerShape(15.dp),
+                        trailingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
+                                contentDescription = "Dropdown",
+                                tint = Color.Black,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clickable { expanded = true } // Arrow also opens dropdown
+                            )
+                        },
+                        singleLine = true
+                    )
+
+                    // ------- DROPDOWN MENU -------
+                    DropdownMenu (
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier
+                            .background(Blue)
+                            .fillMaxWidth()
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Male") },
+                            onClick = {
+                                gender = "Male"
+                                expanded = false
+                            }
                         )
-                    },
-                    label = { Text("Select Your Gender") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    trailingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
-                            contentDescription = "Dropdown",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
+                        DropdownMenuItem(
+                            text = { Text("Female") },
+                            onClick = {
+                                gender = "Female"
+                                expanded = false
+                            }
                         )
-                    },
-                    singleLine = true
-                )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
