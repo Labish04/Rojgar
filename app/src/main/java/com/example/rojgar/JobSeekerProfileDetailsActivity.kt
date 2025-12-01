@@ -228,6 +228,70 @@ fun JobSeekerProfileDetailsBody() {
             }
             Spacer(modifier = Modifier.height(20.dp))
 
+            Row (
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement =Arrangement.Center
+            ){
+
+                Card(
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.height(60.dp)
+                        .width(400.dp)
+                        .clickable(interactionSource = remember {
+                            MutableInteractionSource()
+                        },
+                            indication = null    ){
+                            val intent = Intent(context, JobSeekerPersonalInformationActivity ::class.java)
+                            context.startActivity(intent)
+                        },
+
+
+                    colors = CardDefaults.cardColors(
+                        containerColor = White
+                    )
+
+                )
+                {
+
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start
+
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.bioicon),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .padding(start =10.dp)
+                        )
+                        Text("Objective",
+                            style = TextStyle(
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Normal,
+                            ),
+                            modifier = Modifier
+
+                                .padding(start = 10.dp)
+
+                        )
+                        Icon(
+                            painter = painterResource(R.drawable.outline_keyboard_arrow_right_24),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(150.dp)
+                                .padding(end =20.dp)
+                        )
+                    }
+
+
+                }
+
+            }
+
 
         }
     }

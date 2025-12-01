@@ -1,6 +1,7 @@
 package com.example.rojgar
 
 import android.app.Activity
+import android.app.DatePickerDialog
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -33,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +53,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.rememberAsyncImagePainter
+import com.example.rojgar.ui.theme.Black
+import com.example.rojgar.ui.theme.Purple
+import java.util.Calendar
+
 
 class JobSeekerPersonalInformationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,18 +73,44 @@ fun JobSeekerPersonalInformationBody() {
     val context = LocalContext.current
     val activity = context as Activity
 
+//    Dropdown
     var gender by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
+    var selectedDate by remember { mutableStateOf("") }
 
+// Calendar
+    val calendar = Calendar.getInstance()
+    val year = calendar.get(Calendar.YEAR)
+    val month = calendar.get(Calendar.MONTH)
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
 
+//  DatePickerDialog
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, y, m, d ->
+            selectedDate = "$d/${m + 1}/$y"
+        },
+        year,
+        month,
+        day
+    )
+
+//    CoverProfile
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-    val launcher = rememberLauncherForActivityResult (
+    val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         selectedImageUri = uri
     }
 
+//    Profile
+    var selectedProfileUri by remember { mutableStateOf<Uri?>(null) }
+    val profile = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        selectedProfileUri = uri
+    }
 
     Scaffold { padding ->
         Column(
@@ -120,7 +152,7 @@ fun JobSeekerPersonalInformationBody() {
                 }
             }
 
-            // Make whole page scrollable
+            // scrollable
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -149,7 +181,7 @@ fun JobSeekerPersonalInformationBody() {
                                 )
                             }
 
-                            // Camera Icon in top right corner
+                            // Icon
                             Icon(
                                 painter = painterResource(id = R.drawable.addprofileicon),
                                 contentDescription = "Add Cover Photo",
@@ -158,15 +190,12 @@ fun JobSeekerPersonalInformationBody() {
                                     .size(60.dp)
                                     .align(Alignment.BottomEnd)
                                     .padding(16.dp)
-                                    .clickable{
+                                    .clickable {
                                         launcher.launch("image/*")
                                     }
                             )
                         }
                     }
-
-
-
                     Card(
                         shape = RoundedCornerShape(500.dp),
                         modifier = Modifier
@@ -176,7 +205,7 @@ fun JobSeekerPersonalInformationBody() {
                         Box(
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            if (selectedImageUri != null) {
+                            if (selectedProfileUri != null) {
                                 Image(
                                     painter = rememberAsyncImagePainter(selectedImageUri),
                                     contentDescription = null,
@@ -195,18 +224,13 @@ fun JobSeekerPersonalInformationBody() {
                         modifier = Modifier
                             .size(35.dp)
                             .offset(x = 120.dp, y = 260.dp)
-                            .clickable{
-                                launcher.launch("image/*")
+                            .clickable {
+                                profile.launch("image/*")
                             }
                     )
 
 
                 }
-
-
-
-
-
                 Spacer(modifier = Modifier.height(70.dp))
 
                 // NAME TEXTFIELD
@@ -226,7 +250,16 @@ fun JobSeekerPersonalInformationBody() {
                         .fillMaxWidth()
                         .height(60.dp),
                     shape = RoundedCornerShape(15.dp),
-                    singleLine = true
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Transparent,
+                        disabledContainerColor = Blue,
+                        focusedContainerColor = Blue,
+                        unfocusedContainerColor = Blue,
+                        focusedIndicatorColor = Purple,
+                        unfocusedIndicatorColor = Black
+                    )
+
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -248,7 +281,15 @@ fun JobSeekerPersonalInformationBody() {
                         .fillMaxWidth()
                         .height(60.dp),
                     shape = RoundedCornerShape(15.dp),
-                    singleLine = true
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Transparent,
+                        disabledContainerColor = Blue,
+                        focusedContainerColor = Blue,
+                        unfocusedContainerColor = Blue,
+                        focusedIndicatorColor = Purple,
+                        unfocusedIndicatorColor = Black
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -285,11 +326,19 @@ fun JobSeekerPersonalInformationBody() {
                                     .clickable { expanded = true } // Arrow also opens dropdown
                             )
                         },
-                        singleLine = true
+                        singleLine = true,
+                        colors = TextFieldDefaults.colors(
+                            disabledIndicatorColor = Color.Transparent,
+                            disabledContainerColor = Blue,
+                            focusedContainerColor = Blue,
+                            unfocusedContainerColor = Blue,
+                            focusedIndicatorColor = Purple,
+                            unfocusedIndicatorColor = Black
+                        )
                     )
 
                     // ------- DROPDOWN MENU -------
-                    DropdownMenu (
+                    DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
                         modifier = Modifier
@@ -317,8 +366,10 @@ fun JobSeekerPersonalInformationBody() {
 
                 // DATE OF BIRTH
                 OutlinedTextField(
-                    value = "",
+                    value = selectedDate,
                     onValueChange = {},
+                    placeholder = { Text("dd/mm/yyyy") },
+                    enabled = false,  // User cannot type manually
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.birthdaydateicon),
@@ -327,24 +378,29 @@ fun JobSeekerPersonalInformationBody() {
                             modifier = Modifier.size(24.dp)
                         )
                     },
-                    label = { Text("Select Your Date of Birth") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    shape = RoundedCornerShape(15.dp),
                     trailingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.calendaricon),
-                            contentDescription = "Calendar Select",
+                            contentDescription = "Open Calendar",
                             tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clickable { datePickerDialog.show() }
                         )
                     },
-                    singleLine = true
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .clickable { datePickerDialog.show() },   // Open picker on click
+                    shape = RoundedCornerShape(15.dp),
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Black,
+                        disabledContainerColor = Blue,   // Light Blue
+                        focusedContainerColor = Color(0xFFE3F2FD),
+                        unfocusedContainerColor = Color(0xFFE3F2FD),
+                    )
                 )
-
                 Spacer(modifier = Modifier.height(20.dp))
-
                 // CURRENT ADDRESS
                 OutlinedTextField(
                     value = "",
@@ -362,7 +418,15 @@ fun JobSeekerPersonalInformationBody() {
                         .fillMaxWidth()
                         .height(60.dp),
                     shape = RoundedCornerShape(15.dp),
-                    singleLine = true
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Transparent,
+                        disabledContainerColor = Blue,
+                        focusedContainerColor = Blue,
+                        unfocusedContainerColor = Blue,
+                        focusedIndicatorColor = Purple,
+                        unfocusedIndicatorColor = Black
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -384,7 +448,15 @@ fun JobSeekerPersonalInformationBody() {
                         .fillMaxWidth()
                         .height(60.dp),
                     shape = RoundedCornerShape(15.dp),
-                    singleLine = true
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Transparent,
+                        disabledContainerColor = Blue,
+                        focusedContainerColor = Blue,
+                        unfocusedContainerColor = Blue,
+                        focusedIndicatorColor = Purple,
+                        unfocusedIndicatorColor = Black
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -406,9 +478,17 @@ fun JobSeekerPersonalInformationBody() {
                         .fillMaxWidth()
                         .height(60.dp),
                     shape = RoundedCornerShape(15.dp),
-                    singleLine = true
-                )
 
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Transparent,
+                        disabledContainerColor = Blue,
+                        focusedContainerColor = Blue,
+                        unfocusedContainerColor = Blue,
+                        focusedIndicatorColor = Purple,
+                        unfocusedIndicatorColor = Black
+                    )
+                )
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // BIO
@@ -429,10 +509,18 @@ fun JobSeekerPersonalInformationBody() {
                         .height(100.dp),
                     shape = RoundedCornerShape(15.dp),
                     singleLine = false,
-                    maxLines = 3
+                    maxLines = 3,
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Transparent,
+                        disabledContainerColor = Blue,
+                        focusedContainerColor = Blue,
+                        unfocusedContainerColor = Blue,
+                        focusedIndicatorColor = Purple,
+                        unfocusedIndicatorColor = Black
+                    )
                 )
+                Spacer(modifier = Modifier.height(30.dp))
 
-                Spacer(modifier = Modifier.height(50.dp))
             }
         }
     }
