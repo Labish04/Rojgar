@@ -23,9 +23,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -52,8 +55,10 @@ import com.example.rojgar.ui.theme.DarkBlue2
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.ui.theme.Black
+import com.example.rojgar.ui.theme.Gray
 import com.example.rojgar.ui.theme.Purple
 import java.util.Calendar
 
@@ -301,7 +306,8 @@ fun JobSeekerPersonalInformationBody() {
                     OutlinedTextField(
                         value = gender,
                         onValueChange = {},
-                        readOnly = true,   // Disable typing, only selection
+                        readOnly = true,
+                        enabled = false,
                         leadingIcon = {
                             Icon(
                                 painter = painterResource(id = R.drawable.gendericon),
@@ -328,12 +334,13 @@ fun JobSeekerPersonalInformationBody() {
                         },
                         singleLine = true,
                         colors = TextFieldDefaults.colors(
-                            disabledIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Black,
                             disabledContainerColor = Blue,
                             focusedContainerColor = Blue,
                             unfocusedContainerColor = Blue,
                             focusedIndicatorColor = Purple,
-                            unfocusedIndicatorColor = Black
+                            unfocusedIndicatorColor = Black,
+                            disabledTextColor = Black,
                         )
                     )
 
@@ -391,11 +398,12 @@ fun JobSeekerPersonalInformationBody() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(60.dp)
-                        .clickable { datePickerDialog.show() },   // Open picker on click
+                        .clickable { datePickerDialog.show() },
                     shape = RoundedCornerShape(15.dp),
                     colors = TextFieldDefaults.colors(
                         disabledIndicatorColor = Color.Black,
-                        disabledContainerColor = Blue,   // Light Blue
+                        disabledContainerColor = Blue,
+                        disabledTextColor = Black,
                         focusedContainerColor = Color(0xFFE3F2FD),
                         unfocusedContainerColor = Color(0xFFE3F2FD),
                     )
@@ -520,6 +528,75 @@ fun JobSeekerPersonalInformationBody() {
                     )
                 )
                 Spacer(modifier = Modifier.height(30.dp))
+
+                Row {
+                    Spacer(modifier = Modifier.width(40.dp))
+
+                    Button(
+                        onClick = {
+                        },
+                        shape = RoundedCornerShape(25.dp),
+                        modifier = Modifier
+                            .width(110.dp)
+                            .height(45.dp),
+
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DarkBlue2,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Save",
+                                style = TextStyle(
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+
+                            )
+                        }
+
+                    }
+
+                    Spacer(modifier = Modifier.width(70.dp))
+                    Button (
+                        onClick = {
+                        },
+                        shape = RoundedCornerShape(25.dp),
+                        modifier = Modifier
+                            .width(130.dp)
+                            .height(45.dp),
+
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Gray,
+                            contentColor = Color.Black
+                        )
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Cancel",
+                                style = TextStyle(
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+
+                            )
+
+                        }
+
+                    }
+
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+
 
             }
         }
