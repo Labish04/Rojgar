@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.sp
 import com.example.rojgar.ui.theme.Purple
 
 
-class jobseekerRegisterActivity : ComponentActivity() {
+class JobseekerRegisterActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -71,7 +71,7 @@ fun RegisterBody() {
                     modifier = Modifier
                         .height(150.dp)
                         .fillMaxWidth()
-                        .offset(x = 60.dp,y = -10.dp)
+                        .offset(x = 60.dp,y = (-10).dp)
                 )
             }
             Image(
@@ -174,7 +174,7 @@ fun RegisterBody() {
                     contentDescription = "Jobseeker Illustration",
                     modifier = Modifier
                         .size(250.dp)
-                        .offset(x = -40.dp, y = 10.dp)
+                        .offset(x = (-40).dp, y = 10.dp)
 
                 )
             }

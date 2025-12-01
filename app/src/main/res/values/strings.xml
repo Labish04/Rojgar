@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">Rojgar</string>
     <string name="title_activity_job_seeker_register">JobSeekerRegisterActivity</string>
+    <string name="title_activity_jobseeker_signup">JobseekerSignupActivity</string>
+    <string name="title_activity_jobseeker_set_password">JobseekerSetPasswordActivity</string>
+    <string name="title_activity_set_password">SetPasswordActivity</string>
 </resources>
