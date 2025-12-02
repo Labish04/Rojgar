@@ -305,7 +305,15 @@ fun JobSeekerProfileDetailsBody() {
                 Card(
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.height(60.dp)
-                        .width(400.dp),
+                        .width(400.dp)
+                        .clickable(interactionSource = remember {
+                            MutableInteractionSource()
+                        },
+                            indication = null    ){
+                            val intent = Intent(context, JobSeekerExperienceActivity::class.java)
+                            context.startActivity(intent)
+                        },
+
                     colors = CardDefaults.cardColors(
                         containerColor = White
                     )
