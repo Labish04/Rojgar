@@ -1,11 +1,15 @@
 package com.example.rojgar
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,7 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -50,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.ui.theme.NormalBlue
 import com.example.rojgar.ui.theme.Purple
-import com.example.rojgar.ui.theme.RojgarTheme
 import com.example.rojgar.ui.theme.White
 
 class LoginActivity : ComponentActivity() {
@@ -66,6 +69,9 @@ class LoginActivity : ComponentActivity() {
 
 @Composable
 fun LoginBody() {
+
+    val context = LocalContext.current
+    val activity = context as Activity
 
     var email by remember { mutableStateOf("") }
     var password by remember {mutableStateOf("")}
@@ -113,8 +119,7 @@ fun LoginBody() {
             }
             Row (
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 60.dp),
+                    .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ){
@@ -153,7 +158,16 @@ fun LoginBody() {
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         color = Purple
-                    ))
+                    ),
+                modifier = Modifier
+                    .clickable(interactionSource = remember {
+                        MutableInteractionSource()
+                    },
+                        indication = null    ){
+                        val intent = Intent(context, RegisterAsActivity ::class.java)
+                        context.startActivity(intent)
+                    },
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -332,7 +346,7 @@ fun LoginBody() {
                 contentDescription = null,
                 modifier = Modifier
                     .size(400.dp)
-                    .offset(x = 170.dp, y = 40.dp)
+                    .offset(x = 160.dp, y = 40.dp)
             )
         }
     }
