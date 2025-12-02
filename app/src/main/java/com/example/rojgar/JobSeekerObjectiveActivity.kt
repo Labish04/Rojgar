@@ -1,12 +1,15 @@
 package com.example.rojgar
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,7 +57,6 @@ fun JobSeekerObjectiveBody() {
                 .background(Blue)
         ) {
 
-            // -------------------- TOP BAR --------------------
             Card(
                 shape = RoundedCornerShape(5.dp),
                 modifier = Modifier
@@ -75,7 +77,14 @@ fun JobSeekerObjectiveBody() {
                         painter = painterResource(R.drawable.outline_arrow_back_ios_24),
                         contentDescription = "Back",
                         tint = Color.White,
-                        modifier = Modifier.size(30.dp),
+                        modifier = Modifier.size(30.dp)
+                            .clickable(interactionSource = remember {
+                                MutableInteractionSource()
+                            },
+                                indication = null    ){
+                                val intent = Intent(context, JobSeekerProfileDetailsActivity ::class.java)
+                                context.startActivity(intent)
+                            },
                     )
                     Text(
                         "Objective",
