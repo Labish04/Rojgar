@@ -5,5 +5,6 @@
     <string name="title_activity_job_seeker_profile_deta">JobSeekerProfileDeta</string>
     <string name="title_activity_profile">ProfileActivity</string>
     <string name="title_activity_job_seeker_personal_information">JobSeekerPersonalInformationActivity</string>
+    <string name="title_activity_job_seeker_objective">JobSeekerObjectiveActivity</string>
     >>>>>>> 11ff9ba53955b48b2637d77df4cf1169dbf7c2a0
 </resources>

@@ -241,7 +241,7 @@ fun JobSeekerProfileDetailsBody() {
                             MutableInteractionSource()
                         },
                             indication = null    ){
-                            val intent = Intent(context, JobSeekerPersonalInformationActivity ::class.java)
+                            val intent = Intent(context, JobSeekerObjectiveActivity::class.java)
                             context.startActivity(intent)
                         },
 
@@ -253,16 +253,15 @@ fun JobSeekerProfileDetailsBody() {
                 )
                 {
 
-
                     Row(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxSize()
                             .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Start
 
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.bioicon),
+                            painter = painterResource(R.drawable.objectiveicon),
                             contentDescription = null,
                             modifier = Modifier
                                 .size(40.dp)
@@ -278,12 +277,17 @@ fun JobSeekerProfileDetailsBody() {
                                 .padding(start = 10.dp)
 
                         )
+
+
+                        Spacer(modifier = Modifier.width(193.dp))
+
                         Icon(
                             painter = painterResource(R.drawable.outline_keyboard_arrow_right_24),
                             contentDescription = null,
+                            tint = Color.Black,
                             modifier = Modifier
-                                .size(150.dp)
-                                .padding(end =20.dp)
+                                .size(350.dp)
+                                .padding(end = 0.dp)
                         )
                     }
 

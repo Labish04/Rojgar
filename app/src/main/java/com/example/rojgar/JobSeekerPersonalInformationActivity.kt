@@ -2,6 +2,7 @@ package com.example.rojgar
 
 import android.app.Activity
 import android.app.DatePickerDialog
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -12,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -146,6 +148,13 @@ fun JobSeekerPersonalInformationBody() {
                         contentDescription = "Back",
                         tint = Color.White,
                         modifier = Modifier.size(30.dp)
+                            .clickable(interactionSource = remember {
+                                MutableInteractionSource()
+                            },
+                                indication = null    ){
+                                val intent = Intent(context, JobSeekerProfileDetailsActivity ::class.java)
+                                context.startActivity(intent)
+                            },
                     )
                     Text(
                         "Personal Information",
@@ -153,7 +162,7 @@ fun JobSeekerPersonalInformationBody() {
                         fontSize = 20.sp,
                         color = Color.White
                     )
-                    Spacer(modifier = Modifier.size(30.dp)) // Balance the layout
+                    Spacer(modifier = Modifier.size(30.dp))
                 }
             }
 
