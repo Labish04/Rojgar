@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -76,6 +77,8 @@ fun LoginBody() {
     var email by remember { mutableStateOf("") }
     var password by remember {mutableStateOf("")}
     var visibility by remember {mutableStateOf(false)}
+
+    var rememberMe by remember { mutableStateOf(false) }
 
     Scaffold { padding ->
         Column (
@@ -203,7 +206,7 @@ fun LoginBody() {
                     )
                 )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
                 OutlinedTextField(
                     value = password,
@@ -257,7 +260,22 @@ fun LoginBody() {
                 )
             }
 
-            Spacer(modifier = Modifier.height(25.dp))
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 30.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = rememberMe,
+                    onCheckedChange = { rememberMe = it }
+                )
+
+                Text(
+                    text = "Remember me."
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
 
             Row (
                 modifier = Modifier
@@ -334,20 +352,25 @@ fun LoginBody() {
                 }
             }
             Spacer(modifier = Modifier.height(10.dp))
-            Row (
+            Column (
                 modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                    .fillMaxSize(),
             ){
-                Text("You can only login with google as a JobSeeker.")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text("You can only login with google as a JobSeeker.")
+                }
+                Image(
+                    painter = painterResource(R.drawable.design2),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(500.dp)
+                        .offset(x = 160.dp, y = 40.dp)
+                )
             }
-            Image(
-                painter = painterResource(R.drawable.design2),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(400.dp)
-                    .offset(x = 160.dp, y = 40.dp)
-            )
         }
     }
 }
