@@ -1,5 +1,6 @@
 package com.example.rojgar
 
+import android.app.Activity
 import android.content.Intent
 import android.graphics.drawable.Icon
 import android.net.Uri
@@ -66,6 +67,10 @@ data class Experience(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobSeekerExperienceBody() {
+
+    val context = LocalContext.current
+    val activity = context as Activity
+
     // list of experiences (in-memory)
     var experiences by remember { mutableStateOf(listOf<Experience>()) }
 
@@ -80,17 +85,42 @@ fun JobSeekerExperienceBody() {
     var currentlyWorking by remember { mutableStateOf(false) }
     var description by remember { mutableStateOf("") }
 
-    // Date pickers
-    var showStartPicker by remember { mutableStateOf(false) }
-    var showEndPicker by remember { mutableStateOf(false) }
-    val startPickerState = rememberDatePickerState()
-    val endPickerState = rememberDatePickerState()
+    var showStartDatePicker by remember { mutableStateOf(false) }
+    var showEndDatePicker by remember { mutableStateOf(false) }
 
-    // coroutine scope for animations / showing sheet (if needed)
-    val coroutineScope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    val context = LocalContext.current
+    // Calendar
+    val calendar = Calendar.getInstance()
+    val year = calendar.get(Calendar.YEAR)
+    val month = calendar.get(Calendar.MONTH)
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+    if (showStartDatePicker) {
+        android.app.DatePickerDialog(
+            context,
+            { _, y, m, d ->
+                startDate = "$d/${m + 1}/$y"
+                showStartDatePicker = false
+            },
+            year, month, day
+        ).show()
+    }
+
+    if (showEndDatePicker) {
+        android.app.DatePickerDialog(
+            context,
+            { _, y, m, d ->
+                endDate = "$d/${m + 1}/$y"
+                showEndDatePicker = false
+            },
+            year, month, day
+        ).show()
+    }
+
+
+
+
+
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -99,6 +129,18 @@ fun JobSeekerExperienceBody() {
 
     var expandedCategory by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf("") }
+
+    // Dropdown Job Category list
+    val jobCategories = listOf(
+        "Accounting / Finance",
+        "Architecture",
+        "Banking",
+        "Construction / Engineering",
+        "Graphics / Designing",
+        "IT (Information Technology)",
+        "Computer Engineering",
+        "Others"
+    )
 
     // Dropdown Job Level list
     val jobLevels = listOf("Top Level", "Senior Level", "Mid Level", "Entry Level")
@@ -315,17 +357,7 @@ fun JobSeekerExperienceBody() {
     if (showSheet) {
 
 
-        // Dropdown Job Category list
-        val jobCategories = listOf(
-            "Accounting / Finance",
-            "Architecture",
-            "Banking",
-            "Construction / Engineering",
-            "Graphics / Designing",
-            "IT (Information Technology)",
-            "Computer Engineering",
-            "Others"
-        )
+
 
         if (showSheet) {
             Dialog(
@@ -549,72 +581,71 @@ fun JobSeekerExperienceBody() {
 
                         Spacer(Modifier.height(12.dp))
 
-                        //-------------------------
-                        // Start & End Date
-                        //-------------------------
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
 
+                            // START DATE FIELD
                             OutlinedTextField(
                                 value = startDate,
                                 onValueChange = {},
                                 readOnly = true,
+                                placeholder = { Text("dd/mm/yyyy") },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.calendaricon),
+                                        contentDescription = "Open Calendar",
+                                        tint = Color.Gray,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clickable { showStartDatePicker = true }// ICON OPENS PICKER
+                                    )
+                                },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(60.dp)
-                                    .clickable { showStartPicker = true },
-                                label = { Text("Start Date") },
-                                leadingIcon = {
-                                    Icon(
-                                        painterResource(id = R.drawable.calendaricon),
-                                        contentDescription = null,
-                                        tint = Color.Gray,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                },
+                                    .clickable { showStartDatePicker = true },         // ENTIRE FIELD OPENS PICKER
                                 shape = RoundedCornerShape(15.dp),
                                 colors = TextFieldDefaults.colors(
                                     disabledIndicatorColor = Color.Black,
                                     disabledContainerColor = Blue,
                                     disabledTextColor = Color.Black,
-                                    focusedContainerColor = Blue,
-                                    unfocusedContainerColor = Blue,
-                                    focusedIndicatorColor = DarkBlue2,
-                                    unfocusedIndicatorColor = Color.Black
+                                    focusedContainerColor = Color(0xFFE3F2FD),
+                                    unfocusedContainerColor = Color(0xFFE3F2FD),
                                 )
                             )
 
+                            // END DATE FIELD
                             OutlinedTextField(
-                                value = if (currentlyWorking) "" else endDate,
+                                value = endDate,
                                 onValueChange = {},
-                                enabled = !currentlyWorking,
+                                enabled = true,
                                 readOnly = true,
+                                placeholder = { Text("dd/mm/yyyy") },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.calendaricon),
+                                        contentDescription = "Open Calendar",
+                                        tint = Color.Gray,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clickable { showEndDatePicker = true } // ICON OPENS PICKER
+                                    )
+                                },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(60.dp)
-                                    .clickable(enabled = !currentlyWorking) {
-                                        showEndPicker = true
-                                    },
-                                label = { Text("End Date") },
-                                leadingIcon = {
-                                    Icon(
-                                        painterResource(id = R.drawable.calendaricon),
-                                        contentDescription = null,
-                                        tint = Color.Gray,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                },
+                                    .clickable { showEndDatePicker = true },           // ENTIRE FIELD OPENS PICKER
                                 shape = RoundedCornerShape(15.dp),
                                 colors = TextFieldDefaults.colors(
                                     disabledIndicatorColor = Color.Black,
                                     disabledContainerColor = Blue,
                                     disabledTextColor = Color.Black,
-                                    focusedContainerColor = Blue,
-                                    unfocusedContainerColor = Blue,
-                                    focusedIndicatorColor = DarkBlue2,
-                                    unfocusedIndicatorColor = Color.Black
+                                    focusedContainerColor = Color(0xFFE3F2FD),
+                                    unfocusedContainerColor = Color(0xFFE3F2FD),
                                 )
                             )
                         }
+
+
 
                         Spacer(Modifier.height(12.dp))
 
