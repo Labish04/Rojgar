@@ -12,6 +12,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Rojgar">
         <activity
+            android:name=".JobSeekerSkillActivity"
+            android:exported="false"
+            android:label="@string/title_activity_job_seeker_skill"
+            android:theme="@style/Theme.Rojgar" />
+        <activity
             android:name=".JobSeekerExperienceActivity"
             android:exported="true"
             android:label="@string/title_activity_job_seeker_experience"
