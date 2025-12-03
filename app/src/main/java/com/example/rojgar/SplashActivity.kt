@@ -28,7 +28,7 @@ fun SplashBody() {
 
 }
 
-@Preview(showBackground = true)
+@Preview
 @Composable
 fun SplashBodyPreview() {
     SplashBody()

@@ -1,6 +1,7 @@
 package com.example.rojgar
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -173,7 +174,11 @@ fun RegisterBody() {
             Spacer(modifier = Modifier.height(15.dp))
 
             Button(
-                onClick = { },
+                onClick = { val intent = Intent(context,
+                    LoginActivity::class.java)
+
+                    context.startActivity(intent)
+                    activity.finish() },
                 modifier = Modifier
                     .width(300.dp)
                     .height(50.dp),
