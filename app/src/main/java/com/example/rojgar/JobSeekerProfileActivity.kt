@@ -111,7 +111,6 @@ fun JobSeekerProfileBody() {
                 .padding(padding)
                 .background(color = Blue)
         ) {
-
             // Top Bar
             Row(
                 modifier = Modifier
