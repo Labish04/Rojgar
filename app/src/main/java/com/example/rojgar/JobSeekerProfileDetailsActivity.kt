@@ -114,9 +114,6 @@ fun JobSeekerProfileDetailsBody() {
                         )
                     }
 
-
-
-                    // Profile Image + Text
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -135,8 +132,6 @@ fun JobSeekerProfileDetailsBody() {
                             alignment = Alignment.Center
                         )
 
-
-
                         Text(
                             "“I am a dedicated IT student eager to learn new skills, gain experience, and grow in the field of technology.”",
                             fontWeight = FontWeight.Normal,
@@ -154,268 +149,127 @@ fun JobSeekerProfileDetailsBody() {
                             style = TextStyle(
                                 fontSize = 19.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color.White          // ← Add this line
+                                color = Color.White
 
                             ))
                     }
                 }
 
             }
-
             Spacer(modifier = Modifier.height(20.dp))
-            Row (
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement =Arrangement.Center
-            ){
-
-                Card(
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.height(60.dp)
-                        .width(400.dp)
-                        .clickable(interactionSource = remember {
-                            MutableInteractionSource()
-                        },
-                        indication = null    ){
-                            val intent = Intent(context, JobSeekerPersonalInformationActivity ::class.java)
-                            context.startActivity(intent)
-                        },
-
-
-                    colors = CardDefaults.cardColors(
-                        containerColor = White
-                    )
-
-                )
-                {
-
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start
-
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.usericon),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .padding(start =10.dp)
-                        )
-                        Text("Personal Information",
-                            style = TextStyle(
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Normal,
-                            ),
-                            modifier = Modifier
-
-                                .padding(start = 10.dp)
-
-                        )
-                        Icon(
-                            painter = painterResource(R.drawable.outline_keyboard_arrow_right_24),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(150.dp)
-                                .padding(start =80.dp)
-                        )
-                    }
-
-
-                }
-
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row (
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement =Arrangement.Center
-            ){
-
-                Card(
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.height(60.dp)
-                        .width(400.dp)
-                        .clickable(interactionSource = remember {
-                            MutableInteractionSource()
-                        },
-                            indication = null    ){
-                            val intent = Intent(context, JobSeekerObjectiveActivity::class.java)
-                            context.startActivity(intent)
-                        },
-
-
-                    colors = CardDefaults.cardColors(
-                        containerColor = White
-                    )
-
-                )
-                {
-
-                    Row(
-                        modifier = Modifier.fillMaxSize()
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start
-
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.objectiveicon),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .padding(start =10.dp)
-                        )
-                        Text("Objective",
-                            style = TextStyle(
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Normal,
-                            ),
-                            modifier = Modifier
-
-                                .padding(start = 10.dp)
-
-                        )
-
-
-                        Spacer(modifier = Modifier.width(193.dp))
-
-                        Icon(
-                            painter = painterResource(R.drawable.outline_keyboard_arrow_right_24),
-                            contentDescription = null,
-                            tint = Color.Black,
-                            modifier = Modifier
-                                .size(350.dp)
-                                .padding(end = 0.dp)
-                        )
-                    }
-
-
-                }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row (
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement =Arrangement.Center
-            ){
-
-                Card(
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.height(60.dp)
-                        .width(400.dp)
-                        .clickable(interactionSource = remember {
-                            MutableInteractionSource()
-                        },
-                            indication = null    ){
-                            val intent = Intent(context, JobSeekerExperienceActivity::class.java)
-                            context.startActivity(intent)
-                        },
-
-                    colors = CardDefaults.cardColors(
-                        containerColor = White
-                    )
-                )
-                {
-                    Row(
-                        modifier = Modifier.fillMaxSize()
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.experienceicon),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .padding(start =10.dp)
-                        )
-                        Text("Experience",
-                            style = TextStyle(
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Normal,
-                            ),
-                            modifier = Modifier.padding(start = 10.dp)
-
-                        )
-                        Spacer(modifier = Modifier.width(175.dp))
-
-                        Icon(
-                            painter = painterResource(R.drawable.outline_keyboard_arrow_right_24),
-                            contentDescription = null,
-                            tint = Color.Black,
-                            modifier = Modifier
-                                .size(350.dp)
-                                .padding(end = 0.dp)
-                        )
-                    }
-
-
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OptionPanel(
+                    text = "Personal Information",
+                    leadingIcon = R.drawable.user
+                ) {
+                    val intent = Intent(context, JobSeekerPersonalInformationActivity::class.java)
+                    context.startActivity(intent)
                 }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            Row (
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement =Arrangement.Center
-            ){
-
-                Card(
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.height(60.dp)
-                        .width(400.dp)
-                        ,
-
-                    colors = CardDefaults.cardColors(
-                        containerColor = White
-                    )
-                )
-                {
-                    Row(
-                        modifier = Modifier.fillMaxSize()
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.skillicon),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .padding(start =10.dp)
-                        )
-                        Text("Skill",
-                            style = TextStyle(
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Normal,
-                            ),
-                            modifier = Modifier.padding(start = 10.dp)
-
-                        )
-                        Spacer(modifier = Modifier.width(175.dp))
-
-                        Icon(
-                            painter = painterResource(R.drawable.outline_keyboard_arrow_right_24),
-                            contentDescription = null,
-                            tint = Color.Black,
-                            modifier = Modifier
-                                .size(350.dp)
-                                .padding(start = 67.dp)
-                        )
-                    }
-
-
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OptionPanel(
+                    text = "Objective",
+                    leadingIcon = R.drawable.objectiveicon
+                ) {
+                    val intent = Intent(context, JobSeekerObjectiveActivity::class.java)
+                    context.startActivity(intent)
                 }
             }
 
+            Spacer(modifier = Modifier.height(20.dp))
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OptionPanel(
+                    text = "Experience",
+                    leadingIcon = R.drawable.experienceicon
+                ) {
+                    val intent = Intent(context, JobSeekerExperienceActivity::class.java)
+                    context.startActivity(intent)
+                }
+            }
+            Spacer(modifier = Modifier.height(20.dp))
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OptionPanel(
+                    text = "Skill",
+                    leadingIcon = R.drawable.skillicon
+                ) {
 
+                }
+            }
         }
     }
 }
+
+@Composable
+fun OptionPanel(
+    text: String,
+    leadingIcon: Int,
+    onClick: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier
+            .height(60.dp)
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(id = leadingIcon),
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp)
+                )
+
+                Text(
+                    text,
+                    style = TextStyle(
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Normal
+                    ),
+                    modifier = Modifier.padding(start = 10.dp)
+                )
+            }
+            Icon(
+                painter = painterResource(R.drawable.outline_keyboard_arrow_right_24),
+                contentDescription = null,
+                tint = Color.Black,
+                modifier = Modifier.size(30.dp)
+            )
+        }
+    }
+}
+
 
 @Preview
 @Composable

@@ -255,7 +255,7 @@ fun JobSeekerPersonalInformationBody() {
                         Icon(
                             painter = painterResource(id = R.drawable.usericon),
                             contentDescription = "Name",
-                            tint = Color.Gray,
+                            tint = Color.Black,
                             modifier = Modifier.size(24.dp)
                         )
                     },
@@ -286,7 +286,7 @@ fun JobSeekerPersonalInformationBody() {
                         Icon(
                             painter = painterResource(id = R.drawable.call),
                             contentDescription = "Phone Number",
-                            tint = Color.Gray,
+                            tint = Color.Black,
                             modifier = Modifier.size(24.dp)
                         )
                     },
@@ -321,7 +321,7 @@ fun JobSeekerPersonalInformationBody() {
                             Icon(
                                 painter = painterResource(id = R.drawable.gendericon),
                                 contentDescription = "Gender",
-                                tint = Color.Gray,
+                                tint = Color.Black,
                                 modifier = Modifier.size(27.dp)
                             )
                         },
@@ -390,7 +390,7 @@ fun JobSeekerPersonalInformationBody() {
                         Icon(
                             painter = painterResource(id = R.drawable.birthdaydateicon),
                             contentDescription = "Calendar",
-                            tint = Color.Gray,
+                            tint = Color.Black,
                             modifier = Modifier.size(24.dp)
                         )
                     },
@@ -426,7 +426,7 @@ fun JobSeekerPersonalInformationBody() {
                         Icon(
                             painter = painterResource(id = R.drawable.locationicon),
                             contentDescription = "Address",
-                            tint = Color.Gray,
+                            tint = Color.Black,
                             modifier = Modifier.size(24.dp)
                         )
                     },
@@ -456,7 +456,7 @@ fun JobSeekerPersonalInformationBody() {
                         Icon(
                             painter = painterResource(id = R.drawable.locationicon),
                             contentDescription = "Permanent",
-                            tint = Color.Gray,
+                            tint = Color.Black,
                             modifier = Modifier.size(24.dp)
                         )
                     },
@@ -486,7 +486,7 @@ fun JobSeekerPersonalInformationBody() {
                         Icon(
                             painter = painterResource(id = R.drawable.emailicon),
                             contentDescription = "Mail",
-                            tint = Color.Gray,
+                            tint = Color.Black,
                             modifier = Modifier.size(24.dp)
                         )
                     },
@@ -516,7 +516,7 @@ fun JobSeekerPersonalInformationBody() {
                         Icon(
                             painter = painterResource(id = R.drawable.bioicon),
                             contentDescription = "Bio",
-                            tint = Color.Gray,
+                            tint = Color.Black,
                             modifier = Modifier.size(24.dp)
                         )
                     },
@@ -606,11 +606,11 @@ fun JobSeekerPersonalInformationBody() {
                 }
                 Spacer(modifier = Modifier.height(20.dp))
 
-
             }
         }
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable

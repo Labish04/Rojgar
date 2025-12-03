@@ -39,6 +39,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
+import com.example.rojgar.ui.theme.Gray
 import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
 import kotlinx.coroutines.launch
@@ -314,6 +315,8 @@ fun JobSeekerExperienceBody() {
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(300.dp))
+
                         // Add button to add more
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -348,13 +351,13 @@ fun JobSeekerExperienceBody() {
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(24.dp))
+//                        Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
             }
         }
     }
-    if (showSheet) {
+
 
 
 
@@ -395,7 +398,7 @@ fun JobSeekerExperienceBody() {
                                 Icon(
                                     painterResource(id = R.drawable.companynameicon),
                                     contentDescription = null,
-                                    tint = Color.Gray,
+                                    tint = Color.Black,
                                     modifier = Modifier.size(24.dp)
                                 )
                             },
@@ -423,7 +426,7 @@ fun JobSeekerExperienceBody() {
                                 Icon(
                                     painterResource(id = R.drawable.jobtitleicon),
                                     contentDescription = null,
-                                    tint = Color.Gray,
+                                    tint = Color.Black,
                                     modifier = Modifier.size(24.dp)
                                 )
                             },
@@ -456,7 +459,7 @@ fun JobSeekerExperienceBody() {
                                     Icon(
                                         painter = painterResource(id = R.drawable.jobcategoryicon),  // Your category icon
                                         contentDescription = "Category Icon",
-                                        tint = Color.Gray,
+                                        tint = Color.Black,
                                         modifier = Modifier.size(27.dp)
                                     )
                                 },
@@ -526,7 +529,7 @@ fun JobSeekerExperienceBody() {
                                     Icon(
                                         painter = painterResource(id = R.drawable.joblevelicon), // your icon
                                         contentDescription = "Level Icon",
-                                        tint = Color.Gray,
+                                        tint = Color.Black,
                                         modifier = Modifier.size(27.dp)
                                     )
                                 },
@@ -593,7 +596,7 @@ fun JobSeekerExperienceBody() {
                                     Icon(
                                         painter = painterResource(id = R.drawable.calendaricon),
                                         contentDescription = "Open Calendar",
-                                        tint = Color.Gray,
+                                        tint = Color.Black,
                                         modifier = Modifier
                                             .size(24.dp)
                                             .clickable { showStartDatePicker = true }// ICON OPENS PICKER
@@ -624,7 +627,7 @@ fun JobSeekerExperienceBody() {
                                     Icon(
                                         painter = painterResource(id = R.drawable.calendaricon),
                                         contentDescription = "Open Calendar",
-                                        tint = Color.Gray,
+                                        tint = Color.Black,
                                         modifier = Modifier
                                             .size(24.dp)
                                             .clickable { showEndDatePicker = true } // ICON OPENS PICKER
@@ -651,11 +654,17 @@ fun JobSeekerExperienceBody() {
 
 
                         // Currently working switch
-
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Switch(
                                 checked = currentlyWorking,
-                                onCheckedChange = { currentlyWorking = it }
+                                onCheckedChange = { currentlyWorking = it },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Blue,
+                                    checkedTrackColor = DarkBlue2,
+                                    uncheckedThumbColor = Color.DarkGray,
+                                    uncheckedTrackColor = Color.DarkGray.copy(alpha = 0.4f)
+                                )
+
                             )
                             Spacer(Modifier.width(12.dp))
                             Text("Currently work here?")
@@ -663,9 +672,7 @@ fun JobSeekerExperienceBody() {
 
                         Spacer(Modifier.height(12.dp))
 
-                        //-------------------------
                         // Upload Experience Letter
-                        //-------------------------
                         OutlinedTextField(
                             value = selectedImageUri?.lastPathSegment ?: "",
                             onValueChange = {},
@@ -697,33 +704,104 @@ fun JobSeekerExperienceBody() {
 
                         Spacer(Modifier.height(20.dp))
 
-                        //-------------------------
-                        // SAVE BUTTON
-                        //-------------------------
-                        Button(
-                            onClick = {
-                                val exp = Experience(
-                                    company = companyName,
-                                    role = jobTitle,
-                                    startDate = startDate,
-                                    endDate = endDate,
-                                    currentlyWorking = currentlyWorking,
-                                    description = selectedCategory + " | " + selectedLevel
+
+                        Row {
+                            Spacer(modifier = Modifier.width(40.dp))
+
+                            // Save Button
+                            Button(
+                                onClick = {
+                                },
+                                shape = RoundedCornerShape(25.dp),
+                                modifier = Modifier
+                                    .width(110.dp)
+                                    .height(45.dp),
+
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = DarkBlue2,
+                                    contentColor = Color.White
                                 )
-                                experiences = experiences + exp
-                                showSheet = false
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(55.dp),
-                            shape = RoundedCornerShape(25.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = DarkBlue2,
-                                contentColor = Color.White
-                            )
-                        ) {
-                            Text("Save", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = "Save",
+                                        style = TextStyle(
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                        ),
+                                        modifier = Modifier.fillMaxWidth()
+
+                                    )
+                                }
+
+                            }
+
+                            Spacer(modifier = Modifier.width(70.dp))
+
+                            // Cancel Button
+                            Button (
+                                onClick = {
+                                },
+                                shape = RoundedCornerShape(25.dp),
+                                modifier = Modifier
+                                    .width(130.dp)
+                                    .height(45.dp),
+
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Gray,
+                                    contentColor = Color.Black
+                                )
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = "Cancel",
+                                        style = TextStyle(
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                        ),
+                                        modifier = Modifier.fillMaxWidth()
+
+                                    )
+
+                                }
+
+                            }
+
                         }
+
+
+
+//
+//                        Button(
+//                            onClick = {
+//                                val exp = Experience(
+//                                    company = companyName,
+//                                    role = jobTitle,
+//                                    startDate = startDate,
+//                                    endDate = endDate,
+//                                    currentlyWorking = currentlyWorking,
+//                                    description = selectedCategory + " | " + selectedLevel
+//                                )
+//                                experiences = experiences + exp
+//                                showSheet = false
+//                            },
+//                            modifier = Modifier
+//                                .fillMaxWidth()
+//                                .height(55.dp),
+//                            shape = RoundedCornerShape(25.dp),
+//                            colors = ButtonDefaults.buttonColors(
+//                                containerColor = DarkBlue2,
+//                                contentColor = Color.White
+//                            )
+//                        ) {
+//                            Text("Save", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+//                        }
 
                         Spacer(Modifier.height(16.dp))
                     }
@@ -731,7 +809,7 @@ fun JobSeekerExperienceBody() {
             }
         }
     }
-}
+
 
 @Preview
 @Composable
