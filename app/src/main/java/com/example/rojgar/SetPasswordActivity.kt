@@ -59,18 +59,18 @@ fun SetPasswordScreen() {
                 horizontalArrangement = Arrangement.End
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.rojgar),
+                    painter = painterResource(id = R.drawable.logo),
                     contentDescription = "Rojgar Logo",
                     modifier = Modifier
-                        .height(150.dp)
+                        .height(200.dp)
                         .fillMaxWidth()
-                        .offset(x = 70.dp, y = (-10).dp)
+                        .offset(x = 150.dp, y = (-40).dp)
                 )
             }
 
             // Illustration
             Image(
-                painter = painterResource(id = R.drawable.illustration),
+                painter = painterResource(id = R.drawable.design4),
                 contentDescription = "Jobseeker Illustration",
                 modifier = Modifier
                     .height(200.dp)
@@ -172,7 +172,7 @@ fun SetPasswordScreen() {
 
             // Bottom decorative image
             Image(
-                painter = painterResource(id = R.drawable.drop),
+                painter = painterResource(id = R.drawable.design5),
                 contentDescription = "Decorative Element",
                 modifier = Modifier
                     .size(250.dp)
