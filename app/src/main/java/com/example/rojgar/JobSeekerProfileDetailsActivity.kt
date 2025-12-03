@@ -200,7 +200,6 @@ fun JobSeekerProfileDetailsBody() {
                 }
             }
             Spacer(modifier = Modifier.height(20.dp))
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
@@ -209,6 +208,8 @@ fun JobSeekerProfileDetailsBody() {
                     text = "Skill",
                     leadingIcon = R.drawable.skillicon
                 ) {
+                    val intent = Intent(context, JobSeekerSkillActivity::class.java)
+                    context.startActivity(intent)
 
                 }
             }

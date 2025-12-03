@@ -90,6 +90,9 @@ fun JobSeekerSkillBody(){
                     )
                     Spacer(modifier = Modifier.size(30.dp))
                 }
+
+
+
             }
 
         }
