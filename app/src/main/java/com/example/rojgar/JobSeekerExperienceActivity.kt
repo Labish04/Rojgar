@@ -1,5 +1,6 @@
 package com.example.rojgar
 
+import android.content.Intent
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Bundle
@@ -11,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -132,7 +134,14 @@ fun JobSeekerExperienceBody() {
                         painter = painterResource(R.drawable.outline_arrow_back_ios_24),
                         contentDescription = "Back",
                         tint = Color.White,
-                        modifier = Modifier.size(30.dp),
+                        modifier = Modifier.size(30.dp)
+                            .clickable(interactionSource = remember {
+                                MutableInteractionSource()
+                            },
+                                indication = null    ){
+                                val intent = Intent(context, JobSeekerProfileDetailsActivity ::class.java)
+                                context.startActivity(intent)
+                            },
                     )
                     Text(
                         "Experience",
@@ -322,16 +331,16 @@ fun JobSeekerExperienceBody() {
             Dialog(
                 onDismissRequest = { showSheet = false },
                 properties = DialogProperties(
-                    usePlatformDefaultWidth = false   // KEY POINT: FULL WIDTH
+                    usePlatformDefaultWidth = false
                 )
             ) {
                 Card(
                     shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
                     modifier = Modifier
-                        .fillMaxWidth()          // FULL WIDTH LEFT → RIGHT
-                        .wrapContentHeight()     // HEIGHT ONLY AS NEEDED
+                        .fillMaxWidth()
+                        .wrapContentHeight()
                         .padding(
-                            top = 150.dp         // move it down so it hides Add button
+                            top = 150.dp
                         ),
                     colors = CardDefaults.cardColors(
                         containerColor = Blue
