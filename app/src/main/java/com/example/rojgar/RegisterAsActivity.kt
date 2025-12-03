@@ -9,6 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -61,55 +62,64 @@ fun RegisterBody() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding()
                 .background(Color.White)
                 .padding(horizontal = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Logo Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.rojgar),
-                    contentDescription = "Jobseeker Illustration",
-                    modifier = Modifier
-                        .height(150.dp)
-                        .fillMaxWidth()
-                        .offset(x = 60.dp,y = -10.dp)
+
+                Box {
+                    Image(
+                        painter = painterResource(id = R.drawable.design3),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(500.dp)
+                            .offset(x = 120.dp, y = -230.dp)
+                    )
+                    Image(
+                        painter = painterResource(id = R.drawable.logo),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(250.dp)
+                            .offset(x = 200.dp, y = -40.dp)
+                    )
+
+                    Image(
+                        painter = painterResource(id = R.drawable.design4),
+                        contentDescription = "Jobseeker Illustration",
+                        modifier = Modifier
+                            .height(200.dp)
+                            .fillMaxWidth()
+                            .offset(y = 200.dp)
+                    )
+
+                    Row (
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ){
+                        Text(
+                            text = "SignUp",
+                            style = TextStyle(
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            ),
+                            modifier = Modifier
+                                .offset(y = 410.dp)
+                        )
+                    }
+                }
+
+                Text(
+                    text = "Which type of account do you want to sign up?",
+                    style = TextStyle(
+                        fontSize = 18.sp,
+                        color = Color.DarkGray,
+                        textAlign = TextAlign.Center
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 )
-            }
-            Image(
-                painter = painterResource(id = R.drawable.illustration),
-                contentDescription = "Jobseeker Illustration",
-                modifier = Modifier
-                    .height(200.dp)
-                    .fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(30.dp))
-
-            Text(
-                text = "SignUp",
-                style = TextStyle(
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Purple
-                )
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                text = "Which type of account do you want to sign up?",
-                style = TextStyle(
-                    fontSize = 16.sp,
-                    color = Color.DarkGray,
-                    textAlign = TextAlign.Center
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
 
             Spacer(modifier = Modifier.height(30.dp))
 
@@ -117,28 +127,33 @@ fun RegisterBody() {
             Button(
                 onClick = { /* Navigate to Job Seeker Registration */ },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
+                    .height(50.dp)
+                    .width(300.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Purple)
             ) {
-                Text("JOB SEEKER", color = Color.White)
+                Text("JOB SEEKER", color = Color.White, style = TextStyle(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                ))
             }
 
-            Spacer(modifier = Modifier.height(15.dp))
+            Spacer(modifier = Modifier.height(30.dp))
 
             Button(
                 onClick = { /* Navigate to Company Registration */ },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
+                    .height(50.dp)
+                    .width(300.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Purple)
             ) {
-                Text("COMPANY", color = Color.White)
+                Text("COMPANY", color = Color.White, style = TextStyle(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,))
             }
 
-            Spacer(modifier = Modifier.height(15.dp))
+            Spacer(modifier = Modifier.height(30.dp))
             Text(
                 buildAnnotatedString {
                     append("Already have account?")
@@ -148,45 +163,39 @@ fun RegisterBody() {
                             fontWeight = FontWeight.Bold
                         )
                     ) {
-                        append(" Login")
+                        
                     }
                 },
                 style = TextStyle(fontSize = 16.sp),
-                modifier = Modifier.clickable { /* Navigate to Login */ }
+                modifier = Modifier
+                    .clickable { /* Navigate to Login */ }
             )
             Spacer(modifier = Modifier.height(15.dp))
 
             Button(
                 onClick = { },
                 modifier = Modifier
-                    .width(100.dp)
+                    .width(300.dp)
                     .height(50.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Purple)
             ) {
-                Text("LOGIN", color = Color.White)
+                Text("LOGIN", color = Color.White, style = TextStyle(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,))
             }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
+            Column (
                 modifier = Modifier
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start
-            ) {
+                    .fillMaxSize()
+            ){
                 Image(
-                    painter = painterResource(id = R.drawable.drop),
+                    painter = painterResource(id = R.drawable.design5),
                     contentDescription = "Jobseeker Illustration",
                     modifier = Modifier
-                        .size(250.dp)
-                        .offset(x = -40.dp, y = 10.dp)
-
+                        .size(600.dp)
+                        .offset(x = 120.dp, y = 80.dp)
                 )
             }
-
-
-
         }
     }
 }
