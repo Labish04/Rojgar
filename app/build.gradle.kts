@@ -42,6 +42,10 @@ android {
 }
 
 dependencies {
+    implementation("com.google.android.exoplayer:exoplayer:2.19.0")
+    implementation("androidx.media3:media3-exoplayer:1.1.1")
+    implementation("androidx.media3:media3-ui:1.1.1")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

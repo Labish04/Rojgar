@@ -1,7 +1,10 @@
 <resources>
     <string name="app_name">Rojgar</string>
-    <string name="title_activity_job_seeker_register">JobSeekerRegisterActivity</string>
-    <string name="title_activity_jobseeker_signup">JobseekerSignupActivity</string>
-    <string name="title_activity_jobseeker_set_password">JobseekerSetPasswordActivity</string>
-    <string name="title_activity_set_password">SetPasswordActivity</string>
+    <string name="title_activity_login">LoginActivity</string>
+    =======
+    <string name="title_activity_job_seeker_profile_deta">JobSeekerProfileDeta</string>
+    <string name="title_activity_profile">ProfileActivity</string>
+    <string name="title_activity_splash">SplashActivity</string>
+    <string name="title_activity_job_seeker_dashboard">JobSeekerDashboardActivity</string>
+    >>>>>>> 11ff9ba53955b48b2637d77df4cf1169dbf7c2a0
 </resources>
