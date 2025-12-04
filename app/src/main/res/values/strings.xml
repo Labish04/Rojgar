@@ -5,5 +5,7 @@
     <string name="title_activity_job_seeker_profile_deta">JobSeekerProfileDeta</string>
     <string name="title_activity_profile">ProfileActivity</string>
     <string name="title_activity_sign_up_company">SignUpCompany</string>
+    <string name="title_activity_code_verification_company.kt">CodeVerificationCompany.kt</string>
+    <string name="title_activity_code_verification_company">CodeVerificationCompany</string>
     >>>>>>> 11ff9ba53955b48b2637d77df4cf1169dbf7c2a0
 </resources>
