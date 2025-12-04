@@ -102,8 +102,6 @@ fun JobSeekerProfileBody() {
     var isPlaying by remember { mutableStateOf(false) }
 
 
-
-
     Scaffold { padding ->
         Column(
             modifier = Modifier

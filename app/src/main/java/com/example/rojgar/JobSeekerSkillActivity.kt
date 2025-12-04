@@ -268,7 +268,7 @@ fun JobSeekerSkillBody() {
                             .fillMaxWidth()
                             .fillMaxHeight(0.55f),
                         colors = CardDefaults.cardColors(
-                            containerColor = Blue
+                            containerColor = White
                         )
                     ) {
                         Column(
@@ -297,14 +297,13 @@ fun JobSeekerSkillBody() {
                                 singleLine = true,
                                 colors = TextFieldDefaults.colors(
                                     disabledIndicatorColor = Color.Transparent,
-                                    disabledContainerColor = Blue,
-                                    focusedContainerColor = Blue,
-                                    unfocusedContainerColor = Blue,
+                                    disabledContainerColor = White,
+                                    focusedContainerColor = White,
+                                    unfocusedContainerColor = White,
                                     focusedIndicatorColor = Purple,
                                     unfocusedIndicatorColor = Black
                                 )
                             )
-
                             Spacer(Modifier.height(24.dp))
 
                             // Skill Level Section
@@ -334,6 +333,7 @@ fun JobSeekerSkillBody() {
                                     Text(
                                         text = level,
                                         fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
                                         color = Color.DarkGray,
                                         modifier = Modifier.weight(1f),
                                         textAlign = if (level == "Beginner") TextAlign.Start
