@@ -8,5 +8,6 @@
     <string name="title_activity_code_verification_company.kt">CodeVerificationCompany.kt</string>
     <string name="title_activity_code_verification_company">CodeVerificationCompany</string>
     <string name="title_activity_set_password_company">SetPasswordCompany</string>
+    <string name="title_activity_document_company">DocumentCompany</string>
     >>>>>>> 11ff9ba53955b48b2637d77df4cf1169dbf7c2a0
 </resources>
