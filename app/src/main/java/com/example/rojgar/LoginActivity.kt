@@ -143,35 +143,6 @@ fun LoginBody() {
                     )
                 }
             }
-            
-            Row (
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ){
-                Text("Don't hanve an account?",
-                    style = TextStyle(
-                        fontSize = 18.sp
-                    ))
-                Spacer(modifier = Modifier.width(5.dp))
-                Text("SignUp",
-                    style = TextStyle(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = Purple
-                    ),
-                modifier = Modifier
-                    .clickable(interactionSource = remember {
-                        MutableInteractionSource()
-                    },
-                        indication = null    ){
-                        val intent = Intent(context, RegisterAsActivity ::class.java)
-                        context.startActivity(intent)
-                    },
-                )
-            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -311,6 +282,38 @@ fun LoginBody() {
                     ))
                 }
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row (
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ){
+                Text("Don't hanve an account?",
+                    style = TextStyle(
+                        fontSize = 18.sp
+                    ))
+                Spacer(modifier = Modifier.width(5.dp))
+                Text("SignUp",
+                    style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Purple
+                    ),
+                    modifier = Modifier
+                        .clickable(interactionSource = remember {
+                            MutableInteractionSource()
+                        },
+                            indication = null    ){
+                            val intent = Intent(context, RegisterAsActivity ::class.java)
+                            context.startActivity(intent)
+                        },
+                )
+            }
+
             Row (
                 modifier = Modifier
                     .fillMaxWidth()
