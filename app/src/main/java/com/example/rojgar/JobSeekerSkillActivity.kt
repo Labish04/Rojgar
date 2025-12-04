@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -58,6 +59,8 @@ class JobSeekerSkillActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobSeekerSkillBody() {
+    val context = LocalContext.current
+
     Scaffold(
         topBar = {
             Card(
@@ -75,7 +78,8 @@ fun JobSeekerSkillBody() {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Start
                 ) {
-                    IconButton(onClick = { }) {
+                    IconButton(onClick = { val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
+                        context.startActivity(intent)}) {
                         Icon(
                             painter = painterResource(R.drawable.outline_arrow_back_ios_24),
                             contentDescription = null,
