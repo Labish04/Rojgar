@@ -41,6 +41,7 @@ class JobSeekerObjectiveActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobSeekerObjectiveBody() {
 
@@ -49,94 +50,89 @@ fun JobSeekerObjectiveBody() {
 
     var objectiveText by remember { mutableStateOf("") }
 
-    Scaffold { padding ->
+    Scaffold(
+        topBar = {
+            Card(
+                modifier = Modifier
+                    .height(140.dp)
+                    .padding(top = 55.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(5.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkBlue2),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 15.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    IconButton(onClick = {
+                        val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
+                        context.startActivity(intent)
+                    }) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(90.dp))
+
+                    Text(
+                        "Objective",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .background(Blue)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
         ) {
 
-            Card(
-                shape = RoundedCornerShape(5.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = DarkBlue2
-                )
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(
+                "How can you describe yourself professionally?",
+                fontWeight = FontWeight.Normal,
+                fontSize = 18.sp,
+                color = Color.Black
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            CustomObjectiveTextField(
+                value = objectiveText,
+                placeholder = "Goal and objective",
+                onValueChange = { objectiveText = it }
+            )
+
+            Spacer(modifier = Modifier.height(30.dp))
+
+            Button(
+                onClick = { /* Submit */ },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D6EFD))
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                        contentDescription = "Back",
-                        tint = Color.White,
-                        modifier = Modifier.size(30.dp)
-                            .clickable(interactionSource = remember {
-                                MutableInteractionSource()
-                            },
-                                indication = null    ){
-                                val intent = Intent(context, JobSeekerProfileDetailsActivity ::class.java)
-                                context.startActivity(intent)
-                            },
-                    )
-                    Text(
-                        "Objective",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.size(30.dp))
-                }
+                Text(text = "Done", fontSize = 18.sp, color = Color.White)
             }
 
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text(
-                    "How can you describe yourself professionally?",
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 18.sp,
-                    color = Color.Black
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                CustomObjectiveTextField(
-                    value = objectiveText,
-                    placeholder = "Goal and objective",
-                    onValueChange = { objectiveText = it }
-                )
-
-                Spacer(modifier = Modifier.height(30.dp))
-
-                Button(
-                    onClick = { /* Submit */ },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D6EFD))
-                ) {
-                    Text(text = "Done", fontSize = 18.sp, color = Color.White)
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-            }
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }
-
 
 @Composable
 fun CustomObjectiveTextField(
@@ -184,7 +180,6 @@ fun CustomObjectiveTextField(
         )
     }
 }
-
 
 @Preview
 @Composable

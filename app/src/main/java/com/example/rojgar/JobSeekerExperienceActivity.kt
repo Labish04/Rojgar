@@ -64,7 +64,6 @@ data class Experience(
     val currentlyWorking: Boolean,
     val description: String
 )
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobSeekerExperienceBody() {
@@ -72,7 +71,7 @@ fun JobSeekerExperienceBody() {
     val context = LocalContext.current
     val activity = context as Activity
 
-    // list of experiences (in-memory)
+    // list of experiences
     var experiences by remember { mutableStateOf(listOf<Experience>()) }
 
     // Bottom sheet control
@@ -88,7 +87,6 @@ fun JobSeekerExperienceBody() {
 
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
-
 
     // Calendar
     val calendar = Calendar.getInstance()
@@ -118,10 +116,7 @@ fun JobSeekerExperienceBody() {
         ).show()
     }
 
-
-
-
-
+//Image
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -149,60 +144,57 @@ fun JobSeekerExperienceBody() {
     var selectedLevel by remember { mutableStateOf("") }
 
 
-    Scaffold { padding ->
+    Scaffold(
+        topBar = {
+            Card(
+                modifier = Modifier
+                    .height(140.dp)
+                    .padding(top = 55.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(5.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkBlue2),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 15.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    IconButton(onClick = {
+                        val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
+                        context.startActivity(intent)
+                    }) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(90.dp))
+
+                    Text(
+                        "Experience",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .background(Blue)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
         ) {
-            // Header
-            Card(
-                shape = RoundedCornerShape(5.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = DarkBlue2
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                        contentDescription = "Back",
-                        tint = Color.White,
-                        modifier = Modifier.size(30.dp)
-                            .clickable(interactionSource = remember {
-                                MutableInteractionSource()
-                            },
-                                indication = null    ){
-                                val intent = Intent(context, JobSeekerProfileDetailsActivity ::class.java)
-                                context.startActivity(intent)
-                            },
-                    )
-                    Text(
-                        "Experience",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.size(30.dp))
-                }
-            }
-
-            // Content area
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
@@ -214,7 +206,6 @@ fun JobSeekerExperienceBody() {
 
                 Spacer(modifier = Modifier.height(200.dp))
 
-                // If no experiences -> show empty illustration + Add button centered at bottom
                 if (experiences.isEmpty()) {
                     Column(
                         modifier = Modifier
@@ -224,7 +215,6 @@ fun JobSeekerExperienceBody() {
                     ) {
                         Spacer(modifier = Modifier.height(40.dp))
 
-                        // Illustration (use your drawable for empty state)
                         Icon(
                             painter = painterResource(id = R.drawable.noexperience),
                             contentDescription = "no experience",
@@ -242,7 +232,6 @@ fun JobSeekerExperienceBody() {
                         )
 
                         Spacer(modifier = Modifier.weight(1f))
-
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -251,7 +240,6 @@ fun JobSeekerExperienceBody() {
                         ) {
                             Button(
                                 onClick = {
-                                    // clear form and show sheet
                                     companyName = ""
                                     jobTitle = ""
                                     startDate = ""
@@ -284,7 +272,6 @@ fun JobSeekerExperienceBody() {
                         }
                     }
                 } else {
-                    // Show list of experiences (simple cards)
                     Column(modifier = Modifier.fillMaxWidth()) {
                         experiences.forEach { exp ->
                             Card(
@@ -351,16 +338,11 @@ fun JobSeekerExperienceBody() {
                             }
                         }
 
-//                        Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
             }
-        }
+
     }
-
-
-
-
 
         if (showSheet) {
             Dialog(
@@ -561,7 +543,6 @@ fun JobSeekerExperienceBody() {
                                 )
                             )
 
-                            // ----------- DROPDOWN MENU -----------
                             DropdownMenu(
                                 expanded = expandedLevel,
                                 onDismissRequest = { expandedLevel = false },
@@ -648,12 +629,8 @@ fun JobSeekerExperienceBody() {
                             )
                         }
 
-
-
                         Spacer(Modifier.height(12.dp))
 
-
-                        // Currently working switch
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Switch(
                                 checked = currentlyWorking,

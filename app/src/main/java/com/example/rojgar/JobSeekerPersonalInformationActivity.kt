@@ -36,6 +36,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -119,54 +120,58 @@ fun JobSeekerPersonalInformationBody() {
         selectedProfileUri = uri
     }
 
-    Scaffold { padding ->
+    Scaffold(
+        topBar = {
+            Card(
+                modifier = Modifier
+                    .height(140.dp)
+                    .padding(top = 55.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(5.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkBlue2)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 15.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start
+                ) {
+
+                    IconButton (onClick = {
+                        val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
+                        context.startActivity(intent)
+                    }) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(50.dp))
+
+                    Text(
+                        "Personal Information",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    ) { padding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .background(Blue)
         ) {
-            // Top Bar
-            Card(
-                shape = RoundedCornerShape(5.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = DarkBlue2
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                        contentDescription = "Back",
-                        tint = Color.White,
-                        modifier = Modifier.size(30.dp)
-                            .clickable(interactionSource = remember {
-                                MutableInteractionSource()
-                            },
-                                indication = null    ){
-                                val intent = Intent(context, JobSeekerProfileDetailsActivity ::class.java)
-                                context.startActivity(intent)
-                            },
-                    )
-                    Text(
-                        "Personal Information",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.size(30.dp))
-                }
-            }
 
-            // scrollable
             Column(
                 modifier = Modifier
                     .fillMaxSize()
