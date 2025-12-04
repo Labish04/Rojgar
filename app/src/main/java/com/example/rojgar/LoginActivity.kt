@@ -249,30 +249,42 @@ fun LoginBody() {
             Row (
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(end = 30.dp),
-                horizontalArrangement = Arrangement.End
+                    .padding(horizontal = 30.dp)
             ){
-                Text(
-                    "Forget Password?", style = TextStyle(
-                        fontSize = 15.sp,
-                        color = Purple
+                Row (
+                    verticalAlignment = Alignment.CenterVertically
+                ){
+                    Checkbox(
+                        checked = rememberMe,
+                        onCheckedChange = { rememberMe = it },
+                                modifier = Modifier
+                                .offset(y = -5.dp)
                     )
-                )
-            }
 
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 30.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = rememberMe,
-                    onCheckedChange = { rememberMe = it }
-                )
+                    Text(
+                        text = "Remember me.",
+                        style = TextStyle(
+                            fontSize = 18.sp
+                        ),
+                        modifier = Modifier
+                            .offset(y = -5.dp)
 
-                Text(
-                    text = "Remember me."
-                )
+                    )
+                }
+                Spacer(modifier = Modifier.width(45.dp))
+                Row (
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+
+                ) {
+                    Text(
+                        "Forget Password?", style = TextStyle(
+                            fontSize = 15.sp,
+                            color = Purple
+                        )
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))

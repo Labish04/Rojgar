@@ -7,7 +7,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,12 +18,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.ui.theme.Black
+import com.example.rojgar.ui.theme.NormalBlue
 
 import com.example.rojgar.ui.theme.Purple
+import com.example.rojgar.ui.theme.White
 
 class SignUpActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,6 +40,9 @@ class SignUpActivity : ComponentActivity() {
 
 @Composable
 fun JobSeekerSignUpScreen() {
+
+    var email by remember { mutableStateOf("") }
+
     Scaffold { padding ->
         Column(
             modifier = Modifier
@@ -45,45 +53,60 @@ fun JobSeekerSignUpScreen() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Top Logo
-            Box {
+            Box (
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(360.dp)
+            ){
                 Image(
                     painter = painterResource(id = R.drawable.design3),
                     contentDescription = null,
                     modifier = Modifier
                         .size(500.dp)
-                        .offset(x = 120.dp, y = -230.dp)
+                        .offset(x = 120.dp, y = -210.dp)
                 )
                 Image(
                     painter = painterResource(id = R.drawable.logo),
                     contentDescription = null,
                     modifier = Modifier
                         .size(250.dp)
-                        .offset(x = 200.dp, y = -40.dp)
+                        .offset(x = 200.dp, y = -90.dp)
                 )
+                Row (
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ){
+                    Column(
+                        modifier = Modifier
+                            .padding(top = 100.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.design4),
+                            contentDescription = "Jobseeker Illustration",
+                            modifier = Modifier
+                                .height(200.dp)
+                                .fillMaxWidth()
+                                .padding(vertical = 10.dp)
+                        )
+
+                        Text(
+                            text = "SignUp",
+                            style = TextStyle(
+                                fontSize = 30.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Black
+                            )
+                        )
+                    }
+                }
             }
 
-            Image(
-                painter = painterResource(id = R.drawable.design4),
-                contentDescription = "Jobseeker Illustration",
-                modifier = Modifier
-                    .height(200.dp)
-                    .fillMaxWidth()
-                    .padding(vertical = 10.dp)
-            )
-
-            Text(
-                text = "SignUp",
-                style = TextStyle(
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Black
-                )
-            )
             Spacer(modifier = Modifier.height(20.dp))
 
-
-            // Full Name Label + Field
-            // FULL NAME FIELD
             OutlinedTextField(
                 value = "",
                 onValueChange = {},
@@ -91,7 +114,7 @@ fun JobSeekerSignUpScreen() {
                     Icon(
                         painter = painterResource(id = R.drawable.identity),
                         contentDescription = "Name",
-                        tint = Color.Gray,
+                        tint = NormalBlue,
                         modifier = Modifier.size(24.dp)
                     )
                 },
@@ -106,46 +129,69 @@ fun JobSeekerSignUpScreen() {
 
             // Phone Number Label + Field
             OutlinedTextField(
-                value = "",
-                onValueChange = {},
+                value = email,
+                onValueChange = { data ->
+                    email = data
+                },
                 leadingIcon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.phoneicon),
-                        contentDescription = "Phone",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(24.dp)
+                    Image(
+                        painter = painterResource(R.drawable.phoneicon),
+                        contentDescription = null,
+
+                        modifier = Modifier
+                            .size(20.dp)
+                            .background(NormalBlue),
                     )
                 },
-                label = { Text("Phone Number") },
+
+                label = {
+                    Text("Phone Number")
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp),
+                    .padding(horizontal = 10.dp),
                 shape = RoundedCornerShape(15.dp),
-                singleLine = true
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = White,
+                    unfocusedContainerColor = White,
+                    focusedIndicatorColor = NormalBlue,
+                    unfocusedIndicatorColor = NormalBlue
+                )
             )
 
 
             Spacer(modifier = Modifier.height(15.dp))
 
-            // Email Address Label + Field
-            // EMAIL FIELD
+
             OutlinedTextField(
-                value = "",
-                onValueChange = {},
+                value = email,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email
+                ),
+                onValueChange = { data ->
+                    email = data
+                },
                 leadingIcon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.mailicon),
-                        contentDescription = "Mail",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(24.dp)
+                    Image(
+                        painter = painterResource(R.drawable.outline_email_24),
+                        contentDescription = null,
+                        modifier = Modifier
                     )
                 },
-                label = { Text("Email") },
+
+                label = {
+                    Text("Email")
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp),
+                    .padding(horizontal = 10.dp),
                 shape = RoundedCornerShape(15.dp),
-                singleLine = true
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = White,
+                    unfocusedContainerColor = White,
+                    focusedIndicatorColor = NormalBlue,
+                    unfocusedIndicatorColor = NormalBlue
+                )
             )
             Spacer(modifier = Modifier.height(30.dp))
 
