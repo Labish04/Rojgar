@@ -41,6 +41,8 @@ class SignUpActivity : ComponentActivity() {
 @Composable
 fun JobSeekerSignUpScreen() {
 
+    var fullName by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
 
     Scaffold { padding ->
@@ -48,8 +50,7 @@ fun JobSeekerSignUpScreen() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color.White)
-                .padding(horizontal = 20.dp),
+                .background(Color.White),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Top Logo
@@ -80,7 +81,7 @@ fun JobSeekerSignUpScreen() {
                 ){
                     Column(
                         modifier = Modifier
-                            .padding(top = 100.dp),
+                            .padding(top = 120.dp),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -107,104 +108,64 @@ fun JobSeekerSignUpScreen() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            OutlinedTextField(
-                value = "",
-                onValueChange = {},
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.identity),
-                        contentDescription = "Name",
-                        tint = NormalBlue,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                label = { Text("Full Name") },
+            Row (
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                shape = RoundedCornerShape(15.dp),
-                singleLine = true
-            )
+                    .padding(horizontal = 30.dp)
+            ){
+                LoginTextField(
+                    value = fullName,
+                    onValueChange = { fullName = it },
+                    label = "Full Name",
+                    leadingIcon = R.drawable.user,
+                    isPassword = false
+                )
+            }
             Spacer(modifier = Modifier.height(25.dp))
 
             // Phone Number Label + Field
-            OutlinedTextField(
-                value = email,
-                onValueChange = { data ->
-                    email = data
-                },
-                leadingIcon = {
-                    Image(
-                        painter = painterResource(R.drawable.phoneicon),
-                        contentDescription = null,
-
-                        modifier = Modifier
-                            .size(20.dp)
-                            .background(NormalBlue),
-                    )
-                },
-
-                label = {
-                    Text("Phone Number")
-                },
+            Row (
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp),
-                shape = RoundedCornerShape(15.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = White,
-                    unfocusedContainerColor = White,
-                    focusedIndicatorColor = NormalBlue,
-                    unfocusedIndicatorColor = NormalBlue
+                    .padding(horizontal = 30.dp)
+            ){
+                LoginTextField(
+                    value = phoneNumber,
+                    onValueChange = { fullName = it },
+                    label = "Phone Number",
+                    leadingIcon = R.drawable.phoneicon,
+                    isPassword = false
                 )
-            )
+            }
 
 
-            Spacer(modifier = Modifier.height(15.dp))
+            Spacer(modifier = Modifier.height(25.dp))
 
 
-            OutlinedTextField(
-                value = email,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email
-                ),
-                onValueChange = { data ->
-                    email = data
-                },
-                leadingIcon = {
-                    Image(
-                        painter = painterResource(R.drawable.outline_email_24),
-                        contentDescription = null,
-                        modifier = Modifier
-                    )
-                },
-
-                label = {
-                    Text("Email")
-                },
+            Row (
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp),
-                shape = RoundedCornerShape(15.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = White,
-                    unfocusedContainerColor = White,
-                    focusedIndicatorColor = NormalBlue,
-                    unfocusedIndicatorColor = NormalBlue
+                    .padding(horizontal = 30.dp)
+            ){
+                LoginTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = "Email",
+                    leadingIcon = R.drawable.email,
+                    isPassword = false
                 )
-            )
+            }
+
             Spacer(modifier = Modifier.height(30.dp))
 
             // SIGNUP Button
             Button(
                 onClick = { },
                 modifier = Modifier
-                    .width(100.dp)
-                    .height(50.dp),
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .padding(horizontal = 30.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Purple)
             ) {
-                Text("SIGNUP", color = Color.White, fontWeight = FontWeight.Bold)
+                Text("SignUp", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
             }
 
             Image(
@@ -213,7 +174,7 @@ fun JobSeekerSignUpScreen() {
                 modifier = Modifier
                     .size(250.dp)
                     .offset(x =
-                        (-119).dp, y = 2.dp)
+                        (-120).dp, y = 60.dp)
 
             )
         }
