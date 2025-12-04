@@ -218,6 +218,24 @@ fun JobSeekerProfileDetailsBody() {
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OptionPanel(
+                    text = "Education",
+                    leadingIcon = R.drawable.educationicon,
+
+                ) {
+                    context.startActivity(
+                        Intent(context, JobSeekerSkillActivity::class.java)
+                    )
+                }
+            }
+
         }
     }
 }
