@@ -334,7 +334,7 @@ fun JobSeekerExperienceBody() {
                                     modifier = Modifier.size(26.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(text = "Add")
+                                Text(text = "Add Another")
                             }
                         }
 
@@ -580,13 +580,17 @@ fun JobSeekerExperienceBody() {
                                         tint = Color.Black,
                                         modifier = Modifier
                                             .size(24.dp)
-                                            .clickable { showStartDatePicker = true }// ICON OPENS PICKER
+                                            .clickable {
+                                                showStartDatePicker = true
+                                            }// ICON OPENS PICKER
                                     )
                                 },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(60.dp)
-                                    .clickable { showStartDatePicker = true },         // ENTIRE FIELD OPENS PICKER
+                                    .clickable {
+                                        showStartDatePicker = true
+                                    },         // ENTIRE FIELD OPENS PICKER
                                 shape = RoundedCornerShape(15.dp),
                                 colors = TextFieldDefaults.colors(
                                     disabledIndicatorColor = Color.Black,
@@ -611,13 +615,17 @@ fun JobSeekerExperienceBody() {
                                         tint = Color.Black,
                                         modifier = Modifier
                                             .size(24.dp)
-                                            .clickable { showEndDatePicker = true } // ICON OPENS PICKER
+                                            .clickable {
+                                                showEndDatePicker = true
+                                            } // ICON OPENS PICKER
                                     )
                                 },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(60.dp)
-                                    .clickable { showEndDatePicker = true },           // ENTIRE FIELD OPENS PICKER
+                                    .clickable {
+                                        showEndDatePicker = true
+                                    },           // ENTIRE FIELD OPENS PICKER
                                 shape = RoundedCornerShape(15.dp),
                                 colors = TextFieldDefaults.colors(
                                     disabledIndicatorColor = Color.Black,
@@ -719,7 +727,7 @@ fun JobSeekerExperienceBody() {
                             Spacer(modifier = Modifier.width(70.dp))
 
                             // Cancel Button
-                            Button (
+                            Button(
                                 onClick = {
                                 },
                                 shape = RoundedCornerShape(25.dp),
@@ -745,48 +753,14 @@ fun JobSeekerExperienceBody() {
                                         modifier = Modifier.fillMaxWidth()
 
                                     )
-
                                 }
-
                             }
-
                         }
-
-
-
-//
-//                        Button(
-//                            onClick = {
-//                                val exp = Experience(
-//                                    company = companyName,
-//                                    role = jobTitle,
-//                                    startDate = startDate,
-//                                    endDate = endDate,
-//                                    currentlyWorking = currentlyWorking,
-//                                    description = selectedCategory + " | " + selectedLevel
-//                                )
-//                                experiences = experiences + exp
-//                                showSheet = false
-//                            },
-//                            modifier = Modifier
-//                                .fillMaxWidth()
-//                                .height(55.dp),
-//                            shape = RoundedCornerShape(25.dp),
-//                            colors = ButtonDefaults.buttonColors(
-//                                containerColor = DarkBlue2,
-//                                contentColor = Color.White
-//                            )
-//                        ) {
-//                            Text("Save", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-//                        }
-
-                        Spacer(Modifier.height(16.dp))
                     }
                 }
             }
         }
-    }
-
+}
 
 @Preview
 @Composable
