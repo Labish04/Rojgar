@@ -12,6 +12,7 @@ val DarkBlue2 = Color(0xFF525DF0)
 
 val SkyBlue = Color(0xFF80C9F7)
 val PurpleGrey80 = Color(0xFFCCC2DC)
+val Black = Color(0xFF0E0C11)
 val Pink80 = Color(0xFFEFB8C8)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)

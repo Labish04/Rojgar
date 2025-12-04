@@ -41,7 +41,6 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.graphics.Bitmap
 import android.media.ThumbnailUtils
-import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
