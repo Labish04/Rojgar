@@ -1,5 +1,6 @@
 package com.example.rojgar
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -54,6 +56,8 @@ class JobSeekerEducationActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobSeekerEducationBody() {
+    val context = LocalContext.current
+
     var educationList by remember { mutableStateOf(listOf<Education>()) }
     var showDegreeSheet by remember { mutableStateOf(false) }
     var showDetailSheet by remember { mutableStateOf(false) }
@@ -114,7 +118,10 @@ fun JobSeekerEducationBody() {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Start
                 ) {
-                    IconButton(onClick = { }) {
+                    IconButton(onClick = {
+                        val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
+                        context.startActivity(intent)
+                    }) {
                         Icon(
                             painter = painterResource(R.drawable.outline_arrow_back_ios_24),
                             contentDescription = null,
@@ -573,7 +580,7 @@ fun JobSeekerEducationBody() {
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(text = "Currently studying here", fontSize = 16.sp, color = Color.Black)
+                            Text(text = "Currently studying ?", fontSize = 16.sp, color = Color.Black)
                             Spacer(modifier = Modifier.weight(1f))
                             Switch(
                                 checked = currentlyStudying,
