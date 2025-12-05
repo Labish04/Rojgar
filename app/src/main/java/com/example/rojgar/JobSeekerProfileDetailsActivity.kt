@@ -250,7 +250,9 @@ fun JobSeekerProfileDetailsBody() {
                     text = "Training",
                     leadingIcon = R.drawable.trainingicon,
                 ){
-
+                    context.startActivity(
+                        Intent(context, JobSeekerTrainingActivity::class.java)
+                    )
 
                 }
 
