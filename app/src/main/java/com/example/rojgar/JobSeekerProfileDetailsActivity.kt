@@ -65,25 +65,27 @@ fun JobSeekerProfileDetailsBody() {
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
 
-                                Image(
-                                    painter = painterResource(R.drawable.picture),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
+                                    Image(
+                                        painter = painterResource(R.drawable.picture),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(80.dp)
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
 
                                 Text(
-                                    "I am a dedicated IT student eager to learn \n new skills, gain experience, and grow in the field of technology.",
+                                    "I am a dedicated IT student eager to learn \n new skills, gain experience, and grow in the \n field of technology.",
                                     fontSize = 13.sp,
                                     lineHeight = 14.sp,
                                     color = Color.White,
                                     modifier = Modifier.padding(end = 5.dp)
                                 )
+
+
                             }
 
-                            Spacer(modifier = Modifier.height(10.dp))
+                            Spacer(modifier = Modifier.height(20.dp))
 
 
                         }
@@ -107,6 +109,7 @@ fun JobSeekerProfileDetailsBody() {
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color.White
                             )
+
                         }
                     }
                 },
@@ -235,6 +238,22 @@ fun JobSeekerProfileDetailsBody() {
                     )
 
                 }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OptionPanel(
+                    text = "Training",
+                    leadingIcon = R.drawable.trainingicon,
+                ){
+
+
+                }
+
             }
 
         }
