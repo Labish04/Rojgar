@@ -67,15 +67,9 @@ import androidx.compose.ui.unit.sp
 import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
-import com.example.rojgar.ui.theme.RojgarTheme
 import com.example.rojgar.ui.theme.White
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
-import kotlin.collections.plus
 
-// Data class for training/education
 data class Training(
     val trainingName: String,
     val institutionName: String,
@@ -98,6 +92,9 @@ class JobSeekerTrainingActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobSeekerTrainingBody() {
+
+    val context = LocalContext.current
+
     val snackbarHostState = remember { SnackbarHostState() }
     var showBottomSheet by remember { mutableStateOf(false) }
     val trainingList = remember { mutableStateListOf<Training>() }
@@ -123,7 +120,8 @@ fun JobSeekerTrainingBody() {
                     horizontalArrangement = Arrangement.Start
                 ) {
                     IconButton(onClick = {
-                        // Handle back navigation
+                        val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
+                        context.startActivity(intent)
                     }) {
                         Icon(
                             painter = painterResource(R.drawable.outline_arrow_back_ios_24),
@@ -256,7 +254,6 @@ fun JobSeekerTrainingBody() {
             }
         }
 
-        // Bottom Sheet Modal
         if (showBottomSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showBottomSheet = false },
@@ -510,8 +507,6 @@ fun AddTrainingSheet(
         )
 
         Spacer(modifier = Modifier.height(32.dp))
-
-        // Buttons Row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -572,7 +567,6 @@ fun AddTrainingSheet(
         }
     }
 
-    // Material3 DatePicker Dialog with custom colors
     if (showDatePicker) {
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
