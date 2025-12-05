@@ -22,20 +22,20 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.ui.theme.Black
-import com.example.rojgar.ui.theme.Purple
+import com.example.rojgar.ui.theme.Purple40
 
-class SetPasswordActivity : ComponentActivity() {
+class SetPasswordCompanyActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SetPasswordScreen()
+            SetPasswordCompanyBody()
         }
     }
 }
 
 @Composable
-fun SetPasswordScreen() {
+fun SetPasswordCompanyBody() {
     // State variables for password fields
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -59,12 +59,12 @@ fun SetPasswordScreen() {
                 horizontalArrangement = Arrangement.End
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.logo),
+                    painter = painterResource(id = R.drawable.design3),
                     contentDescription = "Rojgar Logo",
                     modifier = Modifier
-                        .height(200.dp)
+                        .height(150.dp)
                         .fillMaxWidth()
-                        .offset(x = 150.dp, y = (-40).dp)
+                        .offset(x = 70.dp, y = (-10).dp)
                 )
             }
 
@@ -112,7 +112,7 @@ fun SetPasswordScreen() {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
                             painter = painterResource(
-                                id = if (passwordVisible) R.drawable.baseline_visibility_24 else R.drawable.baseline_visibility_off_24
+                                id = if (passwordVisible) R.drawable.visibility else R.drawable.visibility_off
                             ),
                             contentDescription = if (passwordVisible) "Hide password" else "Show password",
                             tint = Color.Gray,
@@ -121,8 +121,8 @@ fun SetPasswordScreen() {
                     }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Purple,
-                    focusedLabelColor = Purple
+                    focusedBorderColor = Purple40,
+                    focusedLabelColor = Purple40
                 )
             )
             Spacer(modifier = Modifier.height(25.dp))
@@ -142,7 +142,7 @@ fun SetPasswordScreen() {
                     IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
                         Icon(
                             painter = painterResource(
-                                id = if (confirmPasswordVisible) R.drawable.baseline_visibility_24 else R.drawable.baseline_visibility_off_24
+                                id = if (confirmPasswordVisible) R.drawable.visibility else R.drawable.visibility_off
                             ),
                             contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password",
                             tint = Color.Gray,
@@ -151,39 +151,55 @@ fun SetPasswordScreen() {
                     }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Purple,
-                    focusedLabelColor = Purple
+                    focusedBorderColor = Purple40,
+                    focusedLabelColor = Purple40
                 )
             )
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(25.dp))
 
-            // Done Button
             Button(
-                onClick = { },
+                onClick = {
+                    println("Enter Password: $password")
+                },
                 modifier = Modifier
-                    .width(100.dp)
+                    .fillMaxWidth(0.5f)
                     .height(45.dp),
-                shape = RoundedCornerShape(15.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Purple)
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF8E53FF)
+                )
             ) {
-                Text("Done", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp )
+                Text(
+                    text = "SUBMIT",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Bottom decorative image
-            Image(
-                painter = painterResource(id = R.drawable.design5),
-                contentDescription = "Decorative Element",
+            Row(
                 modifier = Modifier
-                    .size(250.dp)
-                    .offset(x = (-119).dp, y = 2.dp)
-            )
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.design5),
+                    contentDescription = "Jobseeker Illustration",
+                    modifier = Modifier
+                        .size(200.dp)
+                        .offset(x = (-30).dp, y = 40.dp)
+                )
+            }
         }
     }
 }
 
 @Preview
 @Composable
-fun PreviewSetPasswordScreen2() {
-    SetPasswordScreen()
+fun PreviewSetPasswordScreen() {
+    SetPasswordCompanyBody()
 }
+
+
