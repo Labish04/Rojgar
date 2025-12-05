@@ -12,9 +12,19 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Rojgar">
         <activity
-            android:name=".JobSeekerDashboardActivity"
+            android:name=".JobSeekerEducationActivity"
+            android:exported="false"
+            android:label="@string/title_activity_job_seeker_education"
+            android:theme="@style/Theme.Rojgar" />
+        <activity
+            android:name=".JobSeekerSkillActivity"
+            android:exported="false"
+            android:label="@string/title_activity_job_seeker_skill"
+            android:theme="@style/Theme.Rojgar" />
+        <activity
+            android:name=".JobSeekerExperienceActivity"
             android:exported="true"
-            android:label="@string/title_activity_job_seeker_dashboard"
+            android:label="@string/title_activity_job_seeker_experience"
             android:theme="@style/Theme.Rojgar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -23,9 +33,20 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".SplashActivity"
+            android:name=".JobSeekerObjectiveActivity"
             android:exported="true"
-            android:label="@string/title_activity_splash"
+            android:label="@string/title_activity_job_seeker_objective"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".JobSeekerPersonalInformationActivity"
+            android:exported="true"
+            android:label="@string/title_activity_job_seeker_personal_information"
             android:theme="@style/Theme.Rojgar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -79,17 +100,6 @@
         </activity>
         <activity
             android:name=".JobSeekerProfileDetailsActivity"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <activity
-            android:name=".SignUpActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.Rojgar">

@@ -4,7 +4,10 @@
     =======
     <string name="title_activity_job_seeker_profile_deta">JobSeekerProfileDeta</string>
     <string name="title_activity_profile">ProfileActivity</string>
-    <string name="title_activity_splash">SplashActivity</string>
-    <string name="title_activity_job_seeker_dashboard">JobSeekerDashboardActivity</string>
+    <string name="title_activity_job_seeker_personal_information">JobSeekerPersonalInformationActivity</string>
+    <string name="title_activity_job_seeker_objective">JobSeekerObjectiveActivity</string>
+    <string name="title_activity_job_seeker_experience">JobSeekerExperienceActivity</string>
+    <string name="title_activity_job_seeker_skill">JobSeekerSkillActivity</string>
+    <string name="title_activity_job_seeker_education">JobSeekerEducationActivity</string>
     >>>>>>> 11ff9ba53955b48b2637d77df4cf1169dbf7c2a0
 </resources>
