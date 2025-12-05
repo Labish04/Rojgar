@@ -48,7 +48,7 @@ fun DocumentCompanyBody() {
             horizontalArrangement = Arrangement.End
         ) {
             Image(
-                painter = painterResource(id = R.drawable.rojgar),
+                painter = painterResource(id = R.drawable.design3),
                 contentDescription = "Logo",
                 modifier = Modifier
                     .height(150.dp)
@@ -59,7 +59,7 @@ fun DocumentCompanyBody() {
 
         // ---------- ILLUSTRATION IMAGE ----------
         Image(
-            painter = painterResource(id = R.drawable.illustration),
+            painter = painterResource(id = R.drawable.design4),
             contentDescription = "Illustration",
             modifier = Modifier
                 .height(200.dp)
@@ -135,7 +135,7 @@ fun DocumentCompanyBody() {
             horizontalArrangement = Arrangement.Start
         ) {
             Image(
-                painter = painterResource(id = R.drawable.drop),
+                painter = painterResource(id = R.drawable.design5),
                 contentDescription = "Jobseeker Illustration",
                 modifier = Modifier
                     .size(800.dp)

@@ -59,7 +59,7 @@ fun SetPasswordCompanyBody() {
                 horizontalArrangement = Arrangement.End
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.rojgar),
+                    painter = painterResource(id = R.drawable.design3),
                     contentDescription = "Rojgar Logo",
                     modifier = Modifier
                         .height(150.dp)
@@ -70,7 +70,7 @@ fun SetPasswordCompanyBody() {
 
             // Illustration
             Image(
-                painter = painterResource(id = R.drawable.illustration),
+                painter = painterResource(id = R.drawable.design4),
                 contentDescription = "Jobseeker Illustration",
                 modifier = Modifier
                     .height(200.dp)
@@ -84,7 +84,7 @@ fun SetPasswordCompanyBody() {
                 style = TextStyle(
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Black
+                    color = Color.Black
                 )
             )
             Text(
@@ -92,7 +92,7 @@ fun SetPasswordCompanyBody() {
                 style = TextStyle(
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Black
+                    color = Color.Black
                 )
             )
             Spacer(modifier = Modifier.height(30.dp))
@@ -185,7 +185,7 @@ fun SetPasswordCompanyBody() {
                 horizontalArrangement = Arrangement.Start
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.drop),
+                    painter = painterResource(id = R.drawable.design5),
                     contentDescription = "Jobseeker Illustration",
                     modifier = Modifier
                         .size(200.dp)

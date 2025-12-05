@@ -451,8 +451,8 @@ fun JobSeekerExperienceBody() {
                                     focusedContainerColor = White,
                                     unfocusedContainerColor = White,
                                     focusedIndicatorColor = Purple,
-                                    unfocusedIndicatorColor = Black,
-                                    disabledTextColor = Black
+                                    unfocusedIndicatorColor = Color.Black,
+                                    disabledTextColor = Color.Black
                                 )
                             )
 

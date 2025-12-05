@@ -276,7 +276,7 @@ fun JobSeekerPersonalInformationBody() {
                         focusedContainerColor = Blue,
                         unfocusedContainerColor = Blue,
                         focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Black
+                        unfocusedIndicatorColor = Color.Black
                     )
 
                 )
@@ -307,7 +307,7 @@ fun JobSeekerPersonalInformationBody() {
                         focusedContainerColor = Blue,
                         unfocusedContainerColor = Blue,
                         focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Black
+                        unfocusedIndicatorColor = Color.Black
                     )
                 )
 
@@ -353,8 +353,8 @@ fun JobSeekerPersonalInformationBody() {
                             focusedContainerColor = Blue,
                             unfocusedContainerColor = Blue,
                             focusedIndicatorColor = Purple,
-                            unfocusedIndicatorColor = Black,
-                            disabledTextColor = Black,
+                            unfocusedIndicatorColor = Color.Black,
+                            disabledTextColor = Color.Black,
                         )
                     )
 
@@ -417,7 +417,7 @@ fun JobSeekerPersonalInformationBody() {
                     colors = TextFieldDefaults.colors(
                         disabledIndicatorColor = Color.Black,
                         disabledContainerColor = Blue,
-                        disabledTextColor = Black,
+                        disabledTextColor = Color.Black,
                         focusedContainerColor = Color(0xFFE3F2FD),
                         unfocusedContainerColor = Color(0xFFE3F2FD),
                     )
@@ -447,7 +447,7 @@ fun JobSeekerPersonalInformationBody() {
                         focusedContainerColor = Blue,
                         unfocusedContainerColor = Blue,
                         focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Black
+                        unfocusedIndicatorColor = Color.Black
                     )
                 )
 
@@ -477,7 +477,7 @@ fun JobSeekerPersonalInformationBody() {
                         focusedContainerColor = Blue,
                         unfocusedContainerColor = Blue,
                         focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Black
+                        unfocusedIndicatorColor = Color.Black
                     )
                 )
 
@@ -508,7 +508,7 @@ fun JobSeekerPersonalInformationBody() {
                         focusedContainerColor = Blue,
                         unfocusedContainerColor = Blue,
                         focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Black
+                        unfocusedIndicatorColor = Color.Black
                     )
                 )
                 Spacer(modifier = Modifier.height(20.dp))
@@ -538,7 +538,7 @@ fun JobSeekerPersonalInformationBody() {
                         focusedContainerColor = Blue,
                         unfocusedContainerColor = Blue,
                         focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Black
+                        unfocusedIndicatorColor = Color.Black
                     )
                 )
                 Spacer(modifier = Modifier.height(30.dp))

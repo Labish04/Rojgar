@@ -99,7 +99,7 @@ fun JobSeekerSignUpScreen() {
                             style = TextStyle(
                                 fontSize = 30.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Black
+                                color = Color.Black
                             )
                         )
                     }

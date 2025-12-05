@@ -301,7 +301,7 @@ fun JobSeekerSkillBody() {
                                     focusedContainerColor = White,
                                     unfocusedContainerColor = White,
                                     focusedIndicatorColor = Purple,
-                                    unfocusedIndicatorColor = Black
+                                    unfocusedIndicatorColor = Color.Black
                                 )
                             )
                             Spacer(Modifier.height(24.dp))
