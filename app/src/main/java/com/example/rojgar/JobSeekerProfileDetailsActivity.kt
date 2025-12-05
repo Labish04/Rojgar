@@ -231,8 +231,9 @@ fun JobSeekerProfileDetailsBody() {
 
                 ) {
                     context.startActivity(
-                        Intent(context, JobSeekerSkillActivity::class.java)
+                        Intent(context, JobSeekerEducationActivity::class.java)
                     )
+
                 }
             }
 
