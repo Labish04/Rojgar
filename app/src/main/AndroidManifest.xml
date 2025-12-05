@@ -12,19 +12,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Rojgar">
         <activity
-            android:name=".JobSeekerEducationActivity"
-            android:exported="false"
-            android:label="@string/title_activity_job_seeker_education"
-            android:theme="@style/Theme.Rojgar" />
-        <activity
-            android:name=".JobSeekerSkillActivity"
-            android:exported="false"
-            android:label="@string/title_activity_job_seeker_skill"
-            android:theme="@style/Theme.Rojgar" />
-        <activity
-            android:name=".JobSeekerExperienceActivity"
+            android:name=".DocumentCompany"
             android:exported="true"
-            android:label="@string/title_activity_job_seeker_experience"
+            android:label="@string/title_activity_document_company"
             android:theme="@style/Theme.Rojgar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -33,9 +23,9 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".JobSeekerObjectiveActivity"
+            android:name=".SetPasswordCompany"
             android:exported="true"
-            android:label="@string/title_activity_job_seeker_objective"
+            android:label="@string/title_activity_set_password_company"
             android:theme="@style/Theme.Rojgar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -44,9 +34,31 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".JobSeekerPersonalInformationActivity"
+            android:name=".CodeVerificationCompany"
             android:exported="true"
-            android:label="@string/title_activity_job_seeker_personal_information"
+            android:label="@string/title_activity_code_verification_company"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".CodeVerificationCompany.kt"
+            android:exported="true"
+            android:label="@string/title_activity_code_verification_company.kt"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".SignUpCompany"
+            android:exported="true"
+            android:label="@string/title_activity_sign_up_company"
             android:theme="@style/Theme.Rojgar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -109,19 +121,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".VerificationActivity"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
     </application>
 
 </manifest>
