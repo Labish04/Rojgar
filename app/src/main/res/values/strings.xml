@@ -12,5 +12,6 @@
     <string name="title_activity_job_seeker_training">JobSeekerTrainingActivity</string>
     <string name="title_activity_job_seeker_professional_links">JobSeekerProfessionalLinksActivity
     </string>
+    <string name="title_activity_job_seeker_language">JobSeekerLanguageActivity</string>
     >>>>>>> 11ff9ba53955b48b2637d77df4cf1169dbf7c2a0
 </resources>
