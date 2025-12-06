@@ -1,5 +1,6 @@
 package com.example.rojgar
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -43,6 +45,7 @@ data class ProfessionalLink(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobSeekerProfessionalLinksBody() {
+    val context = LocalContext.current
     var showBottomSheet by remember { mutableStateOf(false) }
     var accountName by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
@@ -64,7 +67,10 @@ fun JobSeekerProfessionalLinksBody() {
                         .padding(horizontal = 15.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { /* Back navigation */ }) {
+                    IconButton(onClick = {
+                        val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
+                        context.startActivity(intent)
+                    }) {
                         Icon(
                             painter = painterResource(R.drawable.outline_arrow_back_ios_24),
                             contentDescription = null,
