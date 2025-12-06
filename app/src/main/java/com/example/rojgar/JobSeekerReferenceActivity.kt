@@ -59,6 +59,7 @@ import com.example.rojgar.ui.theme.RojgarTheme
 import com.example.rojgar.ui.theme.White
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 
 data class ReferenceData(
@@ -83,6 +84,9 @@ class JobSeekerReferenceActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobSeekerReferenceBody() {
+
+    val context = LocalContext.current
+
     var showBottomSheet by remember { mutableStateOf(false) }
     val referencesList = remember { mutableStateListOf<ReferenceData>() }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -105,7 +109,8 @@ fun JobSeekerReferenceBody() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = {
-                        // Handle back navigation
+                        val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
+                        context.startActivity(intent)
                     }) {
                         Icon(
                             painter = painterResource(R.drawable.outline_arrow_back_ios_24),
