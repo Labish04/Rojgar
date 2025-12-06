@@ -298,6 +298,9 @@ fun JobSeekerProfileDetailsBody() {
                     text = "Reference",
                     leadingIcon = R.drawable.bioicon,
                 ) {
+                    context.startActivity(
+                        Intent(context, JobSeekerReferenceActivity::class.java)
+                    )
 
                 }
             }
