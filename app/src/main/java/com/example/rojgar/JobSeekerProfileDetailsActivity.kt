@@ -288,12 +288,23 @@ fun JobSeekerProfileDetailsBody() {
                 }
             }
 
+            Spacer(modifier = Modifier.height(20.dp))
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OptionPanel(
+                    text = "Reference",
+                    leadingIcon = R.drawable.bioicon,
+                ) {
+
+                }
+            }
 
         }
     }
 }
-
 @Composable
 fun OptionPanel(
     text: String,
