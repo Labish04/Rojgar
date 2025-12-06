@@ -189,7 +189,6 @@ fun JobSeekerProfileDetailsBody() {
                     )
                 }
             }
-
             Spacer(modifier = Modifier.height(20.dp))
 
             Row(
@@ -205,9 +204,7 @@ fun JobSeekerProfileDetailsBody() {
                     )
                 }
             }
-
             Spacer(modifier = Modifier.height(20.dp))
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
@@ -284,6 +281,9 @@ fun JobSeekerProfileDetailsBody() {
                     text = "Language",
                     leadingIcon = R.drawable.languageicon,
                 ) {
+                    context.startActivity(
+                        Intent(context, JobSeekerLanguageActivity::class.java)
+                    )
 
                 }
             }
