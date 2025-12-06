@@ -579,6 +579,7 @@ fun JobSeekerPersonalInformationBody() {
                     Spacer(modifier = Modifier.width(70.dp))
                     Button (
                         onClick = {
+                            activity.finish()
                         },
                         shape = RoundedCornerShape(25.dp),
                         modifier = Modifier

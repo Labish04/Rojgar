@@ -514,12 +514,13 @@ fun AddTrainingSheet(
             // Back Button
             OutlinedButton(
                 onClick = onDismiss,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(15.dp),
                 modifier = Modifier
-                    .weight(0.3f)
+                    .weight(1f)
                     .height(50.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = DarkBlue2
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.LightGray,
+                    contentColor = Color.Black
                 )
             ) {
                 Icon(
