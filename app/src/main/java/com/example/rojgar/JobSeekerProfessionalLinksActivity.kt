@@ -84,7 +84,7 @@ fun JobSeekerProfessionalLinksBody() {
                             modifier = Modifier.size(30.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(110.dp))
+                    Spacer(modifier = Modifier.width(80.dp))
                     Text(
                         "Professional Links",
                         fontSize = 20.sp,
@@ -108,7 +108,7 @@ fun JobSeekerProfessionalLinksBody() {
             Text(
                 "Which project or task highlights your professional strengths the most?",
                 fontWeight = FontWeight.Normal,
-                fontSize = 18.sp,
+                fontSize = 16.sp,
                 color = Color.Black
             )
 
@@ -131,7 +131,7 @@ fun JobSeekerProfessionalLinksBody() {
                     )
                     Spacer(modifier = Modifier.height(40.dp))
                     Text(
-                        "You haven't added any training details. Tap + to get started.",
+                        "You haven't added any Professional link. Tap + to get started.",
                         textAlign = TextAlign.Center,
                         color = Color.DarkGray,
                         modifier = Modifier.padding(horizontal = 16.dp)

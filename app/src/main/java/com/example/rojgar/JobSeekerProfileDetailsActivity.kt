@@ -268,7 +268,9 @@ fun JobSeekerProfileDetailsBody() {
                     text = "Professional Links",
                     leadingIcon = R.drawable.linkicon,
                 ) {
-
+                    context.startActivity(
+                        Intent(context, JobSeekerProfessionalLinksActivity::class.java)
+                    )
                 }
             }
 
@@ -287,7 +289,7 @@ fun OptionPanel(
     Card(
         shape = RoundedCornerShape(10.dp),
         modifier = Modifier
-            .height(60.dp)
+            .height(62.dp)
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .clickable(
@@ -312,7 +314,7 @@ fun OptionPanel(
                 Icon(
                     painter = painterResource(id = leadingIcon),
                     contentDescription = null,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(38.dp)
                 )
 
                 Text(
