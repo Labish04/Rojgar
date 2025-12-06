@@ -274,6 +274,20 @@ fun JobSeekerProfileDetailsBody() {
                 }
             }
 
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OptionPanel(
+                    text = "Language",
+                    leadingIcon = R.drawable.languageicon,
+                ) {
+
+                }
+            }
+
 
 
         }
