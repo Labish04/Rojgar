@@ -262,6 +262,20 @@ fun JobSeekerProfileDetailsBody() {
                 horizontalArrangement = Arrangement.Center
             ) {
                 OptionPanel(
+                    text = "Job Preference",
+                    leadingIcon = R.drawable.jobpreferenceicon,
+                ) {
+
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OptionPanel(
                     text = "Professional Links",
                     leadingIcon = R.drawable.linkicon,
                 ) {
@@ -304,6 +318,10 @@ fun JobSeekerProfileDetailsBody() {
 
                 }
             }
+            Spacer(modifier = Modifier.height(20.dp))
+
+
+
 
         }
     }
