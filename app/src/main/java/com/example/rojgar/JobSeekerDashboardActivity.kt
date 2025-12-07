@@ -1,16 +1,25 @@
 package com.example.rojgar
 
+import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.example.rojgar.ui.theme.RojgarTheme
 
 class JobSeekerDashboardActivity : ComponentActivity() {
@@ -18,18 +27,67 @@ class JobSeekerDashboardActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            JobSeekerDashboardBody()
+            RojgarTheme {
+                JobSeekerDashboardBody()
+            }
         }
     }
 }
 
 @Composable
 fun JobSeekerDashboardBody() {
+    val context = LocalContext.current
+    val activity = context as Activity
 
+    data class NavItem(val label: String, val icon: Int)
+
+    var selectedIndex by remember { mutableStateOf(0) }
+
+    val listItem = listOf(
+        NavItem(icon = R.drawable.home, label = "Home"),
+        NavItem(icon = R.drawable.chat, label = "Message"),
+        NavItem(icon = R.drawable.jobpost, label = "Post"),
+        NavItem(icon = R.drawable.map, label = "Map")
+    )
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                listItem.forEachIndexed { index, item ->
+                    NavigationBarItem(
+                        icon = {
+                            Icon(
+                                painter = painterResource(item.icon),
+                                contentDescription = item.label,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        },
+                        selected = selectedIndex == index,
+                        onClick = { selectedIndex = index }
+                    )
+                }
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            when (selectedIndex) {
+                0 -> Text("Home Screen")
+                1 -> Text("Message Screen")
+                2 -> Text("Post Screen")
+                3 -> Text("Map Screen")
+            }
+        }
+    }
 }
 
-@Preview()
+@Preview(showSystemUi = true)
 @Composable
 fun JobSeekerDashboardBodyPreview() {
-    JobSeekerDashboardBody()
+    RojgarTheme {
+        JobSeekerDashboardBody()
+    }
 }
