@@ -14,5 +14,6 @@
     </string>
     <string name="title_activity_job_seeker_language">JobSeekerLanguageActivity</string>
     <string name="title_activity_job_seeker_reference">JobSeekerReferenceActivity</string>
+    <string name="title_activity_job_seeker_job_perference">JobSeekerJobPerferenceActivity</string>
     >>>>>>> 11ff9ba53955b48b2637d77df4cf1169dbf7c2a0
 </resources>
