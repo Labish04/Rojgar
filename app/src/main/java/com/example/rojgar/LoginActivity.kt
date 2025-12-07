@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -47,7 +46,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
@@ -143,136 +141,78 @@ fun LoginBody() {
                     )
                 }
             }
-            
-            Row (
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ){
-                Text("Don't hanve an account?",
-                    style = TextStyle(
-                        fontSize = 18.sp
-                    ))
-                Spacer(modifier = Modifier.width(5.dp))
-                Text("SignUp",
-                    style = TextStyle(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = Purple
-                    ),
-                modifier = Modifier
-                    .clickable(interactionSource = remember {
-                        MutableInteractionSource()
-                    },
-                        indication = null    ){
-                        val intent = Intent(context, RegisterAsActivity ::class.java)
-                        context.startActivity(intent)
-                    },
-                )
-            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-                OutlinedTextField(
-                    value = email,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email
-                    ),
-                    onValueChange = { data ->
-                        email = data
-                    },
-                    leadingIcon = {
-                        Image(
-                            painter = painterResource(R.drawable.outline_email_24),
-                            contentDescription = null,
-                            modifier = Modifier
-                        )
-                    },
-
-                    label = {
-                            Text("Email")
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 30.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = White,
-                        unfocusedContainerColor = White,
-                        focusedIndicatorColor = NormalBlue,
-                        unfocusedIndicatorColor = NormalBlue
-                    )
-                )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { data ->
-                        password = data
-                    },
-                    visualTransformation = if(visibility) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            visibility = !visibility
-                        }) {
-                            Icon(
-                                painter = if (visibility)
-                                painterResource(R.drawable.baseline_visibility_off_24) else
-                                painterResource(R.drawable.baseline_visibility_24),
-                                contentDescription = null
-                            )
-                        }
-                    },
-                    leadingIcon = {
-                        Image(
-                            painter = painterResource(R.drawable.outline_lock_24),
-                            contentDescription = null
-                        )
-                    },
-                    label = {
-                            Text("Password")
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 30.dp, vertical = 10.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = White,
-                        unfocusedContainerColor = White,
-                        focusedIndicatorColor = NormalBlue,
-                        unfocusedIndicatorColor = NormalBlue
-                    )
-                )
             Row (
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(end = 30.dp),
-                horizontalArrangement = Arrangement.End
+                    .padding(horizontal = 30.dp)
             ){
-                Text(
-                    "Forget Password?", style = TextStyle(
-                        fontSize = 15.sp,
-                        color = Purple
-                    )
+                LoginTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = "Email",
+                    leadingIcon = R.drawable.email,
+                    isPassword = false
                 )
             }
 
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 30.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = rememberMe,
-                    onCheckedChange = { rememberMe = it }
-                )
+            Spacer(modifier = Modifier.height(10.dp))
 
-                Text(
-                    text = "Remember me."
+            Row (
+                modifier = Modifier
+                    .padding(horizontal = 30.dp)
+            ){
+                LoginTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "Password",
+                    leadingIcon = R.drawable.outline_lock_24,
+                    isPassword = true
                 )
+            }
+
+            Spacer(modifier = Modifier.height(5.dp))
+
+            Row (
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 30.dp)
+            ){
+                Row (
+                    verticalAlignment = Alignment.CenterVertically
+                ){
+                    Checkbox(
+                        checked = rememberMe,
+                        onCheckedChange = { rememberMe = it },
+                                modifier = Modifier
+                                .offset(y = -5.dp)
+                    )
+
+                    Text(
+                        text = "Remember me.",
+                        style = TextStyle(
+                            fontSize = 18.sp
+                        ),
+                        modifier = Modifier
+                            .offset(y = -5.dp)
+
+                    )
+                }
+                Spacer(modifier = Modifier.width(45.dp))
+                Row (
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+
+                ) {
+                    Text(
+                        "Forget Password?", style = TextStyle(
+                            fontSize = 15.sp,
+                            color = Purple
+                        )
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -299,6 +239,38 @@ fun LoginBody() {
                     ))
                 }
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row (
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ){
+                Text("Don't hanve an account?",
+                    style = TextStyle(
+                        fontSize = 18.sp
+                    ))
+                Spacer(modifier = Modifier.width(5.dp))
+                Text("SignUp",
+                    style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Purple
+                    ),
+                    modifier = Modifier
+                        .clickable(interactionSource = remember {
+                            MutableInteractionSource()
+                        },
+                            indication = null    ){
+                            val intent = Intent(context, RegisterAsActivity ::class.java)
+                            context.startActivity(intent)
+                        },
+                )
+            }
+
             Row (
                 modifier = Modifier
                     .fillMaxWidth()
@@ -374,6 +346,69 @@ fun LoginBody() {
         }
     }
 }
+
+@Composable
+fun LoginTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    leadingIcon: Int,
+    isPassword: Boolean = false
+) {
+    var visibility by remember { mutableStateOf(false) }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+
+        label = { Text(label) },
+
+        visualTransformation =
+            if (isPassword && !visibility) PasswordVisualTransformation()
+            else VisualTransformation.None,
+
+        leadingIcon = {
+            Icon(
+                painter = painterResource(id = leadingIcon),
+                contentDescription = null,
+                tint = NormalBlue,
+                modifier = Modifier.
+                size(22.dp)
+            )
+        },
+
+        trailingIcon = {
+            if (isPassword) {
+                IconButton(onClick = { visibility = !visibility }) {
+                    Icon(
+                        painter = painterResource(
+                            id = if (visibility)
+                                R.drawable.baseline_visibility_off_24
+                            else R.drawable.baseline_visibility_24
+                        ),
+                        contentDescription = null,
+                        tint = NormalBlue,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        },
+
+        modifier = Modifier.fillMaxWidth(),
+
+        shape = RoundedCornerShape(15.dp),
+
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = White,
+            unfocusedContainerColor = White,
+            focusedIndicatorColor = NormalBlue,
+            unfocusedIndicatorColor = NormalBlue
+        )
+    )
+}
+
+
+
 
 @Preview
 @Composable

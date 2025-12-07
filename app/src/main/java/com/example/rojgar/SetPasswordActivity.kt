@@ -84,7 +84,7 @@ fun SetPasswordScreen() {
                 style = TextStyle(
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Black
+                    color = Color.Black
                 )
             )
             Text(
@@ -92,7 +92,7 @@ fun SetPasswordScreen() {
                 style = TextStyle(
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Black
+                    color = Color.Black
                 )
             )
             Spacer(modifier = Modifier.height(30.dp))
@@ -184,6 +184,6 @@ fun SetPasswordScreen() {
 
 @Preview
 @Composable
-fun PreviewSetPasswordScreen() {
+fun PreviewSetPasswordScreen2() {
     SetPasswordScreen()
 }

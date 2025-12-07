@@ -101,8 +101,6 @@ fun JobSeekerProfileBody() {
     var isPlaying by remember { mutableStateOf(false) }
 
 
-
-
     Scaffold { padding ->
         Column(
             modifier = Modifier
@@ -110,7 +108,6 @@ fun JobSeekerProfileBody() {
                 .padding(padding)
                 .background(color = Blue)
         ) {
-
             // Top Bar
             Row(
                 modifier = Modifier
