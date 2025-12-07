@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
+import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
 import java.util.Calendar
 
@@ -320,21 +321,30 @@ fun AddTrainingSheet(
         OutlinedTextField(
             value = trainingName,
             onValueChange = { trainingName = it },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.document),
+                    contentDescription = "Training",
+                    tint = Color.Black,
+                    modifier = Modifier.size(24.dp)
+                )
+            },
             label = { Text("Name of Training") },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(15.dp),
             singleLine = true,
             colors = TextFieldDefaults.colors(
                 disabledIndicatorColor = Color.Transparent,
                 disabledContainerColor = White,
                 focusedContainerColor = White,
                 unfocusedContainerColor = White,
-                focusedIndicatorColor = DarkBlue2,
-                unfocusedIndicatorColor = Color.LightGray
+                focusedIndicatorColor = Purple,
+                unfocusedIndicatorColor = Color.Black
             )
         )
+
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -342,21 +352,30 @@ fun AddTrainingSheet(
         OutlinedTextField(
             value = institutionName,
             onValueChange = { institutionName = it },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.companynameicon),
+                    contentDescription = "Institution",
+                    tint = Color.Black,
+                    modifier = Modifier.size(24.dp)
+                )
+            },
             label = { Text("Institution Name") },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(15.dp),
             singleLine = true,
             colors = TextFieldDefaults.colors(
                 disabledIndicatorColor = Color.Transparent,
                 disabledContainerColor = White,
                 focusedContainerColor = White,
                 unfocusedContainerColor = White,
-                focusedIndicatorColor = DarkBlue2,
-                unfocusedIndicatorColor = Color.LightGray
+                focusedIndicatorColor = Purple,
+                unfocusedIndicatorColor = Color.Black
             )
         )
+
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -369,21 +388,30 @@ fun AddTrainingSheet(
             OutlinedTextField(
                 value = duration,
                 onValueChange = { duration = it },
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.durationicon),
+                        contentDescription = "Duration",
+                        tint = Color.Black,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
                 label = { Text("Duration") },
                 modifier = Modifier
                     .weight(1f)
                     .height(60.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(15.dp),
                 singleLine = true,
                 colors = TextFieldDefaults.colors(
                     disabledIndicatorColor = Color.Transparent,
                     disabledContainerColor = White,
                     focusedContainerColor = White,
                     unfocusedContainerColor = White,
-                    focusedIndicatorColor = DarkBlue2,
-                    unfocusedIndicatorColor = Color.LightGray
+                    focusedIndicatorColor = Purple,
+                    unfocusedIndicatorColor = Color.Black
                 )
             )
+
 
             // Duration Type Dropdown
             ExposedDropdownMenuBox(
