@@ -46,7 +46,7 @@
         </activity>
 
         <activity
-            android:name=".JobSeekerProfessionalLinksActivity"
+            android:name=".JobSeekerPortfolioAccountsActivity"
             android:exported="true"
             android:label="@string/title_activity_job_seeker_professional_links"
             android:theme="@style/Theme.Rojgar">

@@ -1,5 +1,4 @@
 package com.example.rojgar
-
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -27,12 +26,12 @@ import com.example.rojgar.ui.theme.DarkBlue2
 import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
 
-class JobSeekerProfessionalLinksActivity : ComponentActivity() {
+class JobSeekerPortfolioAccountsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            JobSeekerProfessionalLinksBody()
+            JobSeekerPortfolioAccountsBody()
         }
     }
 }
@@ -44,7 +43,7 @@ data class ProfessionalLink(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun JobSeekerProfessionalLinksBody() {
+fun JobSeekerPortfolioAccountsBody() {
     val context = LocalContext.current
     var showBottomSheet by remember { mutableStateOf(false) }
     var accountName by remember { mutableStateOf("") }
@@ -80,7 +79,7 @@ fun JobSeekerProfessionalLinksBody() {
                     }
                     Spacer(modifier = Modifier.width(80.dp))
                     Text(
-                        "Professional Links",
+                        "Portfolio Accounts",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -209,7 +208,7 @@ fun JobSeekerProfessionalLinksBody() {
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = "Add Professional Link",
+                            text = "Add Portfolio Accounts",
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(bottom = 24.dp)
@@ -337,6 +336,6 @@ fun JobSeekerProfessionalLinksBody() {
 
 @Preview
 @Composable
-fun JobSeekerProfessionalLinksPreview() {
-    JobSeekerProfessionalLinksBody()
+fun JobSeekerPortfolioAccountsPreview() {
+    JobSeekerPortfolioAccountsBody()
 }

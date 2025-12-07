@@ -461,7 +461,6 @@ fun JobPreferenceBottomSheet(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
-
         // List of items
         LazyColumn(
             modifier = Modifier.weight(1f)

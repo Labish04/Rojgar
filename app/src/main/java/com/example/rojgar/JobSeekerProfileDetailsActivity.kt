@@ -279,11 +279,11 @@ fun JobSeekerProfileDetailsBody() {
                 horizontalArrangement = Arrangement.Center
             ) {
                 OptionPanel(
-                    text = "Professional Links",
+                    text = "Portfolio Accounts",
                     leadingIcon = R.drawable.linkicon,
                 ) {
                     context.startActivity(
-                        Intent(context, JobSeekerProfessionalLinksActivity::class.java)
+                        Intent(context, JobSeekerPortfolioAccountsActivity::class.java)
                     )
                 }
             }
