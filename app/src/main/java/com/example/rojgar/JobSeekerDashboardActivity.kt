@@ -7,15 +7,21 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -74,24 +80,35 @@ fun JobSeekerDashboardBody() {
 
     Scaffold(
         bottomBar = {
-            NavigationBar (
-                containerColor = White
-            ){
-                listItem.forEachIndexed { index, item ->
-                    NavigationBarItem(
-                        icon = {
-                            Icon(
-                                painter = painterResource(if (selectedIndex == index) item.selectedIcon else item.unselectedIcon),
-                                contentDescription = item.label,
-                                modifier = Modifier.size(25.dp)
-                            )
-                        },
-                        selected = selectedIndex == index,
-                        onClick = { selectedIndex = index }
-                    )
+            Surface (
+                modifier = Modifier
+                    .clip(RoundedCornerShape(24.dp))
+                    .fillMaxWidth(),
+                color = Color.White,
+                shadowElevation = 10.dp
+            ) {
+                NavigationBar(
+                    containerColor = Color.Transparent
+                ) {
+                    listItem.forEachIndexed { index, item ->
+                        NavigationBarItem(
+                            icon = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (selectedIndex == index) item.selectedIcon else item.unselectedIcon
+                                    ),
+                                    contentDescription = item.label,
+                                    modifier = Modifier.size(25.dp)
+                                )
+                            },
+                            selected = selectedIndex == index,
+                            onClick = { selectedIndex = index }
+                        )
+                    }
                 }
             }
         }
+
     ) { padding ->
         Column(
             modifier = Modifier
