@@ -21,6 +21,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.rojgar.ui.theme.RojgarTheme
+import com.example.rojgar.ui.theme.White
 
 class JobSeekerDashboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,27 +40,50 @@ fun JobSeekerDashboardBody() {
     val context = LocalContext.current
     val activity = context as Activity
 
-    data class NavItem(val label: String, val icon: Int)
+    data class NavItem(
+        val label: String,
+        val selectedIcon: Int,
+        val unselectedIcon: Int
+    )
 
     var selectedIndex by remember { mutableStateOf(0) }
 
     val listItem = listOf(
-        NavItem(icon = R.drawable.home, label = "Home"),
-        NavItem(icon = R.drawable.chat, label = "Message"),
-        NavItem(icon = R.drawable.jobpost, label = "Post"),
-        NavItem(icon = R.drawable.map, label = "Map")
+        NavItem(
+            label = "Home",
+            selectedIcon = R.drawable.home_filled,
+            unselectedIcon = R.drawable.home
+        ),
+        NavItem(
+            label = "Message",
+            selectedIcon = R.drawable.chat_filled,
+            unselectedIcon = R.drawable.chat
+        ),
+        NavItem(
+            label = "Post",
+            selectedIcon = R.drawable.jobpost_filled,
+            unselectedIcon = R.drawable.jobpost
+        ),
+        NavItem(
+            label = "Map",
+            selectedIcon = R.drawable.map_filled,
+            unselectedIcon = R.drawable.map
+        )
     )
+
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            NavigationBar (
+                containerColor = White
+            ){
                 listItem.forEachIndexed { index, item ->
                     NavigationBarItem(
                         icon = {
                             Icon(
-                                painter = painterResource(item.icon),
+                                painter = painterResource(if (selectedIndex == index) item.selectedIcon else item.unselectedIcon),
                                 contentDescription = item.label,
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(25.dp)
                             )
                         },
                         selected = selectedIndex == index,
