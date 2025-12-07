@@ -265,6 +265,9 @@ fun JobSeekerProfileDetailsBody() {
                     text = "Job Preference",
                     leadingIcon = R.drawable.jobpreferenceicon,
                 ) {
+                    context.startActivity(
+                        Intent(context, JobSeekerJobPreferenceActivity::class.java)
+                    )
 
                 }
             }

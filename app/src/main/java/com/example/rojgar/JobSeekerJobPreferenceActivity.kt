@@ -20,7 +20,15 @@ class JobSeekerJobPreferenceActivity : ComponentActivity() {
 
 @Composable
 fun JobSeekerJobPreferenceBody(){
+
+
 }
+
+
+
+
+
+
 
 @Preview
 @Composable
