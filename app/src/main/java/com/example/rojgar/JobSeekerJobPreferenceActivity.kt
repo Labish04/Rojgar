@@ -1,5 +1,6 @@
 package com.example.rojgar
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -50,6 +52,10 @@ data class AvailableFor(val name: String, var isSelected: Boolean = false)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobSeekerJobPreferenceBody() {
+
+    val context = LocalContext.current
+    val activity = context as Activity
+
     var showBottomSheet by remember { mutableStateOf(false) }
     var currentSection by remember { mutableStateOf("category") }
 
@@ -80,7 +86,7 @@ fun JobSeekerJobPreferenceBody() {
                     horizontalArrangement = Arrangement.Start
                 ) {
                     IconButton(onClick = {
-                        // Navigate back
+                        activity.finish()
                     }) {
                         Icon(
                             painter = painterResource(R.drawable.outline_arrow_back_ios_24),
@@ -213,7 +219,7 @@ fun JobSeekerJobPreferenceBody() {
             ) {
                 // Back Button
                 OutlinedButton(
-                    onClick ={},
+                    onClick = { activity.finish() },
                     shape = RoundedCornerShape(15.dp),
                     modifier = Modifier
                         .weight(0.7f)
@@ -233,7 +239,10 @@ fun JobSeekerJobPreferenceBody() {
                 Spacer(Modifier.width(10.dp))
 
                 Button(
-                    onClick = { /* Save changes */ },
+                    onClick = {
+                        // TODO: Save preferences to database/API
+                        activity.finish()
+                    },
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .weight(0.7f)
@@ -618,19 +627,6 @@ fun SearchBar(searchQuery: String, onSearchChange: (String) -> Unit, placeholder
             ),
             singleLine = true
         )
-        Spacer(modifier = Modifier.width(8.dp))
-        IconButton(
-            onClick = { },
-            modifier = Modifier
-                .size(48.dp)
-                .background(DarkBlue2, RoundedCornerShape(8.dp))
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                contentDescription = "Search",
-                tint = Color.White
-            )
-        }
     }
 }
 
@@ -656,21 +652,17 @@ fun SelectableItem(name: String, isSelected: Boolean, onToggle: () -> Unit) {
             Text(
                 name,
                 fontSize = 16.sp,
-                color = Color.Black
+                color = Color.Black,
+                modifier = Modifier.weight(1f)
             )
             if (isSelected) {
                 Icon(
-                    painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                    painter = painterResource(R.drawable.outline_keyboard_arrow_down_24),
                     contentDescription = "Selected",
-                    tint = Color(0xFF4CAF50),
-                    modifier = Modifier.size(24.dp)
-                )
-            } else {
-                Icon(
-                    painter = painterResource(R.drawable.addexperience),
-                    contentDescription = "Add",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(24.dp)
+                    tint = DarkBlue2,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .graphicsLayer(rotationZ = 180f)
                 )
             }
         }
