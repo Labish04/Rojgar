@@ -1,4 +1,4 @@
-package com.example.rojgar
+package com.example.rojgar.view
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -13,23 +13,35 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.rojgar.ui.theme.RojgarTheme
 
-class JobSeekerDashboardActivity : ComponentActivity() {
+class CvViewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            JobSeekerDashboardBody()
+            RojgarTheme {
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    Greeting2(
+                        name = "Android",
+                        modifier = Modifier.padding(innerPadding)
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-fun JobSeekerDashboardBody() {
-
+fun Greeting2(name: String, modifier: Modifier = Modifier) {
+    Text(
+        text = "Hello $name!",
+        modifier = modifier
+    )
 }
 
-@Preview()
+@Preview(showBackground = true)
 @Composable
-fun JobSeekerDashboardBodyPreview() {
-    JobSeekerDashboardBody()
+fun GreetingPreview3() {
+    RojgarTheme {
+        Greeting2("Android")
+    }
 }

@@ -1,6 +1,7 @@
-package com.example.rojgar
+package com.example.rojgar.view
 
 import android.app.Activity
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -29,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.rojgar.R
 import com.example.rojgar.ui.theme.*
 import java.util.*
 
@@ -76,7 +78,7 @@ fun JobSeekerExperienceBody() {
     val day = calendar.get(Calendar.DAY_OF_MONTH)
 
     if (showStartDatePicker) {
-        android.app.DatePickerDialog(
+        DatePickerDialog(
             context,
             { _, y, m, d ->
                 startDate = "$d/${m + 1}/$y"
@@ -87,7 +89,7 @@ fun JobSeekerExperienceBody() {
     }
 
     if (showEndDatePicker) {
-        android.app.DatePickerDialog(
+        DatePickerDialog(
             context,
             { _, y, m, d ->
                 endDate = "$d/${m + 1}/$y"

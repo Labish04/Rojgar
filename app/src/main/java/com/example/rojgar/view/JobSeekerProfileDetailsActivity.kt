@@ -1,4 +1,4 @@
-package com.example.rojgar
+package com.example.rojgar.view
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rojgar.R
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
 
@@ -189,7 +190,6 @@ fun JobSeekerProfileDetailsBody() {
                     )
                 }
             }
-
             Spacer(modifier = Modifier.height(20.dp))
 
             Row(
@@ -205,9 +205,7 @@ fun JobSeekerProfileDetailsBody() {
                     )
                 }
             }
-
             Spacer(modifier = Modifier.height(20.dp))
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
@@ -250,16 +248,88 @@ fun JobSeekerProfileDetailsBody() {
                     text = "Training",
                     leadingIcon = R.drawable.trainingicon,
                 ){
-
+                    context.startActivity(
+                        Intent(context, JobSeekerTrainingActivity::class.java)
+                    )
 
                 }
 
             }
 
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OptionPanel(
+                    text = "Job Preference",
+                    leadingIcon = R.drawable.jobpreferenceicon,
+                ) {
+                    context.startActivity(
+                        Intent(context, JobSeekerJobPreferenceActivity::class.java)
+                    )
+
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OptionPanel(
+                    text = "Portfolio Accounts",
+                    leadingIcon = R.drawable.linkicon,
+                ) {
+                    context.startActivity(
+                        Intent(context, JobSeekerPortfolioAccountsActivity::class.java)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OptionPanel(
+                    text = "Language",
+                    leadingIcon = R.drawable.languageicon,
+                ) {
+                    context.startActivity(
+                        Intent(context, JobSeekerLanguageActivity::class.java)
+                    )
+
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OptionPanel(
+                    text = "Reference",
+                    leadingIcon = R.drawable.bioicon,
+                ) {
+                    context.startActivity(
+                        Intent(context, JobSeekerReferenceActivity::class.java)
+                    )
+
+                }
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+
+
+
+
         }
     }
 }
-
 @Composable
 fun OptionPanel(
     text: String,
@@ -269,7 +339,7 @@ fun OptionPanel(
     Card(
         shape = RoundedCornerShape(10.dp),
         modifier = Modifier
-            .height(60.dp)
+            .height(62.dp)
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .clickable(
@@ -294,7 +364,7 @@ fun OptionPanel(
                 Icon(
                     painter = painterResource(id = leadingIcon),
                     contentDescription = null,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(38.dp)
                 )
 
                 Text(

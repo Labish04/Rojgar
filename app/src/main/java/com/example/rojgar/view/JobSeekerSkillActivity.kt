@@ -1,4 +1,4 @@
-package com.example.rojgar
+package com.example.rojgar.view
 
 import android.content.Intent
 import android.os.Bundle
@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.rojgar.R
 import com.example.rojgar.ui.theme.*
 
 data class Skill(
@@ -380,12 +381,13 @@ fun JobSeekerSkillBody() {
                                         skillName = ""
                                         skillLevel = 0f
                                     },
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = RoundedCornerShape(15.dp),
                                     modifier = Modifier
-                                        .weight(0.3f)
+                                        .weight(1f)
                                         .height(50.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = DarkBlue2
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.LightGray,
+                                        contentColor = Color.Black
                                     )
                                 ) {
                                     Icon(

@@ -1,4 +1,4 @@
-package com.example.rojgar
+package com.example.rojgar.view
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -36,20 +36,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rojgar.R
 
-class CodeVerificationCompanyActivity : ComponentActivity() {
+class SignUpCompanyActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            CodeVerificationCompanyBody()
+            SignUpCompanyBody()
         }
     }
 }
 
 @Composable
-fun CodeVerificationCompanyBody() {
-    var entercode by remember { mutableStateOf("") }
+fun SignUpCompanyBody() {
+    var fullName by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+
     Scaffold { padding ->
         Column(
             modifier = Modifier
@@ -83,15 +87,10 @@ fun CodeVerificationCompanyBody() {
             )
 
             Spacer(modifier = Modifier.height(10.dp))
+
+            // SIGN UP TITLE
             Text(
-                text = "Code",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF350089)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = "Verification",
+                text = "SignUp",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF350089)
@@ -105,13 +104,13 @@ fun CodeVerificationCompanyBody() {
                 onValueChange = {},
                 leadingIcon = {
                     Icon(
-                        painter = painterResource(id = R.drawable.enter_code_icon),
+                        painter = painterResource(id = R.drawable.identity),
                         contentDescription = "Name",
                         tint = Color.Gray,
                         modifier = Modifier.size(24.dp)
                     )
                 },
-                label = { Text("Enter Code") },
+                label = { Text("Full Name") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp),
@@ -120,10 +119,56 @@ fun CodeVerificationCompanyBody() {
             )
             Spacer(modifier = Modifier.height(25.dp))
 
+            // PHONE NUMBER FIELD
+            OutlinedTextField(
+                value = "",
+                onValueChange = {},
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.phoneicon),
+                        contentDescription = "Phone",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                label = { Text("Phone Number") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp),
+                shape = RoundedCornerShape(15.dp),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(25.dp))
+            // EMAIL FIELD
+            OutlinedTextField(
+                value = "",
+                onValueChange = {},
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.mailicon),
+                        contentDescription = "Mail",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                label = { Text("Email") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp),
+                shape = RoundedCornerShape(15.dp),
+                singleLine = true
+            )
+
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             // SIGNUP BUTTON
             Button(
                 onClick = {
-                    println("Enter Code: $entercode")
+                    println("FULL NAME: $fullName")
+                    println("PHONE: $phone")
+                    println("EMAIL: $email")
                 },
                 modifier = Modifier
                     .fillMaxWidth(0.5f)
@@ -134,7 +179,7 @@ fun CodeVerificationCompanyBody() {
                 )
             ) {
                 Text(
-                    text = "VERIFY",
+                    text = "SIGNUP",
                     color = Color.White,
                     fontWeight = FontWeight.Bold
                 )
@@ -152,8 +197,8 @@ fun CodeVerificationCompanyBody() {
                     painter = painterResource(id = R.drawable.design5),
                     contentDescription = "Jobseeker Illustration",
                     modifier = Modifier
-                        .size(200.dp)
-                        .offset(x = (-30).dp, y = 80.dp)
+                        .size(300.dp)
+                        .offset(x = (-80).dp, y = 10.dp)
                 )
             }
         }
@@ -162,6 +207,6 @@ fun CodeVerificationCompanyBody() {
 
 @Preview
 @Composable
-fun PreviewVerificationScreen() {
-    CodeVerificationCompanyBody()
+fun PreviewSignUpCompany() {
+    SignUpCompanyBody()
 }
