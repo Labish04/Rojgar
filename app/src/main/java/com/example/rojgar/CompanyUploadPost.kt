@@ -65,28 +65,6 @@ fun CompanyUploadPostBody() {
 
     var selectedIndex by remember { mutableStateOf(2) }
 
-    val listItem = listOf(
-        NavItem(
-            label = "Home",
-            selectedIcon = R.drawable.home_filled,
-            unselectedIcon = R.drawable.home
-        ),
-        NavItem(
-            label = "Message",
-            selectedIcon = R.drawable.chat_filled,
-            unselectedIcon = R.drawable.chat
-        ),
-        NavItem(
-            label = "Post",
-            selectedIcon = R.drawable.jobpost_filled,
-            unselectedIcon = R.drawable.jobpost
-        ),
-        NavItem(
-            label = "Map",
-            selectedIcon = R.drawable.map_filled,
-            unselectedIcon = R.drawable.map
-        )
-    )
 
     // State variables for text fields
     var title by remember { mutableStateOf("") }
@@ -141,40 +119,12 @@ fun CompanyUploadPostBody() {
     )
 
     Scaffold(
-        bottomBar = {
-            Surface(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(24.dp))
-                    .fillMaxWidth(),
-                color = Color.White,
-                shadowElevation = 10.dp
-            ) {
-                NavigationBar(
-                    containerColor = Color.Transparent
-                ) {
-                    listItem.forEachIndexed { index, item ->
-                        NavigationBarItem(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(
-                                        if (selectedIndex == index) item.selectedIcon else item.unselectedIcon
-                                    ),
-                                    contentDescription = item.label,
-                                    modifier = Modifier.size(25.dp)
-                                )
-                            },
-                            selected = selectedIndex == index,
-                            onClick = { selectedIndex = index }
-                        )
-                    }
-                }
-            }
-        }
+
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding()
                 .background(Blue)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)

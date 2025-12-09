@@ -2,30 +2,21 @@
 <project version="4">
   <component name="deploymentTargetSelector">
     <selectionStates>
-      <SelectionState runConfigName="app">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
-<<<<<<< Updated upstream
-      <SelectionState runConfigName="CodeVerificationCompanyActivity">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
-      <SelectionState runConfigName="CodeVerificationCompanyActivity (1)">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
-      <SelectionState runConfigName="DocumentCompanyActivity">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
-      <SelectionState runConfigName="JobSeekerDashboardActivity">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
       <SelectionState runConfigName="CompanyDashboardActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-=======
-      <SelectionState runConfigName="JobSeekerDashboardActivity">
+      <SelectionState runConfigName="CompanyUploadPost (2)">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
->>>>>>> Stashed changes
+      <SelectionState runConfigName="JobSeekerReferenceActivity">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
+      <SelectionState runConfigName="JobSeekerReferenceActivity (1)">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
+      <SelectionState runConfigName="JobSeekerJobPreferenceActivity">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
     </selectionStates>
   </component>
 </project>

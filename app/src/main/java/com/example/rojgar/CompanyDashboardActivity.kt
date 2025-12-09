@@ -117,7 +117,7 @@ fun CompanyDashboardBody() {
             when (selectedIndex) {
                 0 -> Text("Home Screen")
                 1 -> Text("Message Screen")
-                2 -> Text("Upload Job Screen")
+                2 -> CompanyUploadPostBody()
                 3 -> Text("Analysis Screen")
             }
         }

@@ -12,6 +12,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Rojgar">
         <activity
+            android:name=".CompanyUploadPost"
+            android:exported="true"
+            android:label="@string/title_activity_company_dashboard"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".CompanyDashboardActivity"
             android:exported="true"
             android:label="@string/title_activity_company_dashboard"
@@ -134,6 +145,28 @@
         </activity>
         <activity
             android:name=".JobSeekerDashboardActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".JobSeekerReferenceActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".JobSeekerJobPreferenceActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.Rojgar">
