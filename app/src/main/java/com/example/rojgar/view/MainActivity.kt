@@ -1,4 +1,4 @@
-package com.example.rojgar
+package com.example.rojgar.view
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

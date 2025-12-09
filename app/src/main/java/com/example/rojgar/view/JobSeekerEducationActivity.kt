@@ -1,4 +1,4 @@
-package com.example.rojgar
+package com.example.rojgar.view
 
 import android.content.Intent
 import android.os.Bundle
@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,11 +27,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.rojgar.R
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
-import com.example.rojgar.ui.theme.RojgarTheme
 import com.example.rojgar.ui.theme.White
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 data class Education(
     val degreeType: String,
@@ -466,11 +469,11 @@ fun JobSeekerEducationBody() {
                                     focusedIndicatorColor = DarkBlue2,
                                     unfocusedIndicatorColor = Color.LightGray
                                 ),
-                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                                interactionSource = remember { MutableInteractionSource() }
                                     .also { interactionSource ->
                                         LaunchedEffect(interactionSource) {
                                             interactionSource.interactions.collect {
-                                                if (it is androidx.compose.foundation.interaction.PressInteraction.Release) {
+                                                if (it is PressInteraction.Release) {
                                                     showStartYearPicker = true
                                                 }
                                             }
@@ -506,11 +509,11 @@ fun JobSeekerEducationBody() {
                                     focusedIndicatorColor = DarkBlue2,
                                     unfocusedIndicatorColor = Color.LightGray
                                 ),
-                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                                interactionSource = remember { MutableInteractionSource() }
                                     .also { interactionSource ->
                                         LaunchedEffect(interactionSource) {
                                             interactionSource.interactions.collect {
-                                                if (it is androidx.compose.foundation.interaction.PressInteraction.Release && !currentlyStudying) {
+                                                if (it is PressInteraction.Release && !currentlyStudying) {
                                                     showEndYearPicker = true
                                                 }
                                             }
@@ -695,7 +698,7 @@ fun JobSeekerEducationBody() {
                 startYear = year
                 showStartYearPicker = false
             },
-            initialYear = startYear ?: java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+            initialYear = startYear ?: Calendar.getInstance().get(Calendar.YEAR)
         )
     }
 
@@ -706,7 +709,7 @@ fun JobSeekerEducationBody() {
                 endYear = year
                 showEndYearPicker = false
             },
-            initialYear = endYear ?: java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+            initialYear = endYear ?: Calendar.getInstance().get(Calendar.YEAR)
         )
     }
 }
@@ -718,7 +721,7 @@ fun YearPickerDialog(
     onYearSelected: (Int) -> Unit,
     initialYear: Int
 ) {
-    val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
     val years = (1950..currentYear + 10).toList().reversed()
 
     Dialog(

@@ -1,4 +1,4 @@
-package com.example.rojgar
+package com.example.rojgar.view
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -36,23 +36,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rojgar.R
 
-class SignUpCompanyActivity : ComponentActivity() {
+class CodeVerificationCompanyActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SignUpCompanyBody()
+            CodeVerificationCompanyBody()
         }
     }
 }
 
 @Composable
-fun SignUpCompanyBody() {
-    var fullName by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-
+fun CodeVerificationCompanyBody() {
+    var entercode by remember { mutableStateOf("") }
     Scaffold { padding ->
         Column(
             modifier = Modifier
@@ -86,10 +84,15 @@ fun SignUpCompanyBody() {
             )
 
             Spacer(modifier = Modifier.height(10.dp))
-
-            // SIGN UP TITLE
             Text(
-                text = "SignUp",
+                text = "Code",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF350089)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Verification",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF350089)
@@ -103,13 +106,13 @@ fun SignUpCompanyBody() {
                 onValueChange = {},
                 leadingIcon = {
                     Icon(
-                        painter = painterResource(id = R.drawable.identity),
+                        painter = painterResource(id = R.drawable.enter_code_icon),
                         contentDescription = "Name",
                         tint = Color.Gray,
                         modifier = Modifier.size(24.dp)
                     )
                 },
-                label = { Text("Full Name") },
+                label = { Text("Enter Code") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp),
@@ -117,57 +120,11 @@ fun SignUpCompanyBody() {
                 singleLine = true
             )
             Spacer(modifier = Modifier.height(25.dp))
-
-            // PHONE NUMBER FIELD
-            OutlinedTextField(
-                value = "",
-                onValueChange = {},
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.phoneicon),
-                        contentDescription = "Phone",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                label = { Text("Phone Number") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                shape = RoundedCornerShape(15.dp),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(25.dp))
-            // EMAIL FIELD
-            OutlinedTextField(
-                value = "",
-                onValueChange = {},
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.mailicon),
-                        contentDescription = "Mail",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                label = { Text("Email") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                shape = RoundedCornerShape(15.dp),
-                singleLine = true
-            )
-
-
-            Spacer(modifier = Modifier.height(20.dp))
 
             // SIGNUP BUTTON
             Button(
                 onClick = {
-                    println("FULL NAME: $fullName")
-                    println("PHONE: $phone")
-                    println("EMAIL: $email")
+                    println("Enter Code: $entercode")
                 },
                 modifier = Modifier
                     .fillMaxWidth(0.5f)
@@ -178,7 +135,7 @@ fun SignUpCompanyBody() {
                 )
             ) {
                 Text(
-                    text = "SIGNUP",
+                    text = "VERIFY",
                     color = Color.White,
                     fontWeight = FontWeight.Bold
                 )
@@ -196,8 +153,8 @@ fun SignUpCompanyBody() {
                     painter = painterResource(id = R.drawable.design5),
                     contentDescription = "Jobseeker Illustration",
                     modifier = Modifier
-                        .size(300.dp)
-                        .offset(x = (-80).dp, y = 10.dp)
+                        .size(200.dp)
+                        .offset(x = (-30).dp, y = 80.dp)
                 )
             }
         }
@@ -206,6 +163,6 @@ fun SignUpCompanyBody() {
 
 @Preview
 @Composable
-fun PreviewSignUpCompany() {
-    SignUpCompanyBody()
+fun PreviewVerificationScreen() {
+    CodeVerificationCompanyBody()
 }
