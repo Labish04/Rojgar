@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "993105645962",
+    "firebase_url": "https://rojgar-51bf9-default-rtdb.firebaseio.com",
+    "project_id": "rojgar-51bf9",
+    "storage_bucket": "rojgar-51bf9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993105645962:android:a8d781a69f843027d2b873",
+        "android_client_info": {
+          "package_name": "com.example.rojgar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNGqWktguHBLcLPx1fSCPHRy7eOVnm4uk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
