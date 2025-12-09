@@ -14,6 +14,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -23,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -38,6 +41,7 @@ import com.example.rojgar.ui.theme.DarkBlue2
 import com.example.rojgar.ui.theme.Gray
 import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.RojgarTheme
+import com.example.rojgar.ui.theme.White
 import java.util.*
 
 class CompanyUploadPost : ComponentActivity() {
@@ -52,24 +56,19 @@ class CompanyUploadPost : ComponentActivity() {
     }
 }
 
+// Data class for Category
+//data class JobCategory(val name: String, var isSelected: Boolean = false)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompanyUploadPostBody() {
     val context = LocalContext.current
     val activity = context as Activity
 
-    data class NavItem(
-        val label: String,
-        val selectedIcon: Int,
-        val unselectedIcon: Int
-    )
-
-    var selectedIndex by remember { mutableStateOf(2) }
-
-
     // State variables for text fields
     var title by remember { mutableStateOf("") }
     var postFor by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
+    var selectedCategories by remember { mutableStateOf(listOf<String>()) }
     var jobType by remember { mutableStateOf("") }
     var experience by remember { mutableStateOf("") }
     var education by remember { mutableStateOf("") }
@@ -79,6 +78,10 @@ fun CompanyUploadPostBody() {
     var responsibilities by remember { mutableStateOf("") }
     var jobDescription by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Bottom sheet state
+    var showCategoryBottomSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -93,11 +96,9 @@ fun CompanyUploadPostBody() {
     val datePickerDialog = DatePickerDialog(
         context,
         { _, year, month, dayOfMonth ->
-            // After date is selected, show time picker
             TimePickerDialog(
                 context,
                 { _, hourOfDay, minute ->
-                    // Format the selected date and time
                     val formattedDateTime = String.format(
                         "%02d/%02d/%d %02d:%02d",
                         dayOfMonth,
@@ -118,9 +119,7 @@ fun CompanyUploadPostBody() {
         calendar.get(Calendar.DAY_OF_MONTH)
     )
 
-    Scaffold(
-
-    ) { padding ->
+    Scaffold {padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -180,7 +179,7 @@ fun CompanyUploadPostBody() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Title TextField
+            // Title
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -193,9 +192,10 @@ fun CompanyUploadPostBody() {
                     )
                 },
                 label = { Text("Title") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp),
                 shape = RoundedCornerShape(15.dp),
-                singleLine = true,
                 colors = TextFieldDefaults.colors(
                     disabledIndicatorColor = Color.Transparent,
                     disabledContainerColor = Blue,
@@ -208,7 +208,7 @@ fun CompanyUploadPostBody() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Post For TextField
+            // Post
             OutlinedTextField(
                 value = postFor,
                 onValueChange = { postFor = it },
@@ -221,9 +221,10 @@ fun CompanyUploadPostBody() {
                     )
                 },
                 label = { Text("Post") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp),
                 shape = RoundedCornerShape(15.dp),
-                singleLine = true,
                 colors = TextFieldDefaults.colors(
                     disabledIndicatorColor = Color.Transparent,
                     disabledContainerColor = Blue,
@@ -236,35 +237,62 @@ fun CompanyUploadPostBody() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Category TextField
-            OutlinedTextField(
-                value = category,
-                onValueChange = { category = it },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.jobcategoryicon),
-                        contentDescription = "Category",
-                        tint = Color.Black,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                label = { Text("Category") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(15.dp),
-                singleLine = true,
-                colors = TextFieldDefaults.colors(
-                    disabledIndicatorColor = Color.Transparent,
-                    disabledContainerColor = Blue,
-                    focusedContainerColor = Blue,
-                    unfocusedContainerColor = Blue,
-                    focusedIndicatorColor = Purple,
-                    unfocusedIndicatorColor = Color.Black
-                )
-            )
+            // Category - With Bottom Sheet (NEW)
+            Column {
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showCategoryBottomSheet = true },
+                    shape = RoundedCornerShape(15.dp),
+                    colors = CardDefaults.cardColors(containerColor = Blue),
+                    border = ButtonDefaults.outlinedButtonBorder
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.jobcategoryicon),
+                                contentDescription = "Category",
+                                tint = Color.Black,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            if (selectedCategories.isEmpty()) {
+                                Text(
+                                    text = "Select Category",
+                                    color = Color.Gray,
+                                    fontSize = 16.sp
+                                )
+                            } else {
+                                Text(
+                                    text = selectedCategories.joinToString(", "),
+                                    color = Color.Black,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                        Icon(
+                            painter = painterResource(R.drawable.outline_keyboard_arrow_down_24),
+                            contentDescription = "Dropdown",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Job Type TextField
+            // Job Type
             OutlinedTextField(
                 value = jobType,
                 onValueChange = { jobType = it },
@@ -277,9 +305,10 @@ fun CompanyUploadPostBody() {
                     )
                 },
                 label = { Text("Job Type") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp),
                 shape = RoundedCornerShape(15.dp),
-                singleLine = true,
                 colors = TextFieldDefaults.colors(
                     disabledIndicatorColor = Color.Transparent,
                     disabledContainerColor = Blue,
@@ -305,9 +334,10 @@ fun CompanyUploadPostBody() {
                     )
                 },
                 label = { Text("Experience") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp),
                 shape = RoundedCornerShape(15.dp),
-                singleLine = true,
                 colors = TextFieldDefaults.colors(
                     disabledIndicatorColor = Color.Transparent,
                     disabledContainerColor = Blue,
@@ -333,9 +363,10 @@ fun CompanyUploadPostBody() {
                     )
                 },
                 label = { Text("Education") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp),
                 shape = RoundedCornerShape(15.dp),
-                singleLine = true,
                 colors = TextFieldDefaults.colors(
                     disabledIndicatorColor = Color.Transparent,
                     disabledContainerColor = Blue,
@@ -361,9 +392,10 @@ fun CompanyUploadPostBody() {
                     )
                 },
                 label = { Text("Skills") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp),
                 shape = RoundedCornerShape(15.dp),
-                singleLine = true,
                 colors = TextFieldDefaults.colors(
                     disabledIndicatorColor = Color.Transparent,
                     disabledContainerColor = Blue,
@@ -389,9 +421,10 @@ fun CompanyUploadPostBody() {
                     )
                 },
                 label = { Text("Salary") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp),
                 shape = RoundedCornerShape(15.dp),
-                singleLine = true,
                 colors = TextFieldDefaults.colors(
                     disabledIndicatorColor = Color.Transparent,
                     disabledContainerColor = Blue,
@@ -404,7 +437,7 @@ fun CompanyUploadPostBody() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Deadline TextField with Date Time Picker
+            // Deadline TextField
             OutlinedTextField(
                 value = deadline,
                 onValueChange = { deadline = it },
@@ -549,6 +582,192 @@ fun CompanyUploadPostBody() {
             }
 
             Spacer(modifier = Modifier.height(20.dp))
+        }
+
+        // Category Bottom Sheet
+        if (showCategoryBottomSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showCategoryBottomSheet = false },
+                sheetState = sheetState,
+                containerColor = Color.White,
+            ) {
+                CategoryBottomSheet(
+                    onDismiss = { showCategoryBottomSheet = false },
+                    onSave = { categories ->
+                        selectedCategories = categories
+                        showCategoryBottomSheet = false
+                    },
+                    initialCategories = selectedCategories
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryBottomSheet(
+    onDismiss: () -> Unit,
+    onSave: (List<String>) -> Unit,
+    initialCategories: List<String>
+) {
+    // Categories list
+    val categoryList = remember {
+        mutableStateListOf(
+            JobCategory("Creative / Graphics / Designing", initialCategories.contains("Creative / Graphics / Designing")),
+            JobCategory("IT & Telecommunication", initialCategories.contains("IT & Telecommunication")),
+            JobCategory("NGO / INGO / Social work", initialCategories.contains("NGO / INGO / Social work")),
+            JobCategory("Sales / Public Relations", initialCategories.contains("Sales / Public Relations")),
+            JobCategory("Accounting / Finance", initialCategories.contains("Accounting / Finance")),
+            JobCategory("Architecture / Interior Designing", initialCategories.contains("Architecture / Interior Designing")),
+            JobCategory("Banking / Insurance / Financial Services", initialCategories.contains("Banking / Insurance / Financial Services")),
+            JobCategory("Commercial / Logistics / Supply Chain", initialCategories.contains("Commercial / Logistics / Supply Chain")),
+            JobCategory("Construction / Engineering / Architects", initialCategories.contains("Construction / Engineering / Architects")),
+            JobCategory("Fashion / Textile Designing", initialCategories.contains("Fashion / Textile Designing")),
+            JobCategory("General Management", initialCategories.contains("General Management"))
+        )
+    }
+
+    var searchQuery by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.6f)
+            .padding(horizontal = 20.dp)
+    ) {
+        // Header
+        Column {
+            Text(
+                "Select Job Category",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            Text(
+                "You can add upto 5 categories.",
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
+            Text(
+                "${categoryList.count { it.isSelected }}/5",
+                fontSize = 14.sp,
+                color = if (categoryList.count { it.isSelected } >= 5) Color.Red else DarkBlue2,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Search bar
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text("Search job categories", color = Color.Gray) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = White,
+                unfocusedContainerColor = White,
+                focusedBorderColor = DarkBlue2,
+                unfocusedBorderColor = Color.LightGray
+            ),
+            shape = RoundedCornerShape(8.dp),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // List of categories
+        LazyColumn(
+            modifier = Modifier.weight(1f)
+        ) {
+            items(
+                items = categoryList.filter {
+                    it.name.contains(searchQuery, ignoreCase = true)
+                },
+                key = { it.name }
+            ) { category ->
+                val index = categoryList.indexOf(category)
+                SelectableCategoryItem(
+                    name = category.name,
+                    isSelected = category.isSelected,
+                    onToggle = {
+                        val selectedCount = categoryList.count { it.isSelected }
+                        if (!category.isSelected && selectedCount >= 5) return@SelectableCategoryItem
+                        categoryList[index] = category.copy(isSelected = !category.isSelected)
+                    }
+                )
+            }
+        }
+
+        // Navigation buttons
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = { onDismiss() },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(50.dp),
+                shape = RoundedCornerShape(25.dp)
+            ) {
+                Text("Cancel", fontSize = 16.sp)
+            }
+
+            Button(
+                onClick = {
+                    onSave(categoryList.filter { it.isSelected }.map { it.name })
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(50.dp),
+                shape = RoundedCornerShape(25.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = DarkBlue2)
+            ) {
+                Text("Done", fontSize = 16.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun SelectableCategoryItem(name: String, isSelected: Boolean, onToggle: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onToggle() },
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) Color(0xFFE3F2FD) else Color.White
+        ),
+        shape = RoundedCornerShape(8.dp),
+        border = ButtonDefaults.outlinedButtonBorder
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                name,
+                fontSize = 16.sp,
+                color = Color.Black,
+                modifier = Modifier.weight(1f)
+            )
+            if (isSelected) {
+                Icon(
+                    painter = painterResource(R.drawable.outline_keyboard_arrow_down_24),
+                    contentDescription = "Selected",
+                    tint = DarkBlue2,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .graphicsLayer(rotationZ = 180f)
+                )
+            }
         }
     }
 }
