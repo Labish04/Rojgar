@@ -1,4 +1,4 @@
-package com.example.rojgar
+package com.example.rojgar.view
 
 import android.content.Intent
 import android.os.Bundle
@@ -49,10 +49,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rojgar.R
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
 import com.example.rojgar.ui.theme.Purple
-import com.example.rojgar.ui.theme.RojgarTheme
 import com.example.rojgar.ui.theme.White
 
 data class Language(

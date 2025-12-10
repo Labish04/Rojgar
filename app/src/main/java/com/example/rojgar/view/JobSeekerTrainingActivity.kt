@@ -1,4 +1,4 @@
-package com.example.rojgar
+package com.example.rojgar.view
 
 import android.content.Intent
 import android.net.Uri
@@ -35,6 +35,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -64,6 +65,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rojgar.R
 import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
@@ -453,7 +455,7 @@ fun AddTrainingSheet(
                                 selectedDurationType = type
                                 expandedDuration = false
                             },
-                            colors = androidx.compose.material3.MenuDefaults.itemColors(
+                            colors = MenuDefaults.itemColors(
                                 textColor = Color.DarkGray
                             ),
                             modifier = Modifier.background(

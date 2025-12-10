@@ -1,16 +1,13 @@
-package com.example.rojgar
+package com.example.rojgar.view
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,12 +27,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.rojgar.ui.theme.Black
+import com.example.rojgar.R
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
-import com.example.rojgar.ui.theme.RojgarTheme
 import com.example.rojgar.ui.theme.White
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 data class Education(
     val degreeType: String,
@@ -46,8 +43,7 @@ data class Education(
     val endYear: Int?,
     val gradeType: String,
     val marksSecured: String,
-    val currentlyStudying: Boolean,
-    val certificates: List<Uri> = emptyList()
+    val currentlyStudying: Boolean
 )
 
 class JobSeekerEducationActivity : ComponentActivity() {
@@ -78,20 +74,12 @@ fun JobSeekerEducationBody() {
     var gradeTypeIsCGPA by remember { mutableStateOf(true) }
     var marksSecured by remember { mutableStateOf(TextFieldValue("")) }
     var currentlyStudying by remember { mutableStateOf(false) }
-    var selectedCertificates by remember { mutableStateOf<List<Uri>>(emptyList()) }
 
     var showStartYearPicker by remember { mutableStateOf(false) }
     var showEndYearPicker by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-
-    // File picker 
-    val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetMultipleContents()
-    ) { uris: List<Uri> ->
-        selectedCertificates = selectedCertificates + uris
-    }
 
     val degreeOptions = listOf(
         "Doctorate (Ph. D)",
@@ -113,7 +101,6 @@ fun JobSeekerEducationBody() {
         gradeTypeIsCGPA = true
         marksSecured = TextFieldValue("")
         currentlyStudying = false
-        selectedCertificates = emptyList()
     }
 
     Scaffold(
@@ -194,14 +181,6 @@ fun JobSeekerEducationBody() {
                                     text = "${edu.startYear} - ${if (edu.currentlyStudying) "Present" else edu.endYear}",
                                     color = Color.Gray
                                 )
-                                if (edu.certificates.isNotEmpty()) {
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        text = "${edu.certificates.size} certificate(s) uploaded",
-                                        color = DarkBlue2,
-                                        fontSize = 12.sp
-                                    )
-                                }
                             }
                         }
                     }
@@ -348,7 +327,7 @@ fun JobSeekerEducationBody() {
                     shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight(0.85f),
+                        .fillMaxHeight(0.75f),
                     colors = CardDefaults.cardColors(containerColor = White)
                 ) {
                     Column(
@@ -490,11 +469,11 @@ fun JobSeekerEducationBody() {
                                     focusedIndicatorColor = DarkBlue2,
                                     unfocusedIndicatorColor = Color.LightGray
                                 ),
-                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                                interactionSource = remember { MutableInteractionSource() }
                                     .also { interactionSource ->
                                         LaunchedEffect(interactionSource) {
                                             interactionSource.interactions.collect {
-                                                if (it is androidx.compose.foundation.interaction.PressInteraction.Release) {
+                                                if (it is PressInteraction.Release) {
                                                     showStartYearPicker = true
                                                 }
                                             }
@@ -530,11 +509,11 @@ fun JobSeekerEducationBody() {
                                     focusedIndicatorColor = DarkBlue2,
                                     unfocusedIndicatorColor = Color.LightGray
                                 ),
-                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                                interactionSource = remember { MutableInteractionSource() }
                                     .also { interactionSource ->
                                         LaunchedEffect(interactionSource) {
                                             interactionSource.interactions.collect {
-                                                if (it is androidx.compose.foundation.interaction.PressInteraction.Release && !currentlyStudying) {
+                                                if (it is PressInteraction.Release && !currentlyStudying) {
                                                     showEndYearPicker = true
                                                 }
                                             }
@@ -597,92 +576,6 @@ fun JobSeekerEducationBody() {
                                 unfocusedIndicatorColor = Color.LightGray
                             )
                         )
-
-                        Spacer(Modifier.height(16.dp))
-
-                        // Certificate Upload Section
-                        Text(
-                            text = "Upload Marksheet/Certificates",
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.DarkGray,
-                            fontSize = 14.sp
-                        )
-
-                        Spacer(Modifier.height(8.dp))
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp)
-                                .border(
-                                    width = 1.dp,
-                                    color = Color.LightGray,
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                .clickable { filePickerLauncher.launch("image/*") }
-                                .padding(horizontal = 16.dp),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.baseline_upload_24),
-                                    contentDescription = "Upload",
-                                    tint = Black,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = if (selectedCertificates.isEmpty())
-                                        "Tap to upload certificates"
-                                    else
-                                        "${selectedCertificates.size} file(s) selected",
-                                    color = if (selectedCertificates.isEmpty()) Color.Gray else Color.Black,
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
-
-                        if (selectedCertificates.isNotEmpty()) {
-                            Spacer(Modifier.height(8.dp))
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 8.dp)
-                            ) {
-                                selectedCertificates.forEachIndexed { index, uri ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = "Certificate ${index + 1}",
-                                            fontSize = 12.sp,
-                                            color = Color.DarkGray,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        IconButton(
-                                            onClick = {
-                                                selectedCertificates = selectedCertificates.filterIndexed { i, _ -> i != index }
-                                            },
-                                            modifier = Modifier.size(24.dp)
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.outline_arrow_back_ios_24),
-                                                contentDescription = "Remove",
-                                                tint = Color.Red,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
 
                         Spacer(Modifier.height(12.dp))
 
@@ -767,8 +660,7 @@ fun JobSeekerEducationBody() {
                                                 endYear = if (currentlyStudying) null else endYear,
                                                 gradeType = if (gradeTypeIsCGPA) "CGPA" else "Marks",
                                                 marksSecured = marksSecured.text,
-                                                currentlyStudying = currentlyStudying,
-                                                certificates = selectedCertificates
+                                                currentlyStudying = currentlyStudying
                                             )
                                             educationList = educationList + newEdu
                                             showDetailSheet = false
@@ -806,7 +698,7 @@ fun JobSeekerEducationBody() {
                 startYear = year
                 showStartYearPicker = false
             },
-            initialYear = startYear ?: java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+            initialYear = startYear ?: Calendar.getInstance().get(Calendar.YEAR)
         )
     }
 
@@ -817,7 +709,7 @@ fun JobSeekerEducationBody() {
                 endYear = year
                 showEndYearPicker = false
             },
-            initialYear = endYear ?: java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+            initialYear = endYear ?: Calendar.getInstance().get(Calendar.YEAR)
         )
     }
 }
@@ -829,7 +721,7 @@ fun YearPickerDialog(
     onYearSelected: (Int) -> Unit,
     initialYear: Int
 ) {
-    val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
     val years = (1950..currentYear + 10).toList().reversed()
 
     Dialog(

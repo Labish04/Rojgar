@@ -1,6 +1,7 @@
-package com.example.rojgar
+package com.example.rojgar.view
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -52,8 +53,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-
-
+import com.example.rojgar.R
 
 
 class JobSeekerProfileActivity : ComponentActivity() {
@@ -320,7 +320,7 @@ fun PreviewJobSeekerProfile() {
 }
 
 @Suppress("DEPRECATION")
-fun getRealPathFromURI(context: android.content.Context, uri: Uri): String? {
+fun getRealPathFromURI(context: Context, uri: Uri): String? {
     val projection = arrayOf(MediaStore.Video.Media.DATA)
     val cursor = context.contentResolver.query(uri, projection, null, null, null)
     cursor?.use {
