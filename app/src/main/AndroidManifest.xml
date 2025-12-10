@@ -122,6 +122,18 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".view.FollowingListActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".view.JobSeekerProfileDetailsActivity"
             android:exported="true"
             android:label="@string/app_name"
@@ -144,7 +156,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".view.SplashActivity"
+            android:name=".view.CompanyProfileActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.Rojgar">
@@ -155,5 +167,6 @@
             </intent-filter>
         </activity>
     </application>
+
 
 </manifest>
