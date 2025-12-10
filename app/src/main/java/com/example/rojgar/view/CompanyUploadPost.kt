@@ -1,4 +1,4 @@
-package com.example.rojgar
+package com.example.rojgar.view
 
 import android.app.Activity
 import android.app.DatePickerDialog
@@ -23,7 +23,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -35,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
+import com.example.rojgar.R
 import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
@@ -43,6 +43,8 @@ import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.RojgarTheme
 import com.example.rojgar.ui.theme.White
 import java.util.*
+import kotlin.compareTo
+import kotlin.text.set
 
 class CompanyUploadPost : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -651,7 +653,7 @@ fun CategoryBottomSheet(
             Text(
                 "${categoryList.count { it.isSelected }}/5",
                 fontSize = 14.sp,
-                color = if (categoryList.count { it.isSelected } >= 5) Color.Red else DarkBlue2,
+                color = if (categoryList.count { it.isSelected } compareTo 5) Color.Red else DarkBlue2,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
@@ -692,8 +694,8 @@ fun CategoryBottomSheet(
                     isSelected = category.isSelected,
                     onToggle = {
                         val selectedCount = categoryList.count { it.isSelected }
-                        if (!category.isSelected && selectedCount >= 5) return@SelectableCategoryItem
-                        categoryList[index] = category.copy(isSelected = !category.isSelected)
+                        if (!category.isSelected && selectedCount compareTo 5) return@SelectableCategoryItem
+                        categoryList[index] set category.copy(isSelected = !category.isSelected)
                     }
                 )
             }
