@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,23 +45,16 @@ import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.RojgarTheme
 import com.example.rojgar.ui.theme.White
 import java.util.*
-import kotlin.compareTo
-import kotlin.text.set
 
 class CompanyUploadPost : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            RojgarTheme {
                 CompanyUploadPostBody()
-            }
         }
     }
 }
-
-// Data class for Category
-//data class JobCategory(val name: String, var isSelected: Boolean = false)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,7 +89,7 @@ fun CompanyUploadPostBody() {
     // Calendar instance for date/time picker
     val calendar = Calendar.getInstance()
 
-    // DatePickerDialog
+    // DatePickerDialog -> opens TimePicker after date picked
     val datePickerDialog = DatePickerDialog(
         context,
         { _, year, month, dayOfMonth ->
@@ -121,7 +116,7 @@ fun CompanyUploadPostBody() {
         calendar.get(Calendar.DAY_OF_MONTH)
     )
 
-    Scaffold {padding ->
+    Scaffold { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -132,7 +127,7 @@ fun CompanyUploadPostBody() {
         ) {
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Cover Photo Section
+            // Cover Photo for post
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(15.dp)
@@ -239,9 +234,8 @@ fun CompanyUploadPostBody() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Category - With Bottom Sheet (NEW)
+            // Category - With Bottom Sheet
             Column {
-
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -283,7 +277,7 @@ fun CompanyUploadPostBody() {
                             }
                         }
                         Icon(
-                            painter = painterResource(R.drawable.outline_keyboard_arrow_down_24),
+                            painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
                             contentDescription = "Dropdown",
                             tint = Color.Gray,
                             modifier = Modifier.size(24.dp)
@@ -323,7 +317,7 @@ fun CompanyUploadPostBody() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Experience TextField
+            // Experience
             OutlinedTextField(
                 value = experience,
                 onValueChange = { experience = it },
@@ -352,7 +346,7 @@ fun CompanyUploadPostBody() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Education TextField
+            // Education
             OutlinedTextField(
                 value = education,
                 onValueChange = { education = it },
@@ -381,7 +375,7 @@ fun CompanyUploadPostBody() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Skills TextField
+            // Skills
             OutlinedTextField(
                 value = skills,
                 onValueChange = { skills = it },
@@ -410,7 +404,7 @@ fun CompanyUploadPostBody() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Salary TextField
+            // Salary
             OutlinedTextField(
                 value = salary,
                 onValueChange = { salary = it },
@@ -439,7 +433,7 @@ fun CompanyUploadPostBody() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Deadline TextField
+            // Deadline
             OutlinedTextField(
                 value = deadline,
                 onValueChange = { deadline = it },
@@ -483,7 +477,7 @@ fun CompanyUploadPostBody() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Responsibilities TextField
+            // Responsibilities
             OutlinedTextField(
                 value = responsibilities,
                 onValueChange = { responsibilities = it },
@@ -512,7 +506,7 @@ fun CompanyUploadPostBody() {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Job Description TextField
+            // Job Description
             OutlinedTextField(
                 value = jobDescription,
                 onValueChange = { jobDescription = it },
@@ -545,7 +539,9 @@ fun CompanyUploadPostBody() {
                 Spacer(modifier = Modifier.width(20.dp))
 
                 Button(
-                    onClick = {},
+                    onClick = {
+                        // TODO: implement post action
+                    },
                     shape = RoundedCornerShape(40.dp),
                     modifier = Modifier
                         .width(160.dp)
@@ -646,14 +642,16 @@ fun CategoryBottomSheet(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
             Text(
-                "You can add upto 5 categories.",
+                "You can add up to 5 categories.",
                 fontSize = 14.sp,
                 color = Color.Gray
             )
+
+            val selectedCount = categoryList.count { it.isSelected }
             Text(
-                "${categoryList.count { it.isSelected }}/5",
+                "$selectedCount/5",
                 fontSize = 14.sp,
-                color = if (categoryList.count { it.isSelected } compareTo 5) Color.Red else DarkBlue2,
+                color = if (selectedCount >= 5) Color.Red else DarkBlue2,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
@@ -682,22 +680,24 @@ fun CategoryBottomSheet(
         LazyColumn(
             modifier = Modifier.weight(1f)
         ) {
-            items(
-                items = categoryList.filter {
-                    it.name.contains(searchQuery, ignoreCase = true)
-                },
-                key = { it.name }
-            ) { category ->
+            val filtered = categoryList.filter {
+                it.name.contains(searchQuery, ignoreCase = true)
+            }
+            items(filtered, key = { it.name }) { category ->
                 val index = categoryList.indexOf(category)
-                SelectableCategoryItem(
-                    name = category.name,
-                    isSelected = category.isSelected,
-                    onToggle = {
-                        val selectedCount = categoryList.count { it.isSelected }
-                        if (!category.isSelected && selectedCount compareTo 5) return@SelectableCategoryItem
-                        categoryList[index] set category.copy(isSelected = !category.isSelected)
-                    }
-                )
+                if (index >= 0) {
+                    val selectedCountNow = categoryList.count { it.isSelected }
+                    SelectableCategoryItem(
+                        name = category.name,
+                        isSelected = category.isSelected,
+                        onToggle = {
+                            if (!category.isSelected && selectedCountNow >= 5) {
+                            } else {
+                                categoryList[index] = category.copy(isSelected = !category.isSelected)
+                            }
+                        }
+                    )
+                }
             }
         }
 
@@ -762,20 +762,18 @@ fun SelectableCategoryItem(name: String, isSelected: Boolean, onToggle: () -> Un
             )
             if (isSelected) {
                 Icon(
-                    painter = painterResource(R.drawable.outline_keyboard_arrow_down_24),
+                    imageVector = Icons.Default.Check,
                     contentDescription = "Selected",
                     tint = DarkBlue2,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .graphicsLayer(rotationZ = 180f)
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
     }
 }
-
 @Preview
 @Composable
 fun CompanyUploadPostBodyPreview() {
-    CompanyUploadPostBody()
+        CompanyUploadPostBody()
+
 }
