@@ -76,14 +76,14 @@ fun RegisterBody() {
                         contentDescription = null,
                         modifier = Modifier
                             .size(500.dp)
-                            .offset(x = 120.dp, y = -230.dp)
+                            .offset(x = 120.dp, y = (-230).dp)
                     )
                     Image(
                         painter = painterResource(id = R.drawable.logo),
                         contentDescription = null,
                         modifier = Modifier
                             .size(250.dp)
-                            .offset(x = 200.dp, y = -40.dp)
+                            .offset(x = 200.dp, y = (-40).dp)
                     )
 
                     Image(
