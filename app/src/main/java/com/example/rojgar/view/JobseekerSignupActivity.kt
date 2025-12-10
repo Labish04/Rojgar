@@ -41,6 +41,7 @@ fun JobSeekerSignUpScreen() {
     var phoneNumber by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
 
+
     Scaffold { padding ->
         Column(
             modifier = Modifier
@@ -182,7 +183,6 @@ fun JobSeekerSignUpScreen() {
 fun PreviewSignupScreen(){
     JobSeekerSignUpScreen()
 }
-
 
 
 
