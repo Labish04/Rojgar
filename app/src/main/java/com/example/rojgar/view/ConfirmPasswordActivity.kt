@@ -42,7 +42,6 @@ fun ConfirmPasswordScreen() {
                 .background(Color.White),
             horizontalAlignment = Alignment.Start
         ) {
-
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
