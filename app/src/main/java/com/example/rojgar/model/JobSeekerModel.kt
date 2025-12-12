@@ -11,16 +11,17 @@ data class JobSeekerModel(
     val gender : String = "",
     val dob : String = "",
     val currentAddress : String = "",
-    val pernamentAddress : String = "",
+    val permanentAddress : String = "",
     val bio : String = "",
     val profilePhoto : String = "",
     val coverPhoto : String = "",
-    val introVideo : String = "",
-    val objecitve : String = "",
+    val objective : String = "",
+    val video : String = "",
+
 
 //    Experience
     val expCompanyName : String = "",
-    val expJobTite : String = "",
+    val expJobTitle : String = "",
     val expJobLevel : String = "",
     val expJobStartDate : String = "",
     val expJobEndDate : String = "",
@@ -41,29 +42,29 @@ data class JobSeekerModel(
     val eduScore : String = "",
     val eduStatus : String = "",
 
-//    Tranning
-    val tranningInstituteName : String = "",
-    val tranningDuration : String = "",
-    val tranningCompletionDate : String = "",
-    val tranningCertificate : String = "",
+//    Training
+    val trainingInstituteName : String = "",
+    val trainingDuration : String = "",
+    val trainingCompletionDate : String = "",
+    val trainingCertificate : String = "",
 
 //    Pefrence
     val pefJobCategory : String = "",
     val pefIndustry : String = "",
     val pefJobTitle : String = "",
-    val pefAviability : String = "",
+    val pefAvailability : String = "",
     val pefLocation: String = "",
 
 //    Portfolio
-    val portfiloAccontName : String = "",
-    val portfiloAccontLink : String = "",
+    val portfolioAccountName : String = "",
+    val portfolioAccountLink : String = "",
 
 //    Language
-    val langaugeName : String = "",
-    val langaugeReadingLevel : String = "",
-    val langaugeSpeakingLevel : String = "",
-    val langaugeWritingLevel : String = "",
-    val langaugeListeningLevel : String = "",
+    val languageName : String = "",
+    val languageReadingLevel : String = "",
+    val languageSpeakingLevel : String = "",
+    val languageWritingLevel : String = "",
+    val languageListeningLevel : String = "",
 
 //    Reference
     val refName : String = "",
@@ -72,4 +73,61 @@ data class JobSeekerModel(
     val refEmail : String = "",
     val refContactType : String = "",
     val refContactNumber : String = ""
-)
+){
+    fun toMap() : Map<String,Any?>{
+        return mapOf(
+            "jobSeekerId" to jobSeekerId,
+            "fullName" to fullName,
+            "email" to email,
+            "phoneNumber" to phoneNumber,
+            "gender" to gender,
+            "dob" to dob,
+            "currentAddress" to currentAddress,
+            "permanentAddress" to permanentAddress,
+            "bio" to bio,
+            "profilePhoto" to profilePhoto,
+            "coverPhoto" to coverPhoto,
+            "objective" to objective,
+            "video" to video,
+            "expCompanyName" to expCompanyName,
+            "expJobTitle" to expJobTitle,
+            "expJobLevel" to expJobLevel,
+            "expJobStartDate" to expJobStartDate,
+            "expJobEndDate" to expJobEndDate,
+            "expJobWorkingStatus" to expJobWorkingStatus,
+            "expLetter" to expLetter,
+            "skillName" to skillName,
+            "skillLevel" to skillLevel,
+            "eduInstituteName" to eduInstituteName,
+            "eduBoard" to eduBoard,
+            "eduField" to eduField,
+            "eduStartYear" to eduStartYear,
+            "eduEndYear" to eduEndYear,
+            "eduGradeType" to eduGradeType,
+            "eduStatus" to eduStatus,
+            "trainingInstituteName" to trainingInstituteName,
+            "trainingDuration" to trainingDuration,
+            "trainingCompletionDate" to trainingCompletionDate,
+            "trainingCertificate" to trainingCertificate,
+            "pefJobCategory" to pefJobCategory,
+            "pefIndustry" to pefIndustry,
+            "pefJobTitle" to pefJobTitle,
+            "pefAvailability" to pefAvailability,
+            "pefLocation" to pefLocation,
+            "portfolioAccountName" to portfolioAccountName,
+            "portfolioAccountLink" to portfolioAccountLink,
+            "languageName" to languageName,
+            "languageReadingLevel" to languageReadingLevel,
+            "languageSpeakingLevel" to languageSpeakingLevel,
+            "languageWritingLevel" to languageWritingLevel,
+            "languageListeningLevel" to languageListeningLevel,
+            "refName" to refName,
+            "refJobTitle" to refJobTitle,
+            "refCompanyName" to refCompanyName,
+            "refEmail" to refEmail,
+            "refEmail" to refEmail,
+            "refContactType" to refContactType,
+            "refContactNumber" to refContactNumber,
+        )
+    }
+}
