@@ -24,7 +24,7 @@ import com.example.rojgar.R
 
 import com.example.rojgar.ui.theme.Purple
 
-class SignUpActivity : ComponentActivity() {
+class JobseekerSignUpActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
