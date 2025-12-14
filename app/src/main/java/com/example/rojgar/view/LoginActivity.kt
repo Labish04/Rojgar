@@ -3,6 +3,7 @@ package com.example.rojgar.view
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -52,9 +53,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.R
+import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.NormalBlue
 import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
+import com.example.rojgar.viewmodel.JobSeekerViewModel
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,6 +75,9 @@ fun LoginBody() {
 
     val context = LocalContext.current
     val activity = context as Activity
+
+    val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
+
 
     var email by remember { mutableStateOf("") }
     var password by remember {mutableStateOf("")}
@@ -224,7 +230,22 @@ fun LoginBody() {
                 horizontalArrangement = Arrangement.Center
             ){
                 Button(
-                    onClick = {},
+                    onClick = {
+                        if (email.isEmpty() || password.isEmpty()){
+                            Toast.makeText(context, "Email and password required", Toast.LENGTH_SHORT).show()
+                        }
+                        else{
+                            jobSeekerViewModel.login(email, password){ success, message ->
+                                if(success){
+                                    Toast.makeText(context, "Login Successful", Toast.LENGTH_SHORT).show()
+
+                                    val intent = Intent(context,
+                                        JobSeekerDashboardActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                            }
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Purple
                     ),
