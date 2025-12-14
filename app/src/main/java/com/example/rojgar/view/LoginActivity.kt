@@ -244,26 +244,45 @@ fun LoginBody() {
                         if (email.isEmpty() || password.isEmpty()) {
                             Toast.makeText(context, "Email and password required", Toast.LENGTH_SHORT).show()
                         } else {
-                            // First try JobSeeker login
-                            jobSeekerViewModel.login(email, password) { jobSeekerSuccess, jobSeekerMessage ->
-                                if (jobSeekerSuccess) {
-                                    Toast.makeText(context, "Login Successful as JobSeeker", Toast.LENGTH_SHORT).show()
-                                    val intent = Intent(context, JobSeekerDashboardActivity::class.java)
-                                    context.startActivity(intent)
-                                } else {
-                                    // If JobSeeker login failed, try Company login
-                                    companyViewModel.login(email, password) { companySuccess, companyMessage ->
-                                        if (companySuccess) {
-                                            Toast.makeText(context, "Login Successful as Company", Toast.LENGTH_SHORT).show()
-                                            val intent = Intent(context, CompanyDashboardActivity::class.java)
-                                            context.startActivity(intent)
-                                        } else {
-                                            // If both fail
-                                            Toast.makeText(context, "Login failed: ${jobSeekerMessage}", Toast.LENGTH_SHORT).show()
+                            findUserTypeByEmail(
+                                email = email,
+                                onUserTypeFound = { userType ->
+                                    when (userType) {
+                                        "JOBSEEKER" -> {
+                                            jobSeekerViewModel.login(email, password) { success, message ->
+                                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                                if (success) {
+                                                    Toast.makeText(context, "Login Successful as JobSeeker", Toast.LENGTH_SHORT).show()
+                                                    val intent = Intent(context, JobSeekerDashboardActivity::class.java)
+                                                    context.startActivity(intent)
+                                                    activity.finish()
+                                                }
+                                            }
+                                        }
+                                        "COMPANY" -> {
+                                            companyViewModel.login(email, password) { success, message ->
+                                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                                if (success) {
+                                                    Toast.makeText(context, "Login Successful as Company", Toast.LENGTH_SHORT).show()
+                                                    val intent = Intent(context, CompanyDashboardActivity::class.java)
+                                                    context.startActivity(intent)
+                                                    activity.finish()
+                                                }
+                                            }
+                                        }
+                                        else -> {
+                                            Toast.makeText(
+                                                context,
+                                                "Email not found. Please check and try again.",
+                                                Toast.LENGTH_LONG
+                                            ).show()
                                         }
                                     }
+                                },
+                                onError = { errorMessage ->
+                                    Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
                                 }
-                            }
+                            )
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
