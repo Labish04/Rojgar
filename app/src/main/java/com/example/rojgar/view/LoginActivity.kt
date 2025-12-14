@@ -53,10 +53,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.R
+import com.example.rojgar.repository.CompanyRepoImpl
 import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.NormalBlue
 import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
+import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobSeekerViewModel
 
 class LoginActivity : ComponentActivity() {
@@ -77,11 +79,11 @@ fun LoginBody() {
     val activity = context as Activity
 
     val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
+    val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
 
 
     var email by remember { mutableStateOf("") }
     var password by remember {mutableStateOf("")}
-    var visibility by remember {mutableStateOf(false)}
 
     var rememberMe by remember { mutableStateOf(false) }
 
@@ -231,17 +233,27 @@ fun LoginBody() {
             ){
                 Button(
                     onClick = {
-                        if (email.isEmpty() || password.isEmpty()){
+                        if (email.isEmpty() || password.isEmpty()) {
                             Toast.makeText(context, "Email and password required", Toast.LENGTH_SHORT).show()
-                        }
-                        else{
-                            jobSeekerViewModel.login(email, password){ success, message ->
-                                if(success){
-                                    Toast.makeText(context, "Login Successful", Toast.LENGTH_SHORT).show()
-
-                                    val intent = Intent(context,
-                                        JobSeekerDashboardActivity::class.java)
+                        } else {
+                            // First try JobSeeker login
+                            jobSeekerViewModel.login(email, password) { jobSeekerSuccess, jobSeekerMessage ->
+                                if (jobSeekerSuccess) {
+                                    Toast.makeText(context, "Login Successful as JobSeeker", Toast.LENGTH_SHORT).show()
+                                    val intent = Intent(context, JobSeekerDashboardActivity::class.java)
                                     context.startActivity(intent)
+                                } else {
+                                    // If JobSeeker login failed, try Company login
+                                    companyViewModel.login(email, password) { companySuccess, companyMessage ->
+                                        if (companySuccess) {
+                                            Toast.makeText(context, "Login Successful as Company", Toast.LENGTH_SHORT).show()
+                                            val intent = Intent(context, CompanyDashboardActivity::class.java)
+                                            context.startActivity(intent)
+                                        } else {
+                                            // If both fail
+                                            Toast.makeText(context, "Login failed: ${jobSeekerMessage}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
                                 }
                             }
                         }
