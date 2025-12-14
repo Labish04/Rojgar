@@ -1,6 +1,8 @@
 package com.example.rojgar.view
 
+import android.app.Activity
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -35,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -42,10 +45,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.R
+import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.DarkBlue2
 import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
 import com.example.rojgar.view.ui.theme.RojgarTheme
+import com.example.rojgar.viewmodel.JobSeekerViewModel
 
 class ForgetPasswordActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,6 +66,10 @@ class ForgetPasswordActivity : ComponentActivity() {
 @Composable
 fun ForgetPasswordBody(){
 
+    val context = LocalContext.current
+    val activity = context as Activity
+
+    val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
     var email by remember { mutableStateOf("") }
 
     Scaffold { padding ->
@@ -177,7 +186,22 @@ fun ForgetPasswordBody(){
                 horizontalArrangement = Arrangement.Center
             ){
                 Button(
-                    onClick = {},
+                    onClick = {
+                        if (email.isEmpty()) {
+                            Toast.makeText(context, "Please enter email", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+
+                        jobSeekerViewModel.forgetPassword(email) { success, message ->
+                            if (success) {
+                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                // Optional: go back to login
+                                (context as Activity).finish()
+                            } else {
+                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Purple
                     ),

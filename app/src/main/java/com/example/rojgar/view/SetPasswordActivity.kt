@@ -114,10 +114,7 @@ fun SetPasswordScreen() {
                     leadingIcon = R.drawable.outline_lock_24
                 )
             }
-
             Spacer(modifier = Modifier.height(25.dp))
-
-            // Confirm Password Field using the new function
             Row(
                 modifier = Modifier
                     .padding(horizontal = 30.dp)
@@ -129,9 +126,7 @@ fun SetPasswordScreen() {
                     leadingIcon = R.drawable.outline_lock_24
                 )
             }
-
             Spacer(modifier = Modifier.height(30.dp))
-
             // Done Button
             Row(
                 modifier = Modifier
@@ -139,7 +134,9 @@ fun SetPasswordScreen() {
                 horizontalArrangement = Arrangement.Center
             ) {
                 Button(
-                    onClick = { },
+                    onClick = {
+
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Purple
                     ),
@@ -158,7 +155,6 @@ fun SetPasswordScreen() {
                     )
                 }
             }
-
             Image(
                 painter = painterResource(R.drawable.design2),
                 contentDescription = null,
@@ -169,7 +165,6 @@ fun SetPasswordScreen() {
         }
     }
 }
-
 @Composable
 fun PasswordTextField(
     value: String,
