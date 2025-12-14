@@ -47,7 +47,7 @@ fun JobSeekerSignUpScreen() {
     val context = LocalContext.current
     val activity = context as Activity
 
-    val userViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
+    val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
 
     var fullName by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
@@ -189,7 +189,7 @@ fun JobSeekerSignUpScreen() {
 
             // SIGNUP Button
             Button(
-                onClick = { userViewModel.register(email, password) { success, message, jobSeekerId ->
+                onClick = { jobSeekerViewModel.register(email, password) { success, message, jobSeekerId ->
                     if (success) {
                         var model = JobSeekerModel(
                             jobSeekerId = jobSeekerId,
@@ -197,7 +197,7 @@ fun JobSeekerSignUpScreen() {
                             phoneNumber = phoneNumber,
                             email = email
                         )
-                        userViewModel.addJobSeekerToDatabase(jobSeekerId, model) { success, message ->
+                        jobSeekerViewModel.addJobSeekerToDatabase(jobSeekerId, model) { success, message ->
                             if (success) {
                                 activity.finish()
                                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
