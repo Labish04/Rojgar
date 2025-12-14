@@ -1,5 +1,4 @@
 package com.example.rojgar.repository
-
 import com.example.rojgar.model.JobSeekerModel
 import com.google.firebase.auth.FirebaseUser
 

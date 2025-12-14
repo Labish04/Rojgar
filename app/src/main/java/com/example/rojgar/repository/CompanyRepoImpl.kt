@@ -1,7 +1,7 @@
 package com.example.rojgar.repository
 
 import androidx.compose.runtime.mutableStateListOf
-import com.example.rojgar.model.JobSeekerModel
+import com.example.rojgar.model.CompanyModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.DataSnapshot
@@ -53,12 +53,12 @@ class CompanyRepoImpl : CompanyRepo {
             }
     }
 
-    override fun addJobSeekerToDatabase(
-        jobSeekerId: String,
-        model: JobSeekerModel,
+    override fun addCompanyToDatabase(
+        companyId: String,
+        model: CompanyModel,
         callback: (Boolean, String) -> Unit
     ) {
-        ref.child(jobSeekerId).setValue(model).addOnCompleteListener {
+        ref.child(companyId).setValue(model).addOnCompleteListener {
             if (it.isSuccessful){
                 callback(true,"Registration Successful")
             }
@@ -68,20 +68,20 @@ class CompanyRepoImpl : CompanyRepo {
         }
     }
 
-    override fun getCurrentJobSeeker(): FirebaseUser? {
+    override fun getCurrentCompany(): FirebaseUser? {
         return auth.currentUser
     }
 
-    override fun getJobSeekerById(
-        jobSeekerId: String,
-        callback: (Boolean, String, JobSeekerModel?) -> Unit
+    override fun getCompanyById(
+        companyId: String,
+        callback: (Boolean, String, CompanyModel?) -> Unit
     ) {
-        ref.child(jobSeekerId).addValueEventListener(object : ValueEventListener{
+        ref.child(companyId).addValueEventListener(object : ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()){
-                    val jobSeeker = snapshot.getValue(JobSeekerModel::class.java)
-                    if (jobSeeker != null) {
-                        callback(true, "Profile fetched", jobSeeker)
+                    val company = snapshot.getValue(CompanyModel::class.java)
+                    if (company != null) {
+                        callback(true, "Profile fetched", company)
                     }
                 }
             }
@@ -93,18 +93,18 @@ class CompanyRepoImpl : CompanyRepo {
         })
     }
 
-    override fun getAllJobSeeker(callback: (Boolean, String, List<JobSeekerModel>?) -> Unit) {
+    override fun getAllCompany(callback: (Boolean, String, List<CompanyModel>?) -> Unit) {
         ref.addValueEventListener(object : ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()){
-                    var allJobSeekers = mutableStateListOf<JobSeekerModel>()
+                    var allCompanys = mutableStateListOf<CompanyModel>()
                     for (data in snapshot.children){
-                        var jobSeeker = data.getValue(JobSeekerModel::class.java)
-                        if (jobSeeker != null){
-                            allJobSeekers.add(jobSeeker)
+                        var company = data.getValue(CompanyModel::class.java)
+                        if (company != null){
+                            allCompanys.add(company)
                         }
                     }
-                    callback(true, "JobSeeker Fetched", allJobSeekers)
+                    callback(true, "Company Fetched", allCompanys)
                 }
             }
 
@@ -116,7 +116,7 @@ class CompanyRepoImpl : CompanyRepo {
     }
 
     override fun logout(
-        jobSeekerId: String,
+        companyId: String,
         callback: (Boolean, String) -> Unit
     ) {
         try {
