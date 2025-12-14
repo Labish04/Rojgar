@@ -217,7 +217,15 @@ fun LoginBody() {
                         "Forget Password?", style = TextStyle(
                             fontSize = 15.sp,
                             color = Purple
-                        )
+                        ),
+                        modifier = Modifier
+                            .clickable(interactionSource = remember {
+                                MutableInteractionSource()
+                            },
+                                indication = null    ){
+                                val intent = Intent(context, ForgetPasswordActivity::class.java)
+                                context.startActivity(intent)
+                            },
                     )
                 }
             }

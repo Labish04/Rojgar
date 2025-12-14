@@ -68,7 +68,6 @@ fun ForgetPasswordBody(){
 
     val context = LocalContext.current
     val activity = context as Activity
-
     val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
     var email by remember { mutableStateOf("") }
 
