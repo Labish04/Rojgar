@@ -1,8 +1,9 @@
 package com.example.rojgar.repository
-import com.example.rojgar.model.JobSeekerModel
+
+import com.example.rojgar.model.CompanyModel
 import com.google.firebase.auth.FirebaseUser
 
-interface JobSeekerRepo {
+interface CompanyRepo {
     fun register(
         email : String,
         password : String,
@@ -15,25 +16,25 @@ interface JobSeekerRepo {
         callback : (Boolean, String) ->Unit
     )
 
-    fun addJobSeekerToDatabase(
-        jobSeekerId : String,
-        model : JobSeekerModel,
+    fun addCompanyToDatabase(
+        companyId : String,
+        model : CompanyModel,
         callback : (Boolean, String) ->Unit
     )
 
-    fun getCurrentJobSeeker() : FirebaseUser?
+    fun getCurrentCompany() : FirebaseUser?
 
-    fun getJobSeekerById(
-        jobSeekerId : String,
-        callback : (Boolean, String, JobSeekerModel?) ->Unit
+    fun getCompanyById(
+        companyId : String,
+        callback : (Boolean, String, CompanyModel?) ->Unit
     )
 
-    fun getAllJobSeeker(
-        callback : (Boolean, String, List<JobSeekerModel>?) ->Unit
+    fun getAllCompany(
+        callback : (Boolean, String, List<CompanyModel>?) ->Unit
     )
 
     fun logout(
-        jobSeekerId : String,
+        companyId : String,
         callback : (Boolean, String) ->Unit
     )
 
