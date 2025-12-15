@@ -117,7 +117,7 @@ fun JobSeekerDashboardBody() {
             when (selectedIndex) {
                 0 -> Text("Home Screen")
                 1 -> Text("Message Screen")
-                2 -> Text("Post Screen")
+                2 -> JobSeekerViewPostBody()
                 3 -> Text("Map Screen")
             }
         }
