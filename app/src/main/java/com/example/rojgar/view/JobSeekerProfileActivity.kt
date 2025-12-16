@@ -105,7 +105,7 @@ fun JobSeekerProfileBody() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding()
                 .background(color = Blue)
         ) {
             // Top Bar
