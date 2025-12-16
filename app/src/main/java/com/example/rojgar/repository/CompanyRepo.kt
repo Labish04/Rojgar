@@ -1,6 +1,7 @@
 package com.example.rojgar.repository
 
 import com.example.rojgar.model.CompanyModel
+import com.example.rojgar.model.JobModel
 import com.google.firebase.auth.FirebaseUser
 
 interface CompanyRepo {
@@ -42,4 +43,36 @@ interface CompanyRepo {
         email : String,
         callback : (Boolean, String) ->Unit
     )
+
+    // Job Post Methods
+    fun createJobPost(
+        jobPost: JobModel,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun updateJobPost(
+        jobPost: JobModel,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun deleteJobPost(
+        postId: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun getJobPostsByCompanyId(
+        companyId: String,
+        callback: (Boolean, String, List<JobModel>?) -> Unit
+    )
+
+    fun getJobPostById(
+        postId: String,
+        callback: (Boolean, String, JobModel?) -> Unit
+    )
+
+//    fun uploadImage(
+//        imageUri: android.net.Uri,
+//        callback: (Boolean, String, String) -> Unit
+//    )
+
 }

@@ -25,6 +25,6 @@ fun JobSeekerViewPostBody() {
 @Preview
 @Composable
 fun JobSeekerViewPostPreview() {
-    CompanyUploadPostBody()
+    JobSeekerViewPostBody()
 
 }
