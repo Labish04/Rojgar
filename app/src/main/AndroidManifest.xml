@@ -89,6 +89,17 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".view.FollowingListActivity"
+            android:exported="true"
+            android:label="@string/title_activity_sign_up_company"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".view.LoginActivity"
             android:exported="true"
             android:label="@string/title_activity_login"
