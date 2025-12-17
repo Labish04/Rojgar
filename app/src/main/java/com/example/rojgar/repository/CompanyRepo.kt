@@ -70,6 +70,8 @@ interface CompanyRepo {
         callback: (Boolean, String, JobModel?) -> Unit
     )
 
+
+
 //    fun uploadImage(
 //        imageUri: android.net.Uri,
 //        callback: (Boolean, String, String) -> Unit

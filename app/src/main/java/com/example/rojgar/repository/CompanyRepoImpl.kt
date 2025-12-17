@@ -229,6 +229,11 @@ class CompanyRepoImpl : CompanyRepo {
         })
     }
 
+
+}
+
+
+
 //    override fun uploadImage(
 //        imageUri: Uri,
 //        callback: (Boolean, String, String) -> Unit
@@ -248,4 +253,3 @@ class CompanyRepoImpl : CompanyRepo {
 //                callback(false, "Failed to upload image: ${e.message}", "")
 //            }
 //    }
-}
