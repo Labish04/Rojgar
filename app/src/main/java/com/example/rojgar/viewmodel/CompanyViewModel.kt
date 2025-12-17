@@ -98,6 +98,8 @@ class CompanyViewModel (val repo: CompanyRepo){
         repo.getJobPostById(postId, callback)
     }
 
+
+
 //    fun uploadImage(
 //        imageUri: Uri,
 //        callback: (Boolean, String, String) -> Unit
