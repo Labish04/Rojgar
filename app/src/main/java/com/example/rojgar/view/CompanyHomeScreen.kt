@@ -43,7 +43,7 @@ import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
 
 @Composable
-fun JobSeekerHomeScreenBody(){
+fun CompanyHomeScreenBody(){
 
     var search by remember { mutableStateOf("") }
 
@@ -130,10 +130,10 @@ fun JobSeekerHomeScreenBody(){
                     containerColor = Color.White
                 )
             ){
-                Text("Profile Completed", style = TextStyle(
+                Text("Reviews & Ratings", style = TextStyle(
                     fontSize = 18.sp,
                     color = Color.DarkGray
-                    ),
+                ),
                     modifier = Modifier
                         .padding(vertical = 10.dp)
                         .align(Alignment.CenterHorizontally)
@@ -175,7 +175,7 @@ fun JobSeekerHomeScreenBody(){
             verticalAlignment = Alignment.CenterVertically
         ){
             Text(
-                "Recommended Jobs", style = TextStyle(
+                "Posted Jobs", style = TextStyle(
                     fontWeight = FontWeight.Bold,
                     fontSize = 28.sp
                 )
