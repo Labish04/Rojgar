@@ -3,6 +3,7 @@ package com.example.rojgar.view
 import android.app.Activity
 import android.app.DatePickerDialog
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -12,6 +13,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -39,6 +42,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,6 +63,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.window.Dialog
 import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
 import com.example.rojgar.ui.theme.Gray
@@ -80,19 +86,19 @@ fun JobSeekerPersonalInformationBody() {
     val context = LocalContext.current
     val activity = context as Activity
 
-//    Dropdown
+    // Dropdown
     var gender by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
     var selectedDate by remember { mutableStateOf("") }
 
-// Calendar
+    // Calendar
     val calendar = Calendar.getInstance()
     val year = calendar.get(Calendar.YEAR)
     val month = calendar.get(Calendar.MONTH)
     val day = calendar.get(Calendar.DAY_OF_MONTH)
 
-//  DatePickerDialog
+    // DatePickerDialog
     val datePickerDialog = DatePickerDialog(
         context,
         { _, y, m, d ->
@@ -103,20 +109,197 @@ fun JobSeekerPersonalInformationBody() {
         day
     )
 
-//    CoverProfile
+    // Cover Photo states
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var showSampleDialog by remember { mutableStateOf(false) }
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-        selectedImageUri = uri
+        uri?.let {
+            // Validate image dimensions
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val options = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                BitmapFactory.decodeStream(inputStream, null, options)
+                inputStream?.close()
+
+                val width = options.outWidth
+                val height = options.outHeight
+
+                if (width == 1080 && height == 1668) {
+                    selectedImageUri = uri
+                } else {
+                    errorMessage = "Invalid photo size!\n\nRequired: 1080 × 1668 pixels\nYour photo: $width × $height pixels\n\nPlease upload a photo with exact dimensions."
+                    showErrorDialog = true
+                }
+            } catch (e: Exception) {
+                errorMessage = "Error reading image. Please try again."
+                showErrorDialog = true
+            }
+        }
     }
 
-//    Profile
+    // Profile
     var selectedProfileUri by remember { mutableStateOf<Uri?>(null) }
     val profile = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         selectedProfileUri = uri
+    }
+
+    // Sample Photo Dialog
+    if (showSampleDialog) {
+        Dialog(onDismissRequest = { showSampleDialog = false }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .background(Color.White)
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Cover Photo Requirements",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkBlue2
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Sample image placeholder with exact ratio
+                    Card(
+                        modifier = Modifier
+                            .width(200.dp)
+                            .height(308.dp), // Maintains 1080:1668 ratio
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.LightGray),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.addprofileicon),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(60.dp),
+                                    tint = Color.Gray
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Sample Cover Photo",
+                                    color = Color.DarkGray,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Required Dimensions:",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Black
+                    )
+
+                    Text(
+                        text = "1080 × 1668 pixels",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Purple
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "• Aspect Ratio: 9:13.9\n• Portrait orientation\n• High quality image recommended",
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        TextButton(
+                            onClick = { showSampleDialog = false }
+                        ) {
+                            Text("Close", color = Gray)
+                        }
+
+                        Button(
+                            onClick = {
+                                showSampleDialog = false
+                                launcher.launch("image/*")
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = DarkBlue2
+                            )
+                        ) {
+                            Text("Upload Photo")
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Error Dialog
+    if (showErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            title = {
+                Text(
+                    text = "Upload Failed",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Red
+                )
+            },
+            text = {
+                Text(
+                    text = errorMessage,
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showErrorDialog = false },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DarkBlue2
+                    )
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showErrorDialog = false
+                        showSampleDialog = true
+                    }
+                ) {
+                    Text("View Requirements", color = Purple)
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -137,7 +320,7 @@ fun JobSeekerPersonalInformationBody() {
                     horizontalArrangement = Arrangement.Start
                 ) {
 
-                    IconButton (onClick = {
+                    IconButton(onClick = {
                         val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
                         context.startActivity(intent)
                     }) {
@@ -148,9 +331,7 @@ fun JobSeekerPersonalInformationBody() {
                             modifier = Modifier.size(30.dp)
                         )
                     }
-
                     Spacer(modifier = Modifier.width(50.dp))
-
                     Text(
                         "Personal Information",
                         fontSize = 20.sp,
@@ -163,7 +344,6 @@ fun JobSeekerPersonalInformationBody() {
             }
         }
     ) { padding ->
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -180,7 +360,6 @@ fun JobSeekerPersonalInformationBody() {
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Box {
-
                     Card {
                         // Cover Photo Section
                         Box(
@@ -190,30 +369,30 @@ fun JobSeekerPersonalInformationBody() {
                                 .background(Color.LightGray),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (selectedImageUri != null) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(selectedImageUri),
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-
-                            // Icon
-                            Icon(
-                                painter = painterResource(id = R.drawable.addprofileicon),
-                                contentDescription = "Add Cover Photo",
-                                tint = Color.White,
+                            // Add/Upload Icon
+                            Row(
                                 modifier = Modifier
-                                    .size(60.dp)
                                     .align(Alignment.BottomEnd)
                                     .padding(16.dp)
-                                    .clickable {
-                                        launcher.launch("image/*")
-                                    }
-                            )
+                            ) {
+//
+
+                                Spacer(modifier = Modifier.width(9.dp))
+
+                                Icon(
+                                    painter = painterResource(id = R.drawable.addprofileicon),
+                                    contentDescription = "Add Cover Photo",
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .size(35.dp)
+                                        .clickable {
+                                            showSampleDialog = true
+                                        }
+                                )
+                            }
                         }
                     }
+
                     Card(
                         shape = RoundedCornerShape(500.dp),
                         modifier = Modifier
@@ -225,16 +404,15 @@ fun JobSeekerPersonalInformationBody() {
                         ) {
                             if (selectedProfileUri != null) {
                                 Image(
-                                    painter = rememberAsyncImagePainter(selectedImageUri),
+                                    painter = rememberAsyncImagePainter(selectedProfileUri),
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )
                             }
-
                         }
-
                     }
+
                     Icon(
                         painter = painterResource(id = R.drawable.addprofileicon),
                         contentDescription = "Add Profile Photo",
@@ -246,9 +424,8 @@ fun JobSeekerPersonalInformationBody() {
                                 profile.launch("image/*")
                             }
                     )
-
-
                 }
+
                 Spacer(modifier = Modifier.height(70.dp))
 
                 // NAME TEXTFIELD
@@ -277,7 +454,6 @@ fun JobSeekerPersonalInformationBody() {
                         focusedIndicatorColor = Purple,
                         unfocusedIndicatorColor = Color.Black
                     )
-
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -333,7 +509,7 @@ fun JobSeekerPersonalInformationBody() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(60.dp)
-                            .clickable { expanded = true },       // Open Dropdown on click
+                            .clickable { expanded = true },
                         shape = RoundedCornerShape(15.dp),
                         trailingIcon = {
                             Icon(
@@ -342,7 +518,7 @@ fun JobSeekerPersonalInformationBody() {
                                 tint = Color.Black,
                                 modifier = Modifier
                                     .size(24.dp)
-                                    .clickable { expanded = true } // Arrow also opens dropdown
+                                    .clickable { expanded = true }
                             )
                         },
                         singleLine = true,
@@ -357,7 +533,6 @@ fun JobSeekerPersonalInformationBody() {
                         )
                     )
 
-                    // ------- DROPDOWN MENU -------
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
@@ -389,7 +564,7 @@ fun JobSeekerPersonalInformationBody() {
                     value = selectedDate,
                     onValueChange = {},
                     placeholder = { Text("dd/mm/yyyy") },
-                    enabled = false,  // User cannot type manually
+                    enabled = false,
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.birthdaydateicon),
@@ -421,7 +596,9 @@ fun JobSeekerPersonalInformationBody() {
                         unfocusedContainerColor = Color(0xFFE3F2FD),
                     )
                 )
+
                 Spacer(modifier = Modifier.height(20.dp))
+
                 // CURRENT ADDRESS
                 OutlinedTextField(
                     value = "",
@@ -499,7 +676,6 @@ fun JobSeekerPersonalInformationBody() {
                         .fillMaxWidth()
                         .height(60.dp),
                     shape = RoundedCornerShape(15.dp),
-
                     singleLine = true,
                     colors = TextFieldDefaults.colors(
                         disabledIndicatorColor = Color.Transparent,
@@ -510,6 +686,7 @@ fun JobSeekerPersonalInformationBody() {
                         unfocusedIndicatorColor = Color.Black
                     )
                 )
+
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // BIO
@@ -540,19 +717,18 @@ fun JobSeekerPersonalInformationBody() {
                         unfocusedIndicatorColor = Color.Black
                     )
                 )
+
                 Spacer(modifier = Modifier.height(30.dp))
 
                 Row {
                     Spacer(modifier = Modifier.width(40.dp))
 
                     Button(
-                        onClick = {
-                        },
+                        onClick = {},
                         shape = RoundedCornerShape(25.dp),
                         modifier = Modifier
                             .width(110.dp)
                             .height(45.dp),
-
                         colors = ButtonDefaults.buttonColors(
                             containerColor = DarkBlue2,
                             contentColor = Color.White
@@ -569,14 +745,13 @@ fun JobSeekerPersonalInformationBody() {
                                     fontWeight = FontWeight.SemiBold,
                                 ),
                                 modifier = Modifier.fillMaxWidth()
-
                             )
                         }
-
                     }
 
                     Spacer(modifier = Modifier.width(70.dp))
-                    Button (
+
+                    Button(
                         onClick = {
                             activity.finish()
                         },
@@ -584,7 +759,6 @@ fun JobSeekerPersonalInformationBody() {
                         modifier = Modifier
                             .width(130.dp)
                             .height(45.dp),
-
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Gray,
                             contentColor = Color.Black
@@ -601,16 +775,12 @@ fun JobSeekerPersonalInformationBody() {
                                     fontWeight = FontWeight.SemiBold,
                                 ),
                                 modifier = Modifier.fillMaxWidth()
-
                             )
-
                         }
-
                     }
-
                 }
-                Spacer(modifier = Modifier.height(20.dp))
 
+                Spacer(modifier = Modifier.height(20.dp))
             }
         }
     }
