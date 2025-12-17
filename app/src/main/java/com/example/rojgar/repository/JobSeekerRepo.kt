@@ -1,4 +1,5 @@
 package com.example.rojgar.repository
+import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
 import com.google.firebase.auth.FirebaseUser
 
@@ -40,5 +41,13 @@ interface JobSeekerRepo {
     fun forgetPassword(
         email : String,
         callback : (Boolean, String) ->Unit
+    )
+
+    fun getAllJobPosts(
+        callback: (Boolean, String, List<JobModel>?) -> Unit)
+
+    fun getCompanyDetails(
+        companyId: String,
+        callback: (Boolean, String, String?, String?) -> Unit
     )
 }
