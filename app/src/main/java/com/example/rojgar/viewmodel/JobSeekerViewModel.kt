@@ -1,5 +1,6 @@
 package com.example.rojgar.viewmodel
 
+import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
 import com.example.rojgar.repository.JobSeekerRepo
 import com.google.firebase.auth.FirebaseUser
@@ -60,4 +61,18 @@ class JobSeekerViewModel (val repo: JobSeekerRepo){
     ){
         repo.forgetPassword(email,callback)
     }
+
+    fun getAllJobPosts(
+        callback: (Boolean, String, List<JobModel>?) -> Unit
+    ){
+        repo.getAllJobPosts(callback)
+    }
+
+    fun getCompanyDetails(
+        companyId: String,
+        callback: (Boolean, String, String?, String?) -> Unit
+    ) {
+        repo.getCompanyDetails(companyId, callback)
+    }
+
 }
