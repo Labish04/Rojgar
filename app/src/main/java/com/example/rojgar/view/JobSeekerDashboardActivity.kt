@@ -141,7 +141,7 @@ fun JobSeekerDashboardBody() {
                         ) {
                             IconButton(onClick = {}) {
                                 Icon(
-                                    painter = painterResource(R.drawable.notification),
+                                    painter = painterResource(R.drawable.chat),
                                     contentDescription = null,
                                     modifier = Modifier
                                         .size(30.dp)
@@ -150,7 +150,7 @@ fun JobSeekerDashboardBody() {
                             Spacer(modifier = Modifier.width(20.dp))
                             IconButton(onClick = {}) {
                                 Icon(
-                                    painter = painterResource(R.drawable.chat),
+                                    painter = painterResource(R.drawable.notification),
                                     contentDescription = null,
                                     modifier = Modifier
                                         .size(30.dp)
@@ -200,7 +200,7 @@ fun JobSeekerDashboardBody() {
                 .padding(padding)
         ) {
             when (selectedIndex) {
-                0 -> Text("Home Screen")
+                0 -> JobSeekerHomeScreenBody()
                 1 -> Text("Job Post Screen")
                 2 -> Text("Map Screen")
                 3 -> JobSeekerProfileBody()
