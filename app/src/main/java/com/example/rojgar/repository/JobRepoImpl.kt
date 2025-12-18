@@ -71,7 +71,6 @@ class JobRepoImpl : JobRepo{
                                 jobPosts.add(post)
                             }
                         }
-                        // Sort by timestamp (newest first)
                         jobPosts.sortByDescending { it.timestamp }
                         callback(true, "Job posts fetched", jobPosts)
                     } else {
@@ -105,7 +104,7 @@ class JobRepoImpl : JobRepo{
 
     override fun getAllJobPosts(
         callback: (Boolean, String, List<JobModel>?) -> Unit) {
-        val jobPostRef = FirebaseDatabase.getInstance().getReference("JobPosts")
+        val jobPostRef = FirebaseDatabase.getInstance().getReference("Job")
         jobPostRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!snapshot.exists()) {

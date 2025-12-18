@@ -122,6 +122,11 @@ fun JobSeekerPersonalInformationBody() {
     var errorMessage by remember { mutableStateOf("") }
 
     var name by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
+    var currentAddress by remember { mutableStateOf("") }
+    var permanentAddress by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var bio by remember { mutableStateOf("") }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -468,8 +473,8 @@ fun JobSeekerPersonalInformationBody() {
 
                 // PHONE NUMBER TEXTFIELD
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = phoneNumber,
+                    onValueChange = {phoneNumber = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.call),
@@ -502,7 +507,7 @@ fun JobSeekerPersonalInformationBody() {
                 ) {
                     OutlinedTextField(
                         value = gender,
-                        onValueChange = {},
+                        onValueChange = {gender = it},
                         readOnly = true,
                         enabled = false,
                         leadingIcon = {
@@ -570,7 +575,7 @@ fun JobSeekerPersonalInformationBody() {
                 // DATE OF BIRTH
                 OutlinedTextField(
                     value = selectedDate,
-                    onValueChange = {},
+                    onValueChange = {selectedDate = it},
                     placeholder = { Text("dd/mm/yyyy") },
                     enabled = false,
                     leadingIcon = {
@@ -609,8 +614,8 @@ fun JobSeekerPersonalInformationBody() {
 
                 // CURRENT ADDRESS
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = currentAddress,
+                    onValueChange = {currentAddress = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.locationicon),
@@ -639,8 +644,8 @@ fun JobSeekerPersonalInformationBody() {
 
                 // PERMANENT ADDRESS
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = permanentAddress,
+                    onValueChange = {permanentAddress =it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.locationicon),
@@ -669,8 +674,8 @@ fun JobSeekerPersonalInformationBody() {
 
                 // EMAIL
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = email,
+                    onValueChange = {email = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.emailicon),
@@ -699,8 +704,8 @@ fun JobSeekerPersonalInformationBody() {
 
                 // BIO
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = bio,
+                    onValueChange = {bio = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.bioicon),
