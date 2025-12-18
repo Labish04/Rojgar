@@ -62,40 +62,13 @@ class CompanyViewModel (val repo: CompanyRepo){
         repo.forgetPassword(email,callback)
     }
 
-    // Job Post Methods
-    fun createJobPost(
-        jobPost: JobModel,
-        callback: (Boolean, String) -> Unit
-    ) {
-        repo.createJobPost(jobPost, callback)
-    }
 
-    fun updateJobPost(
-        jobPost: JobModel,
-        callback: (Boolean, String) -> Unit
-    ) {
-        repo.updateJobPost(jobPost, callback)
-    }
 
-    fun deleteJobPost(
-        postId: String,
-        callback: (Boolean, String) -> Unit
-    ) {
-        repo.deleteJobPost(postId, callback)
-    }
-
-    fun getJobPostsByCompanyId(
+    fun getCompanyDetails(
         companyId: String,
-        callback: (Boolean, String, List<JobModel>?) -> Unit
+        callback: (Boolean, String, CompanyModel?) -> Unit
     ) {
-        repo.getJobPostsByCompanyId(companyId, callback)
-    }
-
-    fun getJobPostById(
-        postId: String,
-        callback: (Boolean, String, JobModel?) -> Unit
-    ) {
-        repo.getJobPostById(postId, callback)
+        repo.getCompanyDetails(companyId, callback)
     }
 
 

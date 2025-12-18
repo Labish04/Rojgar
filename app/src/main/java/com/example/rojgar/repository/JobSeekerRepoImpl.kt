@@ -1,6 +1,7 @@
 package com.example.rojgar.repository
 
 import androidx.compose.runtime.mutableStateListOf
+import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
 import com.google.firebase.auth.FirebaseAuth
@@ -141,72 +142,22 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         }
     }
 
-    override fun getAllJobPosts(
-        callback: (Boolean, String, List<JobModel>?) -> Unit) {
-        val jobPostRef = FirebaseDatabase.getInstance().getReference("JobPosts")
-        jobPostRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (!snapshot.exists()) {
-                    callback(false, "No job posts found", emptyList())
-                    return
-                }
 
-                val jobList = mutableListOf<JobModel>()
 
-                for (postSnapshot in snapshot.children) {
-                    val job = postSnapshot.getValue(JobModel::class.java)
-                    if (job != null) {
-                        jobList.add(
-                            job.copy(postId = postSnapshot.key ?: "")
-                        )
-                    }
-                }
-
-                callback(true, "Jobs fetched successfully", jobList)
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                callback(false, error.message, null)
-            }
-        })
-    }
-
-    override fun getCompanyDetails(
-        companyId: String,
-        callback: (Boolean, String, String?, String?) -> Unit
+    override fun updateProfile(
+        model: JobSeekerModel,
+        callback: (Boolean, String) -> Unit
     ) {
-        val ref = FirebaseDatabase.getInstance()
-            .getReference("companies")
-            .child(companyId)
-
-        ref.get()
-            .addOnSuccessListener { snapshot ->
-                if (snapshot.exists()) {
-                    val companyName =
-                        snapshot.child("companyName").value as? String
-
-                    val companyProfileImage =
-                        snapshot.child("companyProfileImage").value as? String
-
-                    callback(
-                        true,
-                        "Company details fetched successfully",
-                        companyName,
-                        companyProfileImage
-                    )
-                } else {
-                    callback(false, "Company not found", null, null)
-                }
+        ref.child(model.jobSeekerId).updateChildren(model.toMap()).addOnCompleteListener {
+            if(it.isSuccessful){
+                callback(true,"Profile updated successfully")
+            }else{
+                callback(false,"${it.exception?.message}")
             }
-            .addOnFailureListener {
-                callback(
-                    false,
-                    it.message ?: "Failed to fetch company details",
-                    null,
-                    null
-                )
-            }
+        }
     }
 
 
 }
+
+
