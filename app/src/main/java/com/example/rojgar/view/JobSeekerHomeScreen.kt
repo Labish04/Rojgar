@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -64,8 +65,8 @@ fun JobSeekerHomeScreenBody(){
             OutlinedTextField(
                 value = search,
                 onValueChange = { search = it },
-                placeholder = { Text("Search...", style = TextStyle(
-                    fontSize = 24.sp,
+                placeholder = { Text("Search jobs", style = TextStyle(
+                    fontSize = 16.sp,
                     color = Color.Gray
                 )) },
                 leadingIcon = {
@@ -73,7 +74,7 @@ fun JobSeekerHomeScreenBody(){
                         painter = painterResource(R.drawable.searchicon),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(40.dp),
+                            .size(20.dp),
                         tint = Gray,
                     )
                 },
@@ -85,28 +86,30 @@ fun JobSeekerHomeScreenBody(){
                     unfocusedIndicatorColor = Color.Transparent
                 ),
                 modifier = Modifier
-                    .height(60.dp)
+                    .height(50.dp)
                     .width(300.dp)
             )
+            Spacer(modifier = Modifier.width(16.dp))
 
             Button(
-                onClick = {},
+                onClick = { },
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Purple
                 ),
-                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(0.dp),
                 modifier = Modifier
                     .height(50.dp)
-                    .fillMaxWidth()
-                    .padding(start = 20.dp)
+                    .width(56.dp)
             ) {
                 Icon(
                     painter = painterResource(R.drawable.filter),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(40.dp)
+                    contentDescription = "Filter",
+                    tint = Color.White,     // GUARANTEED visibility
+                    modifier = Modifier.size(24.dp)
                 )
             }
+
         }
 
         Spacer(modifier = Modifier.height(20.dp))
