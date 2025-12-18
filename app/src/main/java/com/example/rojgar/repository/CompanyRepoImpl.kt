@@ -18,8 +18,7 @@ class CompanyRepoImpl : CompanyRepo {
 
     val auth: FirebaseAuth = FirebaseAuth.getInstance()
     val database: FirebaseDatabase = FirebaseDatabase.getInstance()
-    val ref: DatabaseReference = database.getReference("Company")
-    val jobPostRef: DatabaseReference = database.getReference("JobPosts")
+    val ref: DatabaseReference = database.getReference("Companys")
 
 
     override fun register(
