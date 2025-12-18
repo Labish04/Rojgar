@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -66,8 +67,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.window.Dialog
 import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
+import com.example.rojgar.model.JobSeekerModel
+import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.Gray
 import com.example.rojgar.ui.theme.Purple
+import com.example.rojgar.viewmodel.JobSeekerViewModel
 import java.util.Calendar
 
 
@@ -85,6 +89,8 @@ class JobSeekerPersonalInformationActivity : ComponentActivity() {
 fun JobSeekerPersonalInformationBody() {
     val context = LocalContext.current
     val activity = context as Activity
+
+    val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
 
     // Dropdown
     var gender by remember { mutableStateOf("") }
@@ -114,6 +120,8 @@ fun JobSeekerPersonalInformationBody() {
     var showSampleDialog by remember { mutableStateOf(false) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+
+    var name by remember { mutableStateOf("") }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -430,8 +438,8 @@ fun JobSeekerPersonalInformationBody() {
 
                 // NAME TEXTFIELD
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = name,
+                    onValueChange = {name = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.usericon),
@@ -724,7 +732,20 @@ fun JobSeekerPersonalInformationBody() {
                     Spacer(modifier = Modifier.width(40.dp))
 
                     Button(
-                        onClick = {},
+                        onClick = {
+                            var model = JobSeekerModel()
+                            jobSeekerViewModel.updateProfile(model){sucess,message ->
+                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                if (sucess){
+                                    Toast.makeText( context,"Personal Information Saved.", Toast.LENGTH_SHORT).show()
+                                }else{
+                                    Toast.makeText( context,errorMessage, Toast.LENGTH_SHORT).show()
+
+                                }
+
+                            }
+
+                        },
                         shape = RoundedCornerShape(25.dp),
                         modifier = Modifier
                             .width(110.dp)

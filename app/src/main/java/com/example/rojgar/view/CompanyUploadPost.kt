@@ -44,10 +44,12 @@ import com.example.rojgar.R
 import com.example.rojgar.model.JobCategory
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.repository.CompanyRepoImpl
+import com.example.rojgar.repository.JobRepoImpl
 import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.*
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobSeekerViewModel
+import com.example.rojgar.viewmodel.JobViewModel
 import java.io.ByteArrayOutputStream
 import java.util.*
 
@@ -64,7 +66,8 @@ class CompanyUploadPost : ComponentActivity() {
 
 @Composable
 fun CompanyUploadPostScreen() {
-    val viewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
+    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
     val context = LocalContext.current
     var jobPosts by remember { mutableStateOf<List<JobModel>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -73,13 +76,13 @@ fun CompanyUploadPostScreen() {
     var selectedPostForView by remember { mutableStateOf<JobModel?>(null) }
     var showDeleteDialog by remember { mutableStateOf<JobModel?>(null) }
 
-    val currentUser = viewModel.getCurrentCompany()
+    val currentUser = companyViewModel.getCurrentCompany()
     val companyId = currentUser?.uid ?: ""
 
     // Load job posts
     LaunchedEffect(companyId) {
         if (companyId.isNotEmpty()) {
-            viewModel.getJobPostsByCompanyId(companyId) { success, message, posts ->
+            jobViewModel.getJobPostsByCompanyId(companyId) { success, message, posts ->
                 isLoading = false
                 if (success && posts != null) {
                     jobPosts = posts
@@ -110,14 +113,14 @@ fun CompanyUploadPostScreen() {
         }
         showCreateForm || editingPost != null -> {
             CompanyUploadPostBody(
-                viewModel = viewModel,
+                jobViewModel = jobViewModel,
                 companyId = companyId,
                 existingPost = editingPost,
                 onPostCreated = {
                     showCreateForm = false
                     editingPost = null
                     // Reload posts
-                    viewModel.getJobPostsByCompanyId(companyId) { success, _, posts ->
+                    jobViewModel.getJobPostsByCompanyId(companyId) { success, _, posts ->
                         if (success && posts != null) {
                             jobPosts = posts
                         }
@@ -153,7 +156,7 @@ fun CompanyUploadPostScreen() {
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.deleteJobPost(post.postId) { success, message ->
+                        jobViewModel.deleteJobPost(post.postId) { success, message ->
                             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                             if (success) {
                                 jobPosts = jobPosts.filter { it.postId != post.postId }
@@ -499,7 +502,7 @@ fun DetailRow(label: String, value: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompanyUploadPostBody(
-    viewModel: CompanyViewModel,
+    jobViewModel: JobViewModel,
     companyId: String,
     existingPost: JobModel? = null,
     onPostCreated: () -> Unit,
@@ -791,12 +794,12 @@ fun CompanyUploadPostBody(
                         )
 
                         if (existingPost != null) {
-                            viewModel.updateJobPost(jobPost) { success, message ->
+                            jobViewModel.updateJobPost(jobPost) { success, message ->
                                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                                 if (success) onPostCreated()
                             }
                         } else {
-                            viewModel.createJobPost(jobPost) { success, message ->
+                            jobViewModel.createJobPost(jobPost) { success, message ->
                                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                                 if (success) onPostCreated()
                             }

@@ -42,3 +42,4 @@ data class JobCategory(
     val name: String,
     val isSelected: Boolean = false
 )
+

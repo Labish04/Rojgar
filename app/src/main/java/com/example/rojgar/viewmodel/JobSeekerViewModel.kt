@@ -1,5 +1,6 @@
 package com.example.rojgar.viewmodel
 
+import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
 import com.example.rojgar.repository.JobSeekerRepo
@@ -62,17 +63,15 @@ class JobSeekerViewModel (val repo: JobSeekerRepo){
         repo.forgetPassword(email,callback)
     }
 
-    fun getAllJobPosts(
-        callback: (Boolean, String, List<JobModel>?) -> Unit
+
+
+    fun updateProfile(
+        model: JobSeekerModel,
+        callback: (Boolean, String) -> Unit
     ){
-        repo.getAllJobPosts(callback)
+        repo.updateProfile(model,callback)
     }
 
-    fun getCompanyDetails(
-        companyId: String,
-        callback: (Boolean, String, String?, String?) -> Unit
-    ) {
-        repo.getCompanyDetails(companyId, callback)
-    }
+
 
 }
