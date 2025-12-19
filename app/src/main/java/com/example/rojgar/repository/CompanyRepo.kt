@@ -44,30 +44,11 @@ interface CompanyRepo {
         callback : (Boolean, String) ->Unit
     )
 
-    // Job Post Methods
-    fun createJobPost(
-        jobPost: JobModel,
-        callback: (Boolean, String) -> Unit
-    )
 
-    fun updateJobPost(
-        jobPost: JobModel,
-        callback: (Boolean, String) -> Unit
-    )
 
-    fun deleteJobPost(
-        postId: String,
-        callback: (Boolean, String) -> Unit
-    )
-
-    fun getJobPostsByCompanyId(
+    fun getCompanyDetails(
         companyId: String,
-        callback: (Boolean, String, List<JobModel>?) -> Unit
-    )
-
-    fun getJobPostById(
-        postId: String,
-        callback: (Boolean, String, JobModel?) -> Unit
+        callback: (Boolean, String, CompanyModel?) -> Unit
     )
 
 

@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -66,8 +67,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.window.Dialog
 import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
+import com.example.rojgar.model.JobSeekerModel
+import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.Gray
 import com.example.rojgar.ui.theme.Purple
+import com.example.rojgar.viewmodel.JobSeekerViewModel
 import java.util.Calendar
 
 
@@ -85,6 +89,8 @@ class JobSeekerPersonalInformationActivity : ComponentActivity() {
 fun JobSeekerPersonalInformationBody() {
     val context = LocalContext.current
     val activity = context as Activity
+
+    val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
 
     // Dropdown
     var gender by remember { mutableStateOf("") }
@@ -114,6 +120,13 @@ fun JobSeekerPersonalInformationBody() {
     var showSampleDialog by remember { mutableStateOf(false) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+
+    var name by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
+    var currentAddress by remember { mutableStateOf("") }
+    var permanentAddress by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var bio by remember { mutableStateOf("") }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -430,8 +443,8 @@ fun JobSeekerPersonalInformationBody() {
 
                 // NAME TEXTFIELD
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = name,
+                    onValueChange = {name = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.usericon),
@@ -460,8 +473,8 @@ fun JobSeekerPersonalInformationBody() {
 
                 // PHONE NUMBER TEXTFIELD
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = phoneNumber,
+                    onValueChange = {phoneNumber = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.call),
@@ -494,7 +507,7 @@ fun JobSeekerPersonalInformationBody() {
                 ) {
                     OutlinedTextField(
                         value = gender,
-                        onValueChange = {},
+                        onValueChange = {gender = it},
                         readOnly = true,
                         enabled = false,
                         leadingIcon = {
@@ -562,7 +575,7 @@ fun JobSeekerPersonalInformationBody() {
                 // DATE OF BIRTH
                 OutlinedTextField(
                     value = selectedDate,
-                    onValueChange = {},
+                    onValueChange = {selectedDate = it},
                     placeholder = { Text("dd/mm/yyyy") },
                     enabled = false,
                     leadingIcon = {
@@ -601,8 +614,8 @@ fun JobSeekerPersonalInformationBody() {
 
                 // CURRENT ADDRESS
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = currentAddress,
+                    onValueChange = {currentAddress = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.locationicon),
@@ -631,8 +644,8 @@ fun JobSeekerPersonalInformationBody() {
 
                 // PERMANENT ADDRESS
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = permanentAddress,
+                    onValueChange = {permanentAddress =it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.locationicon),
@@ -661,8 +674,8 @@ fun JobSeekerPersonalInformationBody() {
 
                 // EMAIL
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = email,
+                    onValueChange = {email = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.emailicon),
@@ -691,8 +704,8 @@ fun JobSeekerPersonalInformationBody() {
 
                 // BIO
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = bio,
+                    onValueChange = {bio = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.bioicon),
@@ -724,7 +737,20 @@ fun JobSeekerPersonalInformationBody() {
                     Spacer(modifier = Modifier.width(40.dp))
 
                     Button(
-                        onClick = {},
+                        onClick = {
+                            var model = JobSeekerModel()
+                            jobSeekerViewModel.updateProfile(model){sucess,message ->
+                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                if (sucess){
+                                    Toast.makeText( context,"Personal Information Saved.", Toast.LENGTH_SHORT).show()
+                                }else{
+                                    Toast.makeText( context,errorMessage, Toast.LENGTH_SHORT).show()
+
+                                }
+
+                            }
+
+                        },
                         shape = RoundedCornerShape(25.dp),
                         modifier = Modifier
                             .width(110.dp)

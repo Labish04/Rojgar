@@ -16,7 +16,7 @@ data class JobModel(
     val jobDescription: String = "",
     val imageUrl: String = "",
     val timestamp: Long = System.currentTimeMillis()
-) {
+){
     fun toMap(): Map<String, Any?> {
         return mapOf(
             "postId" to postId,

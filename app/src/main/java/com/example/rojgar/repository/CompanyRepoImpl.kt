@@ -18,8 +18,7 @@ class CompanyRepoImpl : CompanyRepo {
 
     val auth: FirebaseAuth = FirebaseAuth.getInstance()
     val database: FirebaseDatabase = FirebaseDatabase.getInstance()
-    val ref: DatabaseReference = database.getReference("Company")
-    val jobPostRef: DatabaseReference = database.getReference("JobPosts")
+    val ref: DatabaseReference = database.getReference("Companys")
 
 
     override fun register(
@@ -139,94 +138,32 @@ class CompanyRepoImpl : CompanyRepo {
         }
     }
 
-    // Job Post Implementation
-    override fun createJobPost(
-        jobPost: JobModel,
-        callback: (Boolean, String) -> Unit
-    ) {
-        val postId = jobPostRef.push().key ?: UUID.randomUUID().toString()
-        val postWithId = jobPost.copy(postId = postId)
 
-        jobPostRef.child(postId).setValue(postWithId).addOnCompleteListener {
-            if (it.isSuccessful) {
-                callback(true, "Job post created successfully")
-            } else {
-                callback(false, "${it.exception?.message}")
-            }
-        }
-    }
-
-    override fun updateJobPost(
-        jobPost: JobModel,
-        callback: (Boolean, String) -> Unit
-    ) {
-        jobPostRef.child(jobPost.postId).setValue(jobPost).addOnCompleteListener {
-            if (it.isSuccessful) {
-                callback(true, "Job post updated successfully")
-            } else {
-                callback(false, "${it.exception?.message}")
-            }
-        }
-    }
-
-    override fun deleteJobPost(
-        postId: String,
-        callback: (Boolean, String) -> Unit
-    ) {
-        jobPostRef.child(postId).removeValue().addOnCompleteListener {
-            if (it.isSuccessful) {
-                callback(true, "Job post deleted successfully")
-            } else {
-                callback(false, "${it.exception?.message}")
-            }
-        }
-    }
-
-    override fun getJobPostsByCompanyId(
+    override fun getCompanyDetails(
         companyId: String,
-        callback: (Boolean, String, List<JobModel>?) -> Unit
+        callback: (Boolean, String, CompanyModel?) -> Unit
     ) {
-        jobPostRef.orderByChild("companyId").equalTo(companyId)
-            .addValueEventListener(object : ValueEventListener {
+        if (companyId.isEmpty()) {
+            callback(false, "Invalid companyId", null)
+            return
+        }
+
+        ref.child(companyId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (snapshot.exists()) {
-                        val jobPosts = mutableListOf<JobModel>()
-                        for (data in snapshot.children) {
-                            val post = data.getValue(JobModel::class.java)
-                            if (post != null) {
-                                jobPosts.add(post)
-                            }
-                        }
-                        // Sort by timestamp (newest first)
-                        jobPosts.sortByDescending { it.timestamp }
-                        callback(true, "Job posts fetched", jobPosts)
+                        val company = snapshot.getValue(CompanyModel::class.java)
+                        callback(true, "Company fetched", company)
                     } else {
-                        callback(true, "No job posts found", emptyList())
+                        callback(false, "Company not found", null)
                     }
                 }
+
                 override fun onCancelled(error: DatabaseError) {
                     callback(false, error.message, null)
                 }
             })
-    }
-
-    override fun getJobPostById(
-        postId: String,
-        callback: (Boolean, String, JobModel?) -> Unit
-    ) {
-        jobPostRef.child(postId).addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    val jobPost = snapshot.getValue(JobModel::class.java)
-                    callback(true, "Job post fetched", jobPost)
-                } else {
-                    callback(false, "Job post not found", null)
-                }
-            }
-            override fun onCancelled(error: DatabaseError) {
-                callback(false, error.message, null)
-            }
-        })
     }
 
 
