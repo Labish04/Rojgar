@@ -121,7 +121,9 @@ fun JobSeekerObjectiveBody() {
             Spacer(modifier = Modifier.height(30.dp))
 
             Button(
-                onClick = { /* Submit */ },
+                onClick = {
+
+                },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D6EFD))
             ) {
