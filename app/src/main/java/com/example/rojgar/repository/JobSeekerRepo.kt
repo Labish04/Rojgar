@@ -45,11 +45,8 @@ interface JobSeekerRepo {
     )
 
 
-
     fun updateProfile(
          model: JobSeekerModel,
          callback: (Boolean, String) -> Unit
     )
-
-
 }

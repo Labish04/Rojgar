@@ -9,10 +9,11 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import java.util.UUID
 
-class JobRepoImpl : JobRepo{
+class JobRepoImpl : JobRepo {
     val auth: FirebaseAuth = FirebaseAuth.getInstance()
     val database: FirebaseDatabase = FirebaseDatabase.getInstance()
     val ref: DatabaseReference = database.getReference("Job")
+
     // Job Post Implementation
     override fun createJobPost(
         jobPost: JobModel,
@@ -61,22 +62,31 @@ class JobRepoImpl : JobRepo{
         callback: (Boolean, String, List<JobModel>?) -> Unit
     ) {
         ref.orderByChild("companyId").equalTo(companyId)
-            .addValueEventListener(object : ValueEventListener {
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        val jobPosts = mutableListOf<JobModel>()
-                        for (data in snapshot.children) {
-                            val post = data.getValue(JobModel::class.java)
-                            if (post != null) {
-                                jobPosts.add(post)
-                            }
-                        }
-                        jobPosts.sortByDescending { it.timestamp }
-                        callback(true, "Job posts fetched", jobPosts)
-                    } else {
+                    val list = mutableListOf<JobModel>()
+
+                    if (!snapshot.exists()) {
+                        // No data found - return empty list
                         callback(true, "No job posts found", emptyList())
+                        return
                     }
+
+                    for (child in snapshot.children) {
+                        val job = child.getValue(JobModel::class.java)
+                        if (job != null) {
+                            // IMPORTANT: Use the Firebase key as postId
+                            list.add(job.copy(postId = child.key ?: job.postId))
+                        }
+                    }
+
+                    // Sort by timestamp (newest first)
+                    list.sortByDescending { it.timestamp }
+
+                    callback(true, "Fetched ${list.size} job posts", list)
                 }
+
                 override fun onCancelled(error: DatabaseError) {
                     callback(false, error.message, null)
                 }
@@ -91,11 +101,17 @@ class JobRepoImpl : JobRepo{
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
                     val jobPost = snapshot.getValue(JobModel::class.java)
-                    callback(true, "Job post fetched", jobPost)
+                    if (jobPost != null) {
+                        // Ensure postId is set correctly
+                        callback(true, "Job post fetched", jobPost.copy(postId = snapshot.key ?: jobPost.postId))
+                    } else {
+                        callback(false, "Failed to parse job post", null)
+                    }
                 } else {
                     callback(false, "Job post not found", null)
                 }
             }
+
             override fun onCancelled(error: DatabaseError) {
                 callback(false, error.message, null)
             }
@@ -103,24 +119,29 @@ class JobRepoImpl : JobRepo{
     }
 
     override fun getAllJobPosts(
-        callback: (Boolean, String, List<JobModel>?) -> Unit) {
-        val jobPostRef = FirebaseDatabase.getInstance().getReference("Job")
-        jobPostRef.addListenerForSingleValueEvent(object : ValueEventListener {
+        callback: (Boolean, String, List<JobModel>?) -> Unit
+    ) {
+        ref.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!snapshot.exists()) {
-                    callback(false, "No job posts found", emptyList())
+                    callback(true, "No job posts found", emptyList())
                     return
                 }
+
                 val jobList = mutableListOf<JobModel>()
+
                 for (postSnapshot in snapshot.children) {
                     val job = postSnapshot.getValue(JobModel::class.java)
                     if (job != null) {
-                        jobList.add(
-                            job.copy(postId = postSnapshot.key ?: "")
-                        )
+                        // IMPORTANT: Use the Firebase key as postId
+                        jobList.add(job.copy(postId = postSnapshot.key ?: job.postId))
                     }
                 }
-                callback(true, "Jobs fetched successfully", jobList)
+
+                // Sort by timestamp (newest first)
+                jobList.sortByDescending { it.timestamp }
+
+                callback(true, "Fetched ${jobList.size} jobs successfully", jobList)
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -128,5 +149,4 @@ class JobRepoImpl : JobRepo{
             }
         })
     }
-
 }

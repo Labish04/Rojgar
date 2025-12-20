@@ -75,6 +75,12 @@ class JobSeekerViewPost : ComponentActivity() {
     }
 }
 
+data class JobPostWithCompany(
+    val jobPost: JobModel,
+    val companyName: String = "",
+    val companyProfile: String = "",
+    val isLoading: Boolean = true
+)
 
 @Composable
 fun JobSeekerViewPostBody() {
@@ -83,36 +89,50 @@ fun JobSeekerViewPostBody() {
     val context = LocalContext.current
 
     var isLoading by remember { mutableStateOf(true) }
-    var jobPostsWithCompany by remember {
-        mutableStateOf<List<Pair<JobModel, CompanyModel?>>>(emptyList()) }
+    var jobPostsWithCompany by remember { mutableStateOf<List<JobPostWithCompany>>(emptyList()) }
     var savedJobIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+
 
     LaunchedEffect(Unit) {
         jobViewModel.getAllJobPosts { success, message, posts ->
-            if (success && posts != null) {
-                val activePosts = posts.filter { !isDeadlineExpired(it.deadline) }
-
-                jobPostsWithCompany = activePosts.map { it to null }
-
-                isLoading = false
-
-                activePosts.forEachIndexed { index, job ->
-                    companyViewModel.getCompanyDetails(job.companyId) { companySuccess, _, company ->
-                        jobPostsWithCompany = jobPostsWithCompany.toMutableList().apply {
-                            if (index < size) {
-                                this[index] = job to company
-
-                            }
-                        }
-                    }
-                }
-
-            } else {
+            if (!success || posts == null) {
                 isLoading = false
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                return@getAllJobPosts
+            }
+
+            val activePosts = posts.filter { !isDeadlineExpired(it.deadline) }
+
+            // Initial loading state
+            jobPostsWithCompany = activePosts.map { job ->
+                JobPostWithCompany(
+                    jobPost = job,
+                    isLoading = true
+                )
+            }
+
+            isLoading = false
+
+            // Fetch company details safely
+
+            jobPostsWithCompany = activePosts.map { job ->
+                JobPostWithCompany(
+                    jobPost = job,
+                    isLoading = true
+                )
+            }
+
+            isLoading = false
+
+            // Trigger company fetch (NO CALLBACK)
+            activePosts.forEach { job ->
+                companyViewModel.getCompanyDetails(job.companyId)
             }
         }
+
     }
+
 
     Column(
         modifier = Modifier
@@ -162,13 +182,11 @@ fun JobSeekerViewPostBody() {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(jobPostsWithCompany, key = { it.first.postId }) { (job, company) ->
+                items(jobPostsWithCompany, key = { it.jobPost.postId }) { jobWithCompany ->
                     JobSeekerPostCard(
-                        job = job,
-                        company = company,
+                        jobPostWithCompany = jobWithCompany,
                         onClick = { },
-                        isSaved = savedJobIds.contains(job.postId),
-
+                        isSaved = savedJobIds.contains(jobWithCompany.jobPost.postId),
                         onSaveClick = { postId ->
                             savedJobIds = if (savedJobIds.contains(postId)) {
                                 savedJobIds - postId
@@ -182,20 +200,19 @@ fun JobSeekerViewPostBody() {
                             }
                             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                         },
-                        onShareClick = { sharedJob ->
+                        onShareClick = { job ->
                             val shareIntent = android.content.Intent().apply {
                                 action = android.content.Intent.ACTION_SEND
                                 putExtra(
                                     android.content.Intent.EXTRA_TEXT,
-                                    "Check out this job: ${sharedJob.title}\n" +
-                                            "Company: ${company?.companyName ?: "Unknown Company"}\n" +
-                                            "Position: ${sharedJob.position}\n" +
-                                            "Type: ${sharedJob.jobType}\n" +
-                                            "Deadline: ${sharedJob.deadline}"
+                                    "Check out this job: ${job.title}\n" +
+                                            "Company: ${jobWithCompany.companyName}\n" +
+                                            "Position: ${job.position}\n" +
+                                            "Type: ${job.jobType}\n" +
+                                            "Deadline: ${job.deadline}"
                                 )
                                 type = "text/plain"
                             }
-
                             context.startActivity(
                                 android.content.Intent.createChooser(shareIntent, "Share Job")
                             )
@@ -212,17 +229,13 @@ fun JobSeekerViewPostBody() {
 
 @Composable
 fun JobSeekerPostCard(
-    job: JobModel,
-    company: CompanyModel?,
+    jobPostWithCompany: JobPostWithCompany,
     onClick: () -> Unit,
     onSaveClick: (String) -> Unit = {},
     onShareClick: (JobModel) -> Unit = {},
     isSaved: Boolean = false
-){
-    val jobPost = job
-    val companyName = company?.companyName?: "Unknown Company"
-    val companyProfile = company?.companyProfileImage ?: ""
-
+) {
+    val jobPost = jobPostWithCompany.jobPost
     val daysUntilDeadline = calculateDaysUntilDeadline(jobPost.deadline)
     val isUrgent = daysUntilDeadline in 1..3
 
@@ -258,9 +271,17 @@ fun JobSeekerPostCard(
                             .border(1.dp, Color(0xFFBDBDBD), CircleShape)
                     ) {
                         when {
-                            companyProfile.isNotEmpty() -> {
+                            jobPostWithCompany.isLoading -> {
+                                CircularProgressIndicator(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .align(Alignment.Center),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                            jobPostWithCompany.companyProfile.isNotEmpty() -> {
                                 Image(
-                                    painter = rememberAsyncImagePainter(companyProfile),
+                                    painter = rememberAsyncImagePainter(jobPostWithCompany.companyProfile),
                                     contentDescription = "Company Profile",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
@@ -277,20 +298,22 @@ fun JobSeekerPostCard(
                                 )
                             }
                         }
-
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Text(
-                        text = companyName,
+                        text = if (jobPostWithCompany.isLoading) {
+                            "Loading..."
+                        } else {
+                            jobPostWithCompany.companyName
+                        },
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-
                 }
 
                 Icon(
