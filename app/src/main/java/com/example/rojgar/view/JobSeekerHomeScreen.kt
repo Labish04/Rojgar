@@ -24,6 +24,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,170 +45,191 @@ import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
 
 @Composable
-fun JobSeekerHomeScreenBody(){
+fun JobSeekerHomeScreenBody(
+    onSearchScreenVisibilityChange: (Boolean) -> Unit = {}
+){
 
     var search by remember { mutableStateOf("") }
+    var showSearchScreen by remember { mutableStateOf(false) }
 
-    Column (
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Blue)
-    ){
+    LaunchedEffect(showSearchScreen) {
+        onSearchScreenVisibilityChange(showSearchScreen)
+    }
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row (
+    if (!showSearchScreen) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ){
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                placeholder = { Text("Search jobs", style = TextStyle(
-                    fontSize = 16.sp,
-                    color = Color.Gray
-                )) },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(R.drawable.searchicon),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(20.dp),
-                        tint = Gray,
-                    )
-                },
-                shape = RoundedCornerShape(15.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = White,
-                    unfocusedContainerColor = White,
-                    focusedIndicatorColor = NormalBlue,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                modifier = Modifier
-                    .height(50.dp)
-                    .width(300.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
+                .fillMaxSize()
+                .background(Blue)
+        ) {
 
-            Button(
-                onClick = { },
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Purple
-                ),
-                contentPadding = PaddingValues(0.dp),
-                modifier = Modifier
-                    .height(50.dp)
-                    .width(56.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.filter),
-                    contentDescription = "Filter",
-                    tint = Color.White,     // GUARANTEED visibility
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+            Spacer(modifier = Modifier.height(20.dp))
 
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row (
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-        ){
-            Card (
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .height(200.dp)
-                    .width(200.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {}
-                    ),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                )
-            ){
-                Text("Profile Completed", style = TextStyle(
-                    fontSize = 18.sp,
-                    color = Color.DarkGray
-                    ),
-                    modifier = Modifier
-                        .padding(vertical = 10.dp)
-                        .align(Alignment.CenterHorizontally)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(20.dp))
-
-            Card (
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .height(200.dp)
-                    .width(200.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {}
-                    ),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                )
-            ){
-                Text("Calendar", style = TextStyle(
-                    fontSize = 18.sp,
-                    color = Color.DarkGray
-                ),
-                    modifier = Modifier
-                        .padding(vertical = 10.dp)
-                        .align(Alignment.CenterHorizontally)
-                )
-            }
-        }
-
-        Row (
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp)
-                .padding(vertical = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ){
-            Text(
-                "Recommended Jobs", style = TextStyle(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp
-                )
-            )
-            Row (
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(end = 20.dp),
-                horizontalArrangement = Arrangement.End
-            ){
+                    .padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    placeholder = {
+                        Text(
+                            "Search jobs", style = TextStyle(
+                                fontSize = 16.sp,
+                                color = Color.Gray
+                            )
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.searchicon),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(20.dp),
+                            tint = Gray,
+                        )
+                    },
+                    shape = RoundedCornerShape(15.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = White,
+                        unfocusedContainerColor = White,
+                        focusedIndicatorColor = NormalBlue,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    modifier = Modifier
+                        .height(50.dp)
+                        .width(300.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Button(
+                    onClick = { showSearchScreen = true },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Purple
+                    ),
+                    contentPadding = PaddingValues(0.dp),
+                    modifier = Modifier
+                        .height(50.dp)
+                        .width(56.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.filter),
+                        contentDescription = "Filter",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            ) {
+                Card(
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .height(200.dp)
+                        .width(200.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}
+                        ),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    )
+                ) {
+                    Text(
+                        "Profile Completed", style = TextStyle(
+                            fontSize = 18.sp,
+                            color = Color.DarkGray
+                        ),
+                        modifier = Modifier
+                            .padding(vertical = 10.dp)
+                            .align(Alignment.CenterHorizontally)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(20.dp))
+
+                Card(
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .height(200.dp)
+                        .width(200.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}
+                        ),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    )
+                ) {
+                    Text(
+                        "Calendar", style = TextStyle(
+                            fontSize = 18.sp,
+                            color = Color.DarkGray
+                        ),
+                        modifier = Modifier
+                            .padding(vertical = 10.dp)
+                            .align(Alignment.CenterHorizontally)
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp)
+                    .padding(vertical = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    "Show All", style = TextStyle(
-                        fontSize = 18.sp
+                    "Recommended Jobs", style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 28.sp
                     )
                 )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 20.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        "Show All", style = TextStyle(
+                            fontSize = 18.sp
+                        )
+                    )
+                }
+            }
+
+            Card(
+                shape = RoundedCornerShape(0.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(395.dp)
+                    .padding(horizontal = 20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.Transparent
+                )
+            ) {
+                // Display jobs here
             }
         }
+    }
 
-        Card (
-            shape = RoundedCornerShape(0.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(395.dp)
-                .padding(horizontal = 20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.Transparent
-            )
-        ){
-
-        }
+    if (showSearchScreen) {
+        JobSeekerSearchScreenBody(
+            onBack = { showSearchScreen = false }
+        )
     }
 }
