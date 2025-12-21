@@ -2,16 +2,21 @@ package com.example.rojgar.view
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,7 +25,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -28,23 +32,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.rojgar.R
-import com.example.rojgar.ui.theme.Blue
-import com.example.rojgar.ui.theme.DarkBlue2
-import com.example.rojgar.ui.theme.White
-import kotlinx.coroutines.launch
-import java.util.Calendar
-
-data class Education(
-    val degreeType: String,
-    val institutionName: String,
-    val board: String,
-    val fieldOfStudy: String,
-    val startYear: Int,
-    val endYear: Int?,
-    val gradeType: String,
-    val marksSecured: String,
-    val currentlyStudying: Boolean
-)
+import com.example.rojgar.model.EducationModel
+import com.example.rojgar.repository.EducationRepoImpl
+import com.example.rojgar.ui.theme.*
+import com.example.rojgar.viewmodel.EducationViewModel
+import com.google.firebase.auth.FirebaseAuth
+import java.util.*
 
 class JobSeekerEducationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,25 +54,35 @@ class JobSeekerEducationActivity : ComponentActivity() {
 fun JobSeekerEducationBody() {
     val context = LocalContext.current
 
-    var educationList by remember { mutableStateOf(listOf<Education>()) }
+    val educationViewModel = remember { EducationViewModel(EducationRepoImpl()) }
+
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
+    val jobSeekerId = currentUser?.uid ?: ""
+
+    var educations by remember { mutableStateOf(listOf<EducationModel>()) }
     var showDegreeSheet by remember { mutableStateOf(false) }
     var showDetailSheet by remember { mutableStateOf(false) }
-    var selectedDegree by remember { mutableStateOf("") }
+    var showDetailDialog by remember { mutableStateOf(false) }
+    var isEditing by remember { mutableStateOf(false) }
+    var selectedEducation by remember { mutableStateOf<EducationModel?>(null) }
 
-    var institution by remember { mutableStateOf(TextFieldValue("")) }
-    var board by remember { mutableStateOf(TextFieldValue("")) }
-    var fieldOfStudy by remember { mutableStateOf(TextFieldValue("")) }
-    var startYear by remember { mutableStateOf<Int?>(null) }
-    var endYear by remember { mutableStateOf<Int?>(null) }
-    var gradeTypeIsCGPA by remember { mutableStateOf(true) }
-    var marksSecured by remember { mutableStateOf(TextFieldValue("")) }
+    var selectedDegree by remember { mutableStateOf("") }
+    var institution by remember { mutableStateOf("") }
+    var board by remember { mutableStateOf("") }
+    var fieldOfStudy by remember { mutableStateOf("") }
+    var startYear by remember { mutableStateOf("") }
+    var endYear by remember { mutableStateOf("") }
+    var gradeType by remember { mutableStateOf("CGPA") } // CGPA or Marks
+    var score by remember { mutableStateOf("") }
     var currentlyStudying by remember { mutableStateOf(false) }
+
+    var currentEducationId by remember { mutableStateOf("") }
+    var showDeleteAlert by remember { mutableStateOf(false) }
+    var educationToDelete by remember { mutableStateOf<String?>(null) }
 
     var showStartYearPicker by remember { mutableStateOf(false) }
     var showEndYearPicker by remember { mutableStateOf(false) }
-
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     val degreeOptions = listOf(
         "Doctorate (Ph. D)",
@@ -92,19 +95,199 @@ fun JobSeekerEducationBody() {
         "Other"
     )
 
-    val resetForm = {
-        institution = TextFieldValue("")
-        board = TextFieldValue("")
-        fieldOfStudy = TextFieldValue("")
-        startYear = null
-        endYear = null
-        gradeTypeIsCGPA = true
-        marksSecured = TextFieldValue("")
+    // Load educations
+    LaunchedEffect(Unit) {
+        if (jobSeekerId.isNotEmpty()) {
+            educationViewModel.getEducationsByJobSeekerId(jobSeekerId) { success, message, educationList ->
+                if (success) {
+                    educationList?.let {
+                        educations = it
+                    }
+                } else {
+                    Toast.makeText(context, "Failed to load educations: $message", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    // Function to reset form
+    fun resetForm() {
+        selectedDegree = ""
+        institution = ""
+        board = ""
+        fieldOfStudy = ""
+        startYear = ""
+        endYear = ""
+        gradeType = "CGPA"
+        score = ""
         currentlyStudying = false
+        currentEducationId = ""
+        isEditing = false
+    }
+
+    // Function to adding new education
+    fun openAddForm() {
+        resetForm()
+        showDegreeSheet = true
+    }
+
+    // Function to  editing existing education
+    fun openEditForm(education: EducationModel) {
+        selectedDegree = education.educationDegree
+        institution = education.instituteName
+        board = education.board
+        fieldOfStudy = education.field
+        startYear = education.startYear
+        endYear = education.endYear
+        gradeType = education.gradeType
+        score = education.score
+        currentlyStudying = education.currentlyStudying
+        currentEducationId = education.educationId
+        isEditing = true
+        showDetailSheet = true
+    }
+
+    // Function to save education
+    fun saveEducation() {
+        if (selectedDegree.isEmpty() || institution.isEmpty() || startYear.isEmpty()) {
+            Toast.makeText(context, "Please fill required fields", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (!currentlyStudying && endYear.isEmpty()) {
+            Toast.makeText(context, "Please select end year or mark as currently studying", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val educationModel = EducationModel(
+            educationId = if (isEditing) currentEducationId else "",
+            educationDegree = selectedDegree,
+            instituteName = institution,
+            board = board,
+            field = fieldOfStudy,
+            startYear = startYear,
+            endYear = if (currentlyStudying) "Present" else endYear,
+            gradeType = gradeType,
+            score = score,
+            currentlyStudying = currentlyStudying,
+            jobSeekerId = jobSeekerId
+        )
+
+        if (isEditing) {
+            educationViewModel.updateEducation(currentEducationId, educationModel) { success, message ->
+                if (success) {
+                    Toast.makeText(context, "Education updated", Toast.LENGTH_SHORT).show()
+                    // Refresh list
+                    educationViewModel.getEducationsByJobSeekerId(jobSeekerId) { success2, message2, educationList ->
+                        if (success2) {
+                            educationList?.let { educations = it }
+                        }
+                    }
+                    showDetailSheet = false
+                    resetForm()
+                } else {
+                    Toast.makeText(context, "Update failed: $message", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            educationViewModel.addEducation(educationModel) { success, message ->
+                if (success) {
+                    Toast.makeText(context, "Education added", Toast.LENGTH_SHORT).show()
+                    // Refresh list
+                    educationViewModel.getEducationsByJobSeekerId(jobSeekerId) { success2, message2, educationList ->
+                        if (success2) {
+                            educationList?.let { educations = it }
+                        }
+                    }
+                    showDetailSheet = false
+                    resetForm()
+                } else {
+                    Toast.makeText(context, "Add failed: $message", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    fun deleteEducation(educationId: String) {
+        educationToDelete = educationId
+        showDeleteAlert = true
+    }
+
+    // Delete Dialog
+    if (showDeleteAlert) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteAlert = false
+                educationToDelete = null
+            },
+            title = {
+                Text(
+                    text = "Delete Education",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.Red
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to delete this education? ",
+                    fontSize = 16.sp
+                )
+            },
+            confirmButton = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Cancel Button
+                    TextButton(
+                        onClick = {
+                            showDeleteAlert = false
+                            educationToDelete = null
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = Color.Gray
+                        )
+                    ) {
+                        Text("Cancel")
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Delete Button
+                    Button(
+                        onClick = {
+                            educationToDelete?.let { eduId ->
+                                educationViewModel.deleteEducation(eduId) { success, message ->
+                                    if (success) {
+                                        Toast.makeText(context, "Education deleted", Toast.LENGTH_SHORT).show()
+                                        educationViewModel.getEducationsByJobSeekerId(jobSeekerId) { success2, message2, educationList ->
+                                            if (success2) {
+                                                educationList?.let { educations = it }
+                                            }
+                                        }
+                                        showDetailDialog = false
+                                    } else {
+                                        Toast.makeText(context, "Delete failed: $message", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                            showDeleteAlert = false
+                            educationToDelete = null
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Red
+                        )
+                    ) {
+                        Text("Delete", color = Color.White)
+                    }
+                }
+            }
+        )
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Card(
                 modifier = Modifier
@@ -148,8 +331,6 @@ fun JobSeekerEducationBody() {
                 .fillMaxSize()
                 .padding(padding)
                 .background(Blue)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
         ) {
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -157,89 +338,204 @@ fun JobSeekerEducationBody() {
                 "What academic achievements are you most proud of?",
                 fontWeight = FontWeight.Normal,
                 fontSize = 18.sp,
-                color = Color.Black
+                color = Color.Black,
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            if (educationList.isNotEmpty()) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    educationList.forEach { edu ->
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            colors = CardDefaults.cardColors(containerColor = White)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(text = edu.degreeType, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                Spacer(Modifier.height(4.dp))
-                                Text(text = edu.institutionName, color = Color.DarkGray)
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text = "${edu.startYear} - ${if (edu.currentlyStudying) "Present" else edu.endYear}",
-                                    color = Color.Gray
-                                )
-                            }
-                        }
-                    }
-                }
-            } else {
+            if (educations.isEmpty()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(380.dp),
+                        .fillMaxHeight(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Spacer(modifier = Modifier.height(200.dp))
+                    Spacer(modifier = Modifier.height(40.dp))
+
                     Icon(
                         painter = painterResource(id = R.drawable.educationicon),
                         contentDescription = "no education",
                         tint = Color.Gray,
                         modifier = Modifier.size(110.dp)
                     )
-                    Spacer(modifier = Modifier.height(40.dp))
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
                     Text(
                         "Your Education Section is currently empty. Tap the + button to add your education details.",
                         textAlign = TextAlign.Center,
                         color = Color.DarkGray,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 24.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Button(
+                            onClick = { openAddForm() },
+                            shape = RoundedCornerShape(25.dp),
+                            modifier = Modifier
+                                .width(170.dp)
+                                .height(50.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = DarkBlue2,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.addexperience),
+                                contentDescription = "Add",
+                                modifier = Modifier.size(26.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(text = "Add", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
                 }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Button(
-                    onClick = { showDegreeSheet = true },
-                    shape = RoundedCornerShape(25.dp),
+            } else {
+                LazyColumn(
                     modifier = Modifier
-                        .width(170.dp)
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = DarkBlue2,
-                        contentColor = Color.White
-                    )
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 20.dp, vertical = 0.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.addexperience),
-                        contentDescription = "Add",
-                        modifier = Modifier.size(26.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(text = "Add", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    items(educations) { education ->
+                        EducationCard(
+                            education = education,
+                            onClick = {
+                                selectedEducation = education
+                                showDetailDialog = true
+                            },
+                            onEditClick = { openEditForm(education) },
+                            onDeleteClick = { deleteEducation(education.educationId) }
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp, top = 16.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Button(
+                        onClick = { openAddForm() },
+                        shape = RoundedCornerShape(25.dp),
+                        modifier = Modifier
+                            .width(170.dp)
+                            .height(50.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DarkBlue2,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.addexperience),
+                            contentDescription = "Add",
+                            modifier = Modifier.size(26.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(text = "Add", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }
     }
 
+    // Education Detail Dialog
+    if (showDetailDialog && selectedEducation != null) {
+        AlertDialog(
+            onDismissRequest = { showDetailDialog = false },
+            title = {
+                Text(
+                    text = "Education Details",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = DarkBlue2
+                )
+            },
+            text = {
+                Column {
+                    selectedEducation?.let { edu ->
+                        DetailsItem(title = "Degree", value = edu.educationDegree)
+                        DetailsItem(title = "Institution", value = edu.instituteName)
+                        DetailsItem(title = "Field of Study", value = edu.field)
+                        DetailsItem(title = "Board", value = edu.board)
+                        DetailsItem(title = "Start Year", value = edu.startYear)
+                        DetailsItem(title = "End Year", value = edu.endYear)
+                        DetailsItem(title = "Grade Type", value = edu.gradeType)
+                        DetailsItem(title = "Score", value = edu.score)
+                        DetailsItem(title = "Currently Studying", value = if (edu.currentlyStudying) "Yes" else "No")
+                    }
+                }
+            },
+            confirmButton = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Button(
+                        onClick = {
+                            showDetailDialog = false
+                            selectedEducation?.let { openEditForm(it) }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkBlue2),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Edit")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Button(
+                        onClick = {
+                            selectedEducation?.let {
+                                educationToDelete = it.educationId
+                                showDeleteAlert = true
+                                showDetailDialog = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Delete")
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    // Degree Selection Dialog
     if (showDegreeSheet) {
         Dialog(
             onDismissRequest = { showDegreeSheet = false },
@@ -275,7 +571,6 @@ fun JobSeekerEducationBody() {
                                 onClick = {
                                     selectedDegree = degree
                                     showDegreeSheet = false
-                                    resetForm()
                                     showDetailSheet = true
                                 },
                                 modifier = Modifier
@@ -314,9 +609,13 @@ fun JobSeekerEducationBody() {
         }
     }
 
+    // Education Detail Form Dialog
     if (showDetailSheet) {
         Dialog(
-            onDismissRequest = { showDetailSheet = false },
+            onDismissRequest = {
+                showDetailSheet = false
+                resetForm()
+            },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
             Box(
@@ -333,224 +632,294 @@ fun JobSeekerEducationBody() {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .padding(20.dp)
                             .verticalScroll(rememberScrollState())
-                            .padding(18.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    text = selectedDegree.ifBlank { "Education Details" },
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Black
-                                )
-                            }
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-
-                        Spacer(Modifier.height(12.dp))
-
-                        OutlinedTextField(
-                            value = institution,
-                            onValueChange = { institution = it },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.educationicon),
-                                    contentDescription = "institution",
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            },
-                            label = { Text("Name of Institution") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                disabledIndicatorColor = Color.Transparent,
-                                disabledContainerColor = White,
-                                focusedContainerColor = White,
-                                unfocusedContainerColor = White,
-                                focusedIndicatorColor = DarkBlue2,
-                                unfocusedIndicatorColor = Color.LightGray
-                            )
-                        )
-
-                        Spacer(Modifier.height(12.dp))
-
-                        OutlinedTextField(
-                            value = board,
-                            onValueChange = { board = it },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.educationboardicon),
-                                    contentDescription = "board",
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            },
-                            label = { Text("Education Board") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                disabledIndicatorColor = Color.Transparent,
-                                disabledContainerColor = White,
-                                focusedContainerColor = White,
-                                unfocusedContainerColor = White,
-                                focusedIndicatorColor = DarkBlue2,
-                                unfocusedIndicatorColor = Color.LightGray
-                            )
-                        )
-
-                        Spacer(Modifier.height(12.dp))
-
-                        OutlinedTextField(
-                            value = fieldOfStudy,
-                            onValueChange = { fieldOfStudy = it },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.studyfieldicon),
-                                    contentDescription = "field",
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            },
-                            label = { Text("Enter field of study") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                disabledIndicatorColor = Color.Transparent,
-                                disabledContainerColor = White,
-                                focusedContainerColor = White,
-                                unfocusedContainerColor = White,
-                                focusedIndicatorColor = DarkBlue2,
-                                unfocusedIndicatorColor = Color.LightGray
-                            )
+                        Text(
+                            text = if (isEditing) "Edit Education" else "Add Education",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
                         )
 
                         Spacer(Modifier.height(16.dp))
+
+                        // Selected Degree
+                        OutlinedTextField(
+                            value = selectedDegree,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Education Degree") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            shape = RoundedCornerShape(15.dp),
+                            singleLine = true,
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.educationicon),
+                                    contentDescription = "Degree",
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            },
+                            colors = TextFieldDefaults.colors(
+                                disabledIndicatorColor = Color.Transparent,
+                                disabledContainerColor = White,
+                                disabledTextColor = Color.Black,
+                                focusedContainerColor = White,
+                                unfocusedContainerColor = White,
+                                focusedIndicatorColor = DarkBlue2,
+                                unfocusedIndicatorColor = Color.LightGray
+                            )
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Institution Name
+                        OutlinedTextField(
+                            value = institution,
+                            onValueChange = { institution = it },
+                            label = { Text("Name of Institution *") },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.educationicon),
+                                    contentDescription = "Start Year",
+                                    modifier = Modifier.size(20.dp)
+
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            shape = RoundedCornerShape(15.dp),
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                disabledIndicatorColor = Color.Transparent,
+                                disabledContainerColor = White,
+                                focusedContainerColor = White,
+                                unfocusedContainerColor = White,
+                                focusedIndicatorColor = DarkBlue2,
+                                unfocusedIndicatorColor = Color.LightGray
+                            )
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Board
+                        OutlinedTextField(
+                            value = board,
+                            onValueChange = { board = it },
+                            label = { Text("Education Board") },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.educationboardicon),
+                                    contentDescription = "Start Year",
+                                    modifier = Modifier.size(20.dp)
+
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            shape = RoundedCornerShape(15.dp),
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                disabledIndicatorColor = Color.Transparent,
+                                disabledContainerColor = White,
+                                focusedContainerColor = White,
+                                unfocusedContainerColor = White,
+                                focusedIndicatorColor = DarkBlue2,
+                                unfocusedIndicatorColor = Color.LightGray
+                            )
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Field of Study
+                        OutlinedTextField(
+                            value = fieldOfStudy,
+                            onValueChange = { fieldOfStudy = it },
+                            label = { Text("Field of Study") },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.studyfieldicon),
+                                    contentDescription = "Start Year",
+                                    modifier = Modifier.size(20.dp)
+
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            shape = RoundedCornerShape(15.dp),
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                disabledIndicatorColor = Color.Transparent,
+                                disabledContainerColor = White,
+                                focusedContainerColor = White,
+                                unfocusedContainerColor = White,
+                                focusedIndicatorColor = DarkBlue2,
+                                unfocusedIndicatorColor = Color.LightGray
+                            )
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+
+                        Spacer(Modifier.height(8.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            OutlinedTextField(
-                                value = startYear?.toString() ?: "",
-                                onValueChange = {},
-                                readOnly = true,
-                                leadingIcon = {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.calendaricon),
-                                        contentDescription = "startYear",
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                },
-                                label = { Text("Start Year") },
+                            // Start Year Field
+                            Box(
                                 modifier = Modifier
-                                    .width(160.dp)
-                                    .height(56.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                singleLine = true,
-                                colors = TextFieldDefaults.colors(
-                                    disabledIndicatorColor = Color.Transparent,
-                                    disabledContainerColor = White,
-                                    focusedContainerColor = White,
-                                    unfocusedContainerColor = White,
-                                    focusedIndicatorColor = DarkBlue2,
-                                    unfocusedIndicatorColor = Color.LightGray
-                                ),
-                                interactionSource = remember { MutableInteractionSource() }
-                                    .also { interactionSource ->
-                                        LaunchedEffect(interactionSource) {
-                                            interactionSource.interactions.collect {
-                                                if (it is PressInteraction.Release) {
-                                                    showStartYearPicker = true
-                                                }
-                                            }
-                                        }
-                                    }
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            OutlinedTextField(
-                                value = if (currentlyStudying) "Present" else (endYear?.toString() ?: ""),
-                                onValueChange = {},
-                                readOnly = true,
-                                enabled = !currentlyStudying,
-                                leadingIcon = {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.calendaricon),
-                                        contentDescription = "endYear",
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                },
-                                label = { Text("End Year") },
-                                modifier = Modifier
-                                    .width(160.dp)
-                                    .height(56.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                singleLine = true,
-                                colors = TextFieldDefaults.colors(
-                                    disabledIndicatorColor = Color.Transparent,
-                                    disabledContainerColor = White,
-                                    focusedContainerColor = White,
-                                    unfocusedContainerColor = White,
-                                    focusedIndicatorColor = DarkBlue2,
-                                    unfocusedIndicatorColor = Color.LightGray
-                                ),
-                                interactionSource = remember { MutableInteractionSource() }
-                                    .also { interactionSource ->
-                                        LaunchedEffect(interactionSource) {
-                                            interactionSource.interactions.collect {
-                                                if (it is PressInteraction.Release && !currentlyStudying) {
-                                                    showEndYearPicker = true
-                                                }
-                                            }
-                                        }
-                                    }
-                            )
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        Text(text = "Grade Type", fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
-                        Spacer(Modifier.height(8.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-                            Button(
-                                onClick = { gradeTypeIsCGPA = true },
-                                modifier = Modifier
-                                    .height(48.dp)
-                                    .width(120.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = if (gradeTypeIsCGPA)
-                                    ButtonDefaults.buttonColors(containerColor = DarkBlue2, contentColor = Color.White)
-                                else ButtonDefaults.outlinedButtonColors(contentColor = Color.DarkGray)
+                                    .weight(1f)
                             ) {
-                                Text("CGPA")
+                                OutlinedTextField(
+                                    value = startYear,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    enabled = false,
+                                    leadingIcon = {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.calendaricon),
+                                            contentDescription = "Start Year",
+                                            modifier = Modifier.size(20.dp)
+
+                                        )
+                                    },
+                                    label = { Text("Start Year *") },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(60.dp)
+                                        .clickable { showStartYearPicker = true },
+                                    shape = RoundedCornerShape(15.dp),
+                                    singleLine = true,
+                                    colors = TextFieldDefaults.colors(
+                                        disabledIndicatorColor = Color.LightGray,
+                                        disabledContainerColor = White,
+                                        disabledLeadingIconColor = Black,
+                                        disabledTextColor = Color.Black,
+                                        disabledLabelColor = Black,
+                                        focusedContainerColor = White,
+                                        unfocusedContainerColor = White,
+                                        focusedIndicatorColor = DarkBlue2,
+                                        unfocusedIndicatorColor = Color.LightGray
+                                    )
+                                )
                             }
 
                             Spacer(modifier = Modifier.width(12.dp))
 
-                            Button(
-                                onClick = { gradeTypeIsCGPA = false },
+                            // End Year Field
+                            Box(
                                 modifier = Modifier
-                                    .height(48.dp)
-                                    .width(148.dp),
+                                    .weight(1f)
+                            ) {
+                                OutlinedTextField(
+                                    value = if (currentlyStudying) "Present" else endYear,
+                                    onValueChange = {},
+                                    enabled = false,
+                                    readOnly = true,
+                                    leadingIcon = {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.calendaricon),
+                                            contentDescription = "End Year",
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    },
+                                    label = { Text("End Year") },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(60.dp)
+                                        .clickable {
+                                            if (!currentlyStudying) showEndYearPicker = true
+                                        },
+                                    shape = RoundedCornerShape(15.dp),
+                                    singleLine = true,
+                                    colors = TextFieldDefaults.colors(
+                                        disabledIndicatorColor = Color.LightGray,
+                                        disabledContainerColor = White,
+                                        disabledLabelColor = Black,
+                                        disabledLeadingIconColor = Black,
+                                        disabledTextColor = if (currentlyStudying) Color.Gray else Color.Black,
+                                        focusedContainerColor = White,
+                                        unfocusedContainerColor = White,
+                                        focusedIndicatorColor = DarkBlue2,
+                                        unfocusedIndicatorColor = Color.LightGray
+                                    )
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Currently Studying Switch
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Switch(
+                                checked = currentlyStudying,
+                                onCheckedChange = {
+                                    currentlyStudying = it
+                                    if (it) {
+                                        endYear = ""
+                                    }
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Blue,
+                                    checkedTrackColor = DarkBlue2
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Currently studying?")
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Grade Type Selection
+                        Text(
+                            text = "Grade Type",
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 16.sp
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedButton(
+                                onClick = { gradeType = "CGPA" },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = if (!gradeTypeIsCGPA)
-                                    ButtonDefaults.buttonColors(containerColor = DarkBlue2, contentColor = Color.White)
-                                else ButtonDefaults.outlinedButtonColors(contentColor = Color.DarkGray)
+                                colors = if (gradeType == "CGPA")
+                                    ButtonDefaults.buttonColors(
+                                        containerColor = DarkBlue2,
+                                        contentColor = Color.White
+                                    )
+                                else
+                                    ButtonDefaults.outlinedButtonColors(contentColor = Color.DarkGray)
+                            ) {
+                                Text("CGPA")
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            OutlinedButton(
+                                onClick = { gradeType = "Marks" },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = if (gradeType == "Marks")
+                                    ButtonDefaults.buttonColors(
+                                        containerColor = DarkBlue2,
+                                        contentColor = Color.White
+                                    )
+                                else
+                                    ButtonDefaults.outlinedButtonColors(contentColor = Color.DarkGray)
                             ) {
                                 Text("Percentage")
                             }
@@ -558,14 +927,15 @@ fun JobSeekerEducationBody() {
 
                         Spacer(Modifier.height(12.dp))
 
+                        // Score Input
                         OutlinedTextField(
-                            value = marksSecured,
-                            onValueChange = { marksSecured = it },
-                            label = { Text(if (gradeTypeIsCGPA) "Enter CGPA" else "Percentage") },
+                            value = score,
+                            onValueChange = { score = it },
+                            label = { Text(if (gradeType == "CGPA") "CGPA" else "Percentage") },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(56.dp),
-                            shape = RoundedCornerShape(12.dp),
+                                .height(60.dp),
+                            shape = RoundedCornerShape(15.dp),
                             singleLine = true,
                             colors = TextFieldDefaults.colors(
                                 disabledIndicatorColor = Color.Transparent,
@@ -577,128 +947,71 @@ fun JobSeekerEducationBody() {
                             )
                         )
 
-                        Spacer(Modifier.height(12.dp))
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(text = "Currently studying ?", fontSize = 16.sp, color = Color.Black)
-                            Spacer(modifier = Modifier.weight(1f))
-                            Switch(
-                                checked = currentlyStudying,
-                                onCheckedChange = {
-                                    currentlyStudying = it
-                                    if (it) {
-                                        endYear = null
-                                    }
-                                }
-                            )
-                        }
-
-                        Spacer(Modifier.height(20.dp))
+                        Spacer(Modifier.height(24.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
+                            // Back Button
                             OutlinedButton(
                                 onClick = {
                                     showDetailSheet = false
-                                    showDegreeSheet = true
+                                    resetForm()
                                 },
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(15.dp),
                                 modifier = Modifier
-                                    .weight(0.35f)
-                                    .height(52.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = DarkBlue2)
+                                    .weight(0.4f)
+                                    .height(50.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = DarkBlue2
+                                )
                             ) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.outline_arrow_back_ios_24),
                                     contentDescription = "Back",
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
 
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
 
+                            // Save Button
                             Button(
-                                onClick = {
-                                    when {
-                                        selectedDegree.isBlank() -> {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Please select a degree type")
-                                            }
-                                        }
-                                        institution.text.isBlank() -> {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Please enter institution name")
-                                            }
-                                        }
-                                        startYear == null -> {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Please select start year")
-                                            }
-                                        }
-                                        !currentlyStudying && endYear == null -> {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Please select end year")
-                                            }
-                                        }
-                                        !currentlyStudying && endYear != null && endYear!! < startYear!! -> {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("End year cannot be before start year")
-                                            }
-                                        }
-                                        else -> {
-                                            val newEdu = Education(
-                                                degreeType = selectedDegree,
-                                                institutionName = institution.text,
-                                                board = board.text,
-                                                fieldOfStudy = fieldOfStudy.text,
-                                                startYear = startYear!!,
-                                                endYear = if (currentlyStudying) null else endYear,
-                                                gradeType = if (gradeTypeIsCGPA) "CGPA" else "Marks",
-                                                marksSecured = marksSecured.text,
-                                                currentlyStudying = currentlyStudying
-                                            )
-                                            educationList = educationList + newEdu
-                                            showDetailSheet = false
-                                            selectedDegree = ""
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Education added successfully")
-                                            }
-                                        }
-                                    }
-                                },
-                                shape = RoundedCornerShape(12.dp),
+                                onClick = { saveEducation() },
+                                shape = RoundedCornerShape(15.dp),
                                 modifier = Modifier
-                                    .weight(0.65f)
-                                    .height(52.dp),
+                                    .weight(0.6f)
+                                    .height(50.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = DarkBlue2,
                                     contentColor = Color.White
                                 )
                             ) {
-                                Text(text = "Save", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = if (isEditing) "Update" else "Save",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
-
-                        Spacer(Modifier.height(8.dp))
                     }
                 }
             }
         }
     }
 
+    // Year Pickers
+    val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+
     if (showStartYearPicker) {
         YearPickerDialog(
             onDismiss = { showStartYearPicker = false },
             onYearSelected = { year ->
-                startYear = year
+                startYear = year.toString()
                 showStartYearPicker = false
             },
-            initialYear = startYear ?: Calendar.getInstance().get(Calendar.YEAR)
+            initialYear = startYear.toIntOrNull() ?: currentYear
         )
     }
 
@@ -706,15 +1019,102 @@ fun JobSeekerEducationBody() {
         YearPickerDialog(
             onDismiss = { showEndYearPicker = false },
             onYearSelected = { year ->
-                endYear = year
+                endYear = year.toString()
                 showEndYearPicker = false
             },
-            initialYear = endYear ?: Calendar.getInstance().get(Calendar.YEAR)
+            initialYear = endYear.toIntOrNull() ?: currentYear
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EducationCard(
+    education: EducationModel,
+    onClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row (
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ){
+                        Text(
+                            text = education.educationDegree,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = Color.Black
+                        )
+                        Spacer(modifier = Modifier.width(78.dp))
+                        Row {
+                            IconButton(
+                                onClick = onEditClick,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit",
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            // Delete Icon
+                            IconButton(
+                                onClick = onDeleteClick,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = Color.Red,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(5.dp))
+
+                    // Institution Name
+                    Text(
+                        text = education.instituteName,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp,
+                        color = Color.Gray
+                    )
+
+                    Spacer(modifier = Modifier.height(5.dp))
+
+                    Text(
+                        text = education.field,
+                        fontSize = 14.sp,
+                        color = Color.DarkGray
+                    )
+                }
+
+
+            }
+        }
+    }
+}
+
 @Composable
 fun YearPickerDialog(
     onDismiss: () -> Unit,
@@ -802,9 +1202,26 @@ fun YearPickerDialog(
     }
 }
 
+@Composable
+fun DetailsItem(title: String, value: String) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(
+            text = title,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            color = Color.Gray
+        )
+        Text(
+            text = value,
+            fontSize = 16.sp,
+            color = Color.Black,
+            modifier = Modifier.padding(top = 2.dp)
+        )
+    }
+}
+
 @Preview
 @Composable
 fun JobSeekerEducationPreview() {
-        JobSeekerEducationBody()
-
+    JobSeekerEducationBody()
 }
