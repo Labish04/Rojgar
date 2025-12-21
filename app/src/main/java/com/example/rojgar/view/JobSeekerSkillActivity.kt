@@ -267,7 +267,7 @@ fun JobSeekerSkillBody() {
                         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .fillMaxHeight(0.55f),
+                            .fillMaxHeight(0.45f),
                         colors = CardDefaults.cardColors(
                             containerColor = White
                         )
@@ -383,7 +383,7 @@ fun JobSeekerSkillBody() {
                                     },
                                     shape = RoundedCornerShape(15.dp),
                                     modifier = Modifier
-                                        .weight(1f)
+                                        .weight(0.5f)
                                         .height(50.dp),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color.LightGray,
@@ -397,7 +397,7 @@ fun JobSeekerSkillBody() {
                                     )
                                 }
 
-                                Spacer(Modifier.width(12.dp))
+                                Spacer(Modifier.width(15.dp))
 
                                 // Save Button
                                 Button(
