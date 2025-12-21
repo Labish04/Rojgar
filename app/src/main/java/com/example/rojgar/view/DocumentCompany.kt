@@ -1,29 +1,37 @@
 package com.example.rojgar.view
 
+import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
+import com.example.rojgar.repository.CompanyRepoImpl
 
 class DocumentCompanyActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,6 +45,26 @@ class DocumentCompanyActivity : ComponentActivity() {
 
 @Composable
 fun DocumentCompanyBody() {
+    val context = LocalContext.current
+    val repository = remember { CompanyRepoImpl() }
+
+    // Get current company ID
+    val currentCompanyId = repository.getCurrentCompany()?.uid ?: ""
+
+    // State variables
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var isUploading by remember { mutableStateOf(false) }
+
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            selectedImageUri = uri
+            Toast.makeText(context, "Image Selected!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     Scaffold { padding ->
         Column(
             modifier = Modifier
@@ -82,7 +110,9 @@ fun DocumentCompanyBody() {
                 text = "Submit Your Company Registration Document",
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF5C4CCF),
-                modifier = Modifier.align(Alignment.Start)
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .padding(horizontal = 16.dp)
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -91,17 +121,35 @@ fun DocumentCompanyBody() {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
                     .height(300.dp)
-                    .border(1.dp, Color.Gray, RoundedCornerShape(8.dp))
+                    .border(1.dp, Color.Gray, RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
             ) {
+                // Display selected image or placeholder
+                if (selectedImageUri != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(selectedImageUri),
+                        contentDescription = "Selected Document",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Text(
+                        text = "No document selected",
+                        color = Color.Gray
+                    )
+                }
 
                 // ---- ADD IMAGE BUTTON (BOTTOM-RIGHT) ----
                 Button(
-                    onClick = { println("Add image") },
+                    onClick = {
+                        imagePickerLauncher.launch("image/*")
+                    },
                     modifier = Modifier
                         .size(55.dp)
                         .align(Alignment.BottomEnd)
-                        .padding(16.dp),
+                        .padding(8.dp),
                     shape = RoundedCornerShape(50),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White
@@ -120,21 +168,60 @@ fun DocumentCompanyBody() {
 
             // ---------- SUBMIT BUTTON ----------
             Button(
-                onClick = { println("Submit Pressed") },
+                onClick = {
+                    if (selectedImageUri != null) {
+                        if (currentCompanyId.isNotEmpty()) {
+                            isUploading = true
+                            repository.uploadRegistrationDocument(
+                                companyId = currentCompanyId,
+                                imageUri = selectedImageUri!!
+                            ) { success, message ->
+                                isUploading = false
+                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+
+                                if (success) {
+                                    // Clear the selected image after successful upload
+                                    selectedImageUri = null
+                                }
+                            }
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Please login first",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Please select a document first",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth(0.5f)
                     .height(45.dp),
                 shape = RoundedCornerShape(50),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF8E53FF)
-                )
+                ),
+                enabled = !isUploading
             ) {
-                Text(
-                    text = "SUBMIT",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
+                if (isUploading) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                } else {
+                    Text(
+                        text = "SUBMIT",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
+
             Spacer(modifier = Modifier.height(20.dp))
 
             Row(
