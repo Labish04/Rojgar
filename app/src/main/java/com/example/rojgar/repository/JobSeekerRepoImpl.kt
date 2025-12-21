@@ -78,7 +78,7 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         jobSeekerId: String,
         callback: (Boolean, String, JobSeekerModel?) -> Unit
     ) {
-        ref.child(jobSeekerId).addValueEventListener(object : ValueEventListener{
+        ref.child(jobSeekerId).addListenerForSingleValueEvent(object : ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()){
                     val jobSeeker = snapshot.getValue(JobSeekerModel::class.java)
