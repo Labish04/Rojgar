@@ -43,6 +43,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.compose.runtime:runtime-livedata:1.10.0")
     implementation("com.google.android.exoplayer:exoplayer:2.19.0")
     implementation("androidx.media3:media3-exoplayer:1.1.1")
     implementation("androidx.media3:media3-ui:1.1.1")

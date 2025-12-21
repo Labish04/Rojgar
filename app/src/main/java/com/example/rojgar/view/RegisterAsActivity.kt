@@ -127,7 +127,9 @@ fun RegisterBody() {
 
             // Buttons
             Button(
-                onClick = { /* Navigate to Job Seeker Registration */ },
+                onClick = { val intent = Intent(context,
+                    JobseekerSignUpActivity::class.java)
+                    context.startActivity(intent) },
                 modifier = Modifier
                     .height(50.dp)
                     .width(300.dp),
@@ -143,7 +145,9 @@ fun RegisterBody() {
             Spacer(modifier = Modifier.height(30.dp))
 
             Button(
-                onClick = { /* Navigate to Company Registration */ },
+                onClick = {val intent = Intent(context,
+                    SignUpCompanyActivity::class.java)
+                    context.startActivity(intent) },
                 modifier = Modifier
                     .height(50.dp)
                     .width(300.dp),
@@ -169,15 +173,12 @@ fun RegisterBody() {
                     }
                 },
                 style = TextStyle(fontSize = 16.sp),
-                modifier = Modifier
-                    .clickable { /* Navigate to Login */ }
             )
             Spacer(modifier = Modifier.height(15.dp))
 
             Button(
                 onClick = { val intent = Intent(context,
                     LoginActivity::class.java)
-
                     context.startActivity(intent)
                     activity.finish() },
                 modifier = Modifier
