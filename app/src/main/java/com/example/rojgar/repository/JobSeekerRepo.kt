@@ -49,4 +49,5 @@ interface JobSeekerRepo {
          model: JobSeekerModel,
          callback: (Boolean, String) -> Unit
     )
+
 }
