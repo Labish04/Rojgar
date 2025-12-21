@@ -60,4 +60,10 @@ class JobSeekerViewModel (val repo: JobSeekerRepo){
     ){
         repo.forgetPassword(email,callback)
     }
+    fun deleteAccount(userId: String, callback: (Boolean, String) -> Unit){
+        repo.deleteAccount(userId,callback)
+    }
+    fun  deactivateAccount(userId: String,callback: (Boolean, String) -> Unit){
+        repo.deactivateAccount(userId,callback)
+    }
 }

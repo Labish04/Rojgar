@@ -1,5 +1,4 @@
 package com.example.rojgar.view
-
 import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -27,7 +26,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.rojgar.R
 import com.example.rojgar.ui.theme.RojgarTheme
-
 class JobSeekerDashboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,20 +37,16 @@ class JobSeekerDashboardActivity : ComponentActivity() {
         }
     }
 }
-
 @Composable
 fun JobSeekerDashboardBody() {
     val context = LocalContext.current
     val activity = context as Activity
-
     data class NavItem(
         val label: String,
         val selectedIcon: Int,
         val unselectedIcon: Int
     )
-
     var selectedIndex by remember { mutableStateOf(0) }
-
     val listItem = listOf(
         NavItem(
             label = "Home",
@@ -75,8 +69,6 @@ fun JobSeekerDashboardBody() {
             unselectedIcon = R.drawable.map
         )
     )
-
-
     Scaffold(
         bottomBar = {
             Surface (
@@ -107,7 +99,6 @@ fun JobSeekerDashboardBody() {
                 }
             }
         }
-
     ) { padding ->
         Column(
             modifier = Modifier
@@ -123,7 +114,6 @@ fun JobSeekerDashboardBody() {
         }
     }
 }
-
 @Preview(showSystemUi = true)
 @Composable
 fun JobSeekerDashboardBodyPreview() {

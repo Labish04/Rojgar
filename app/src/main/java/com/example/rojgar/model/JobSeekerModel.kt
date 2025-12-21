@@ -1,6 +1,6 @@
 package com.example.rojgar.model
 
-data class JobSeekerModel(
+data class JobSeekerModel (
 //    Basic SignUp Data
     val jobSeekerId : String = "",
     val fullName : String = "",

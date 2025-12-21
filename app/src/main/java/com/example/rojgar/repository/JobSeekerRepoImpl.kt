@@ -18,6 +18,8 @@ class JobSeekerRepoImpl : JobSeekerRepo {
 
     val ref : DatabaseReference = database.getReference("JobSeekers")
 
+
+
     override fun register(
         email: String,
         password: String,
@@ -139,4 +141,30 @@ class JobSeekerRepoImpl : JobSeekerRepo {
             }
         }
     }
+
+
+    override fun deleteAccount(
+        userId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(userId).removeValue().addOnCompleteListener {
+            if (it.isSuccessful) {
+                callback(true, "Account deleted successfully")
+            } else {
+                callback(false, "${it.exception?.message}")
+            }
+        }
+    }
+
+    override fun deactivateAccount(
+        userId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(userId).removeValue().addOnCompleteListener {
+            if (it.isSuccessful) {
+                callback(true, "Account deactivated successfully")
+            } else {
+                callback(false, "${it.exception?.message}")
+            }
+        }    }
 }
