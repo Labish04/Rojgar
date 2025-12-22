@@ -136,14 +136,18 @@ fun JobSeekerSearchScreen(
     }
 
     // Filter jobs based on search query and filter state
-    val filteredJobs = remember(allJobs, searchQuery, filterState) {
+    val filteredJobs = remember(allJobs, searchQuery, filterState, companyDetailsMap) {
         allJobs.filter { job ->
-            // Search query filter (search in title, position, description)
+            // Get company name from companyDetailsMap
+            val companyName = companyDetailsMap[job.companyId]?.companyName ?: ""
+            
+            // Search query filter (search in title, position, description, skills, and company name)
             val matchesSearch = searchQuery.isEmpty() || 
                 job.title.contains(searchQuery, ignoreCase = true) ||
                 job.position.contains(searchQuery, ignoreCase = true) ||
                 job.jobDescription.contains(searchQuery, ignoreCase = true) ||
-                job.skills.contains(searchQuery, ignoreCase = true)
+                job.skills.contains(searchQuery, ignoreCase = true) ||
+                companyName.contains(searchQuery, ignoreCase = true)
 
             // Category filter
             val matchesCategories = filterState.selectedCategories.isEmpty() ||
