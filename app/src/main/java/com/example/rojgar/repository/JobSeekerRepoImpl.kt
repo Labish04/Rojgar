@@ -1,5 +1,6 @@
 package com.example.rojgar.repository
 
+import android.net.Uri
 import androidx.compose.runtime.mutableStateListOf
 import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.JobModel
@@ -155,6 +156,31 @@ class JobSeekerRepoImpl : JobSeekerRepo {
                 callback(false,"${it.exception?.message}")
             }
         }
+    }
+
+    override fun uploadVideo(
+        jobSeekerId: String,
+        videoUri: Uri,
+        callback: (Boolean, String, String?) -> Unit
+    ) {
+        TODO("Not yet implemented")
+    }
+
+    override fun deleteVideo(
+        jobSeekerId: String,
+        videoUrl: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        TODO("Not yet implemented")
+    }
+
+    override fun updateVideo(
+        jobSeekerId: String,
+        videoUri: Uri,
+        oldVideoUrl: String,
+        callback: (Boolean, String, String?) -> Unit
+    ) {
+        TODO("Not yet implemented")
     }
 
 

@@ -1,4 +1,5 @@
 package com.example.rojgar.repository
+import android.net.Uri
 import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
@@ -48,5 +49,24 @@ interface JobSeekerRepo {
     fun updateProfile(
          model: JobSeekerModel,
          callback: (Boolean, String) -> Unit
+    )
+
+    fun uploadVideo(
+        jobSeekerId: String,
+        videoUri: Uri,
+        callback: (Boolean, String, String?) -> Unit
+    )
+
+    fun deleteVideo(
+        jobSeekerId: String,
+        videoUrl: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun updateVideo(
+        jobSeekerId: String,
+        videoUri: Uri,
+        oldVideoUrl: String,
+        callback: (Boolean, String, String?) -> Unit
     )
 }
