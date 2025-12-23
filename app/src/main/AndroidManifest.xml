@@ -12,6 +12,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Rojgar">
         <activity
+            android:name=".view.JobApplyActivity"
+            android:exported="true"
+            android:label="@string/title_activity_job_apply"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".view.ForgetPasswordActivity"
             android:exported="true"
             android:label="@string/title_activity_forget_password"
@@ -341,7 +352,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
     </application>
 
 </manifest>

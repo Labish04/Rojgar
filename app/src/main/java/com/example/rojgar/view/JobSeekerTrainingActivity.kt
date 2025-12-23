@@ -906,7 +906,7 @@ fun TrainingCard(
                                     imageVector = Icons.Default.Edit,
                                     contentDescription = "Edit",
                                     tint = Color.Black,
-                                    modifier = Modifier.size(26.dp)
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
@@ -919,7 +919,7 @@ fun TrainingCard(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = "Delete",
                                     tint = Color.Red,
-                                    modifier = Modifier.size(26.dp)
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
