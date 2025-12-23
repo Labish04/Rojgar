@@ -1,13 +1,13 @@
 package com.example.rojgar.model
 
 data class JobSeekerModel(
-//    Basic SignUp Data
+
     val jobSeekerId : String = "",
     val fullName : String = "",
     val email : String = "",
     val phoneNumber : String = "",
 
-//    Personal Information
+    // Personal Information
     val gender : String = "",
     val dob : String = "",
     val currentAddress : String = "",
@@ -15,7 +15,9 @@ data class JobSeekerModel(
     val bio : String = "",
     val profilePhoto : String = "",
     val coverPhoto : String = "",
-    val video : String = ""
+    val video : String = "",
+
+    val followers : List<String> = emptyList()
 
 ){
     fun toMap() : Map<String,Any?>{
@@ -31,7 +33,8 @@ data class JobSeekerModel(
             "bio" to bio,
             "profilePhoto" to profilePhoto,
             "coverPhoto" to coverPhoto,
-            "video" to video
+            "video" to video,
+            "followers" to followers
         )
     }
 }

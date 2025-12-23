@@ -44,10 +44,27 @@ interface JobSeekerRepo {
         callback : (Boolean, String) ->Unit
     )
 
+    fun followJobSeeker(
+        currentUserId: String,
+        targetJobSeekerId: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun unfollowJobSeeker(
+        currentUserId: String,
+        targetJobSeekerId: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun isFollowing(
+        currentUserId: String,
+        targetJobSeekerId: String,
+        callback: (Boolean) -> Unit
+    )
 
     fun updateProfile(
-         model: JobSeekerModel,
-         callback: (Boolean, String) -> Unit
+        model: JobSeekerModel,
+        callback: (Boolean, String) -> Unit
     )
 
 }

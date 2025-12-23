@@ -11,7 +11,6 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-
 import java.util.UUID
 
 class CompanyRepoImpl : CompanyRepo {
@@ -166,27 +165,21 @@ class CompanyRepoImpl : CompanyRepo {
             })
     }
 
+    override fun uploadRegistrationDocument(
+        companyId: String,
+        imageUri: Uri,
+        callback: (Boolean, String) -> Unit
+    ) {
+        // For now, just save the URI as a string
+        // In production, you would upload to Firebase Storage
+        ref.child(companyId).child("companyRegistrationDocument")
+            .setValue(imageUri.toString())
+            .addOnSuccessListener {
+                callback(true, "Document uploaded successfully")
+            }
+            .addOnFailureListener { e ->
+                callback(false, "Failed to update database: ${e.message}")
+            }
+    }
 
 }
-
-
-
-//    override fun uploadImage(
-//        imageUri: Uri,
-//        callback: (Boolean, String, String) -> Unit
-//    ) {
-//        val fileName = "job_images/${UUID.randomUUID()}.jpg"
-//        val imageRef = storageRef.child(fileName)
-//
-//        imageRef.putFile(imageUri)
-//            .addOnSuccessListener {
-//                imageRef.downloadUrl.addOnSuccessListener { uri ->
-//                    callback(true, "Image uploaded successfully", uri.toString())
-//                }.addOnFailureListener { e ->
-//                    callback(false, "Failed to get download URL: ${e.message}", "")
-//                }
-//            }
-//            .addOnFailureListener { e ->
-//                callback(false, "Failed to upload image: ${e.message}", "")
-//            }
-//    }
