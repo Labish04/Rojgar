@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -51,8 +53,7 @@ import com.example.rojgar.view.ui.theme.RojgarTheme
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobViewModel
 import com.google.gson.Gson
-import java.text.NumberFormat
-import java.util.Locale
+
 
 data class JobFilterState(
     val selectedCategories: List<String> = emptyList(),
@@ -103,39 +104,17 @@ fun JobSeekerSearchScreen(
     var searchQuery by remember { mutableStateOf(initialSearchQuery) }
     var filterState by remember { mutableStateOf(initialFilterState) }
     var showFilterSheet by remember { mutableStateOf(false) }
-    var activeFiltersCount by remember {
-        mutableStateOf(countActiveFilters(initialFilterState))
-    }
+    val activeFiltersCount = remember(filterState) { countActiveFilters(filterState) }
 
     var allJobs by remember { mutableStateOf<List<JobModel>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var jobPostsWithCompany by remember { mutableStateOf<List<JobPostWithCompany>>(emptyList()) }
-
-    // Map to store company details by companyId
     var companyDetailsMap by remember { mutableStateOf<Map<String, CompanyModel>>(emptyMap()) }
 
-    // Observe company details - each time a company is fetched, update the map
     val companyDetails by companyViewModel.companyDetails.observeAsState()
 
-    // Update company details map when new company details are received
     LaunchedEffect(companyDetails) {
         companyDetails?.let { company ->
             companyDetailsMap = companyDetailsMap + (company.companyId to company)
-        }
-    }
-
-    // Update job posts when company details map changes
-    LaunchedEffect(companyDetailsMap, allJobs) {
-        if (allJobs.isNotEmpty()) {
-            jobPostsWithCompany = allJobs.map { job ->
-                val companyInfo = companyDetailsMap[job.companyId]
-                JobPostWithCompany(
-                    jobPost = job,
-                    companyName = companyInfo?.companyName ?: "",
-                    companyProfile = companyInfo?.companyProfileImage ?: "",
-                    isLoading = companyInfo == null
-                )
-            }
         }
     }
 
@@ -165,67 +144,53 @@ fun JobSeekerSearchScreen(
     // Filter jobs based on search query and filter state
     val filteredJobs = remember(allJobs, searchQuery, filterState, companyDetailsMap) {
         allJobs.filter { job ->
-            // Get company name from companyDetailsMap
             val companyName = companyDetailsMap[job.companyId]?.companyName ?: ""
             
-            // Search query filter (search in title, position, description, skills, and company name)
             val matchesSearch = searchQuery.isEmpty() || 
-                job.title.contains(searchQuery, ignoreCase = true) ||
-                job.position.contains(searchQuery, ignoreCase = true) ||
-                job.jobDescription.contains(searchQuery, ignoreCase = true) ||
-                job.skills.contains(searchQuery, ignoreCase = true) ||
-                companyName.contains(searchQuery, ignoreCase = true)
+                listOf(job.title, job.position, job.jobDescription, job.skills, companyName)
+                    .any { it.contains(searchQuery, ignoreCase = true) }
 
-            // Category filter
             val matchesCategories = filterState.selectedCategories.isEmpty() ||
-                filterState.selectedCategories.any { category ->
-                    job.categories.contains(category)
-                }
+                filterState.selectedCategories.any { job.categories.contains(it) }
 
-            // Job type filter
             val matchesJobType = filterState.selectedJobTypes.isEmpty() ||
                 filterState.selectedJobTypes.contains(job.jobType)
 
-            // Experience filter
             val matchesExperience = filterState.selectedExperience.isEmpty() ||
                 job.experience.contains(filterState.selectedExperience, ignoreCase = true)
 
-            // Education filter
             val matchesEducation = filterState.selectedEducation.isEmpty() ||
-                filterState.selectedEducation.any { education ->
-                    job.education.contains(education, ignoreCase = true)
-                }
+                filterState.selectedEducation.any { job.education.contains(it, ignoreCase = true) }
 
-            // Salary filter
-            val matchesSalary = if (filterState.minSalary.isNotEmpty() || filterState.maxSalary.isNotEmpty()) {
-                try {
+            val matchesSalary = when {
+                filterState.minSalary.isEmpty() && filterState.maxSalary.isEmpty() -> true
+                else -> {
                     val jobSalary = extractSalaryValue(job.salary)
-                    val minSalary = if (filterState.minSalary.isNotEmpty()) {
-                        filterState.minSalary.replace(",", "").toDoubleOrNull() ?: 0.0
-                    } else 0.0
-                    val maxSalary = if (filterState.maxSalary.isNotEmpty()) {
-                        filterState.maxSalary.replace(",", "").toDoubleOrNull() ?: Double.MAX_VALUE
-                    } else Double.MAX_VALUE
-                    
-                    jobSalary in minSalary..maxSalary
-                } catch (e: Exception) {
-                    true // If parsing fails, include the job
+                    val min = filterState.minSalary.replace(",", "").toDoubleOrNull() ?: 0.0
+                    val max = filterState.maxSalary.replace(",", "").toDoubleOrNull() ?: Double.MAX_VALUE
+                    jobSalary in min..max
                 }
-            } else {
-                true
             }
 
+            val matchesLocation = filterState.location.isEmpty() ||
+                (job.jobDescription.contains(filterState.location, ignoreCase = true) ||
+                 companyName.contains(filterState.location, ignoreCase = true))
 
             matchesSearch && matchesCategories && matchesJobType && 
-                matchesExperience && matchesEducation && matchesSalary
+                matchesExperience && matchesEducation && matchesSalary && matchesLocation
         }
     }
 
     // Map filtered jobs to JobPostWithCompany
-    val filteredJobsWithCompany = remember(filteredJobs, jobPostsWithCompany) {
+    val filteredJobsWithCompany = remember(filteredJobs, companyDetailsMap) {
         filteredJobs.map { job ->
-            jobPostsWithCompany.find { it.jobPost.postId == job.postId }
-                ?: JobPostWithCompany(jobPost = job, isLoading = true)
+            val companyInfo = companyDetailsMap[job.companyId]
+            JobPostWithCompany(
+                jobPost = job,
+                companyName = companyInfo?.companyName ?: "",
+                companyProfile = companyInfo?.companyProfileImage ?: "",
+                isLoading = companyInfo == null
+            )
         }
     }
 
@@ -349,10 +314,7 @@ fun JobSeekerSearchScreen(
             if (activeFiltersCount > 0) {
                 ActiveFiltersChips(
                     filterState = filterState,
-                    onClearFilter = { updatedFilter ->
-                        filterState = updatedFilter
-                        activeFiltersCount = countActiveFilters(updatedFilter)
-                    }
+                    onClearFilter = { filterState = it }
                 )
             }
 
@@ -464,10 +426,7 @@ fun JobSeekerSearchScreen(
         JobFilterBottomSheet(
             showFilter = showFilterSheet,
             onDismiss = { showFilterSheet = false },
-            onApplyFilter = { newFilterState ->
-                filterState = newFilterState
-                activeFiltersCount = countActiveFilters(newFilterState)
-            },
+            onApplyFilter = { filterState = it },
             initialFilterState = filterState
         )
     }
@@ -484,19 +443,12 @@ fun ActiveFiltersChips(
             .padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Clear All Filter
         item {
             FilterChip(
                 selected = true,
                 onClick = { onClearFilter(JobFilterState()) },
                 label = { Text("Clear All") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                },
+                leadingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = Purple,
                     selectedLabelColor = Color.White
@@ -504,26 +456,13 @@ fun ActiveFiltersChips(
             )
         }
 
-        // Category Filters
         filterState.selectedCategories.forEach { category ->
             item {
                 FilterChip(
                     selected = true,
-                    onClick = {
-                        onClearFilter(
-                            filterState.copy(
-                                selectedCategories = filterState.selectedCategories - category
-                            )
-                        )
-                    },
+                    onClick = { onClearFilter(filterState.copy(selectedCategories = filterState.selectedCategories - category)) },
                     label = { Text(category) },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
+                    trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = NormalBlue,
                         selectedLabelColor = Color.White
@@ -532,26 +471,13 @@ fun ActiveFiltersChips(
             }
         }
 
-        // Job Type Filters
         filterState.selectedJobTypes.forEach { jobType ->
             item {
                 FilterChip(
                     selected = true,
-                    onClick = {
-                        onClearFilter(
-                            filterState.copy(
-                                selectedJobTypes = filterState.selectedJobTypes - jobType
-                            )
-                        )
-                    },
+                    onClick = { onClearFilter(filterState.copy(selectedJobTypes = filterState.selectedJobTypes - jobType)) },
                     label = { Text(jobType) },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
+                    trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = NormalBlue,
                         selectedLabelColor = Color.White
@@ -560,22 +486,13 @@ fun ActiveFiltersChips(
             }
         }
 
-        // Experience Filter
         if (filterState.selectedExperience.isNotEmpty()) {
             item {
                 FilterChip(
                     selected = true,
-                    onClick = {
-                        onClearFilter(filterState.copy(selectedExperience = ""))
-                    },
+                    onClick = { onClearFilter(filterState.copy(selectedExperience = "")) },
                     label = { Text(filterState.selectedExperience) },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
+                    trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = NormalBlue,
                         selectedLabelColor = Color.White
@@ -584,26 +501,13 @@ fun ActiveFiltersChips(
             }
         }
 
-        // Education Filters
         filterState.selectedEducation.forEach { education ->
             item {
                 FilterChip(
                     selected = true,
-                    onClick = {
-                        onClearFilter(
-                            filterState.copy(
-                                selectedEducation = filterState.selectedEducation - education
-                            )
-                        )
-                    },
+                    onClick = { onClearFilter(filterState.copy(selectedEducation = filterState.selectedEducation - education)) },
                     label = { Text(education) },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
+                    trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = NormalBlue,
                         selectedLabelColor = Color.White
@@ -612,26 +516,13 @@ fun ActiveFiltersChips(
             }
         }
 
-        // Salary Filter
         if (filterState.minSalary.isNotEmpty() || filterState.maxSalary.isNotEmpty()) {
             item {
                 FilterChip(
                     selected = true,
-                    onClick = {
-                        onClearFilter(
-                            filterState.copy(minSalary = "", maxSalary = "")
-                        )
-                    },
-                    label = {
-                        Text("Salary: ${filterState.minSalary}-${filterState.maxSalary}")
-                    },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
+                    onClick = { onClearFilter(filterState.copy(minSalary = "", maxSalary = "")) },
+                    label = { Text("Salary: ${filterState.minSalary}-${filterState.maxSalary}") },
+                    trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = NormalBlue,
                         selectedLabelColor = Color.White
@@ -640,22 +531,13 @@ fun ActiveFiltersChips(
             }
         }
 
-        // Location Filter
         if (filterState.location.isNotEmpty()) {
             item {
                 FilterChip(
                     selected = true,
-                    onClick = {
-                        onClearFilter(filterState.copy(location = ""))
-                    },
+                    onClick = { onClearFilter(filterState.copy(location = "")) },
                     label = { Text(filterState.location) },
-                    trailingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
+                    trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = NormalBlue,
                         selectedLabelColor = Color.White
@@ -668,33 +550,66 @@ fun ActiveFiltersChips(
 
 // Helper function to count active filters
 fun countActiveFilters(filterState: JobFilterState): Int {
-    var count = 0
-    count += filterState.selectedCategories.size
-    count += filterState.selectedJobTypes.size
-    if (filterState.selectedExperience.isNotEmpty()) count++
-    count += filterState.selectedEducation.size
-    if (filterState.minSalary.isNotEmpty() || filterState.maxSalary.isNotEmpty()) count++
-    if (filterState.location.isNotEmpty()) count++
-    return count
+    return filterState.selectedCategories.size +
+           filterState.selectedJobTypes.size +
+           (if (filterState.selectedExperience.isNotEmpty()) 1 else 0) +
+           filterState.selectedEducation.size +
+           (if (filterState.minSalary.isNotEmpty() || filterState.maxSalary.isNotEmpty()) 1 else 0) +
+           (if (filterState.location.isNotEmpty()) 1 else 0)
 }
 
 // Helper function to extract numeric value from salary string
 fun extractSalaryValue(salary: String): Double {
     if (salary.isEmpty()) return 0.0
     return try {
-        // Remove common non-numeric characters and extract first number
-        val cleaned = salary.replace(",", "").replace("Rs.", "").replace("NPR", "")
+        salary.replace(",", "").replace("Rs.", "").replace("NPR", "")
             .replace("/", "").replace("-", "").trim()
-        val numbers = cleaned.filter { it.isDigit() || it == '.' }
-        numbers.toDoubleOrNull() ?: 0.0
+            .filter { it.isDigit() || it == '.' }
+            .toDoubleOrNull() ?: 0.0
     } catch (e: Exception) {
         0.0
     }
 }
 
-fun formatSalaryDisplay(value: Float): String {
-    val formatter = NumberFormat.getIntegerInstance(Locale.getDefault())
-    return formatter.format(value.toInt())
+@Composable
+private fun FilterChipSection(
+    title: String,
+    options: List<String>,
+    selectedItems: List<String>,
+    onSelectionChange: (List<String>) -> Unit
+) {
+    Text(text = title, fontWeight = FontWeight.SemiBold)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { option ->
+            val selected = selectedItems.contains(option)
+            FilterChip(
+                selected = selected,
+                onClick = {
+                    onSelectionChange(if (selected) selectedItems - option else selectedItems + option)
+                },
+                label = { Text(option) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SingleSelectFilterChipSection(
+    title: String,
+    options: List<String>,
+    selected: String,
+    onSelectionChange: (String) -> Unit
+) {
+    Text(text = title, fontWeight = FontWeight.SemiBold)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { option ->
+            FilterChip(
+                selected = selected == option,
+                onClick = { onSelectionChange(if (selected == option) "" else option) },
+                label = { Text(option) }
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -720,18 +635,6 @@ fun JobFilterBottomSheet(
     val jobTypeOptions = listOf("Full Time", "Part Time", "Internship", "Contract", "Remote")
     val experienceOptions = listOf("Fresher", "1-2 years", "3-5 years", "5+ years")
     val educationOptions = listOf("High School", "Diploma", "Bachelor", "Master", "PhD")
-    val salaryMinBound = 0f
-    val salaryMaxBound = 200_000f
-
-    fun parseSalaryToFloat(value: String, fallback: Float): Float {
-        return value.replace(",", "").toFloatOrNull() ?: fallback
-    }
-
-    var salaryRange by remember(initialFilterState) {
-        val min = parseSalaryToFloat(initialFilterState.minSalary, salaryMinBound).coerceAtLeast(salaryMinBound)
-        val max = parseSalaryToFloat(initialFilterState.maxSalary, salaryMaxBound).coerceAtLeast(min).coerceAtMost(salaryMaxBound)
-        mutableStateOf(min..max)
-    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -750,97 +653,56 @@ fun JobFilterBottomSheet(
                 style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold)
             )
 
-            Text(text = "Categories", fontWeight = FontWeight.SemiBold)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                categoryOptions.forEach { category ->
-                    val selected = tempFilterState.selectedCategories.contains(category)
-                    FilterChip(
-                        selected = selected,
-                        onClick = {
-                            val updated = if (selected) {
-                                tempFilterState.selectedCategories - category
-                            } else {
-                                tempFilterState.selectedCategories + category
-                            }
-                            tempFilterState = tempFilterState.copy(selectedCategories = updated)
-                        },
-                        label = { Text(category) }
-                    )
-                }
-            }
+            FilterChipSection(
+                title = "Categories",
+                options = categoryOptions,
+                selectedItems = tempFilterState.selectedCategories,
+                onSelectionChange = { tempFilterState = tempFilterState.copy(selectedCategories = it) }
+            )
 
-            Text(text = "Job Type", fontWeight = FontWeight.SemiBold)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                jobTypeOptions.forEach { type ->
-                    val selected = tempFilterState.selectedJobTypes.contains(type)
-                    FilterChip(
-                        selected = selected,
-                        onClick = {
-                            val updated = if (selected) {
-                                tempFilterState.selectedJobTypes - type
-                            } else {
-                                tempFilterState.selectedJobTypes + type
-                            }
-                            tempFilterState = tempFilterState.copy(selectedJobTypes = updated)
-                        },
-                        label = { Text(type) }
-                    )
-                }
-            }
+            FilterChipSection(
+                title = "Job Type",
+                options = jobTypeOptions,
+                selectedItems = tempFilterState.selectedJobTypes,
+                onSelectionChange = { tempFilterState = tempFilterState.copy(selectedJobTypes = it) }
+            )
 
-            Text(text = "Experience", fontWeight = FontWeight.SemiBold)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                experienceOptions.forEach { experience ->
-                    val selected = tempFilterState.selectedExperience == experience
-                    FilterChip(
-                        selected = selected,
-                        onClick = {
-                            tempFilterState = tempFilterState.copy(
-                                selectedExperience = if (selected) "" else experience
-                            )
-                        },
-                        label = { Text(experience) }
-                    )
-                }
-            }
+            SingleSelectFilterChipSection(
+                title = "Experience",
+                options = experienceOptions,
+                selected = tempFilterState.selectedExperience,
+                onSelectionChange = { tempFilterState = tempFilterState.copy(selectedExperience = it) }
+            )
 
-            Text(text = "Education", fontWeight = FontWeight.SemiBold)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                educationOptions.forEach { education ->
-                    val selected = tempFilterState.selectedEducation.contains(education)
-                    FilterChip(
-                        selected = selected,
-                        onClick = {
-                            val updated = if (selected) {
-                                tempFilterState.selectedEducation - education
-                            } else {
-                                tempFilterState.selectedEducation + education
-                            }
-                            tempFilterState = tempFilterState.copy(selectedEducation = updated)
-                        },
-                        label = { Text(education) }
-                    )
-                }
-            }
+            FilterChipSection(
+                title = "Education",
+                options = educationOptions,
+                selectedItems = tempFilterState.selectedEducation,
+                onSelectionChange = { tempFilterState = tempFilterState.copy(selectedEducation = it) }
+            )
 
             Text(text = "Salary Range (per month)", fontWeight = FontWeight.SemiBold)
-            Text(
-                text = "Rs ${formatSalaryDisplay(salaryRange.start)} - Rs ${formatSalaryDisplay(salaryRange.endInclusive)}",
-                style = TextStyle(fontSize = 14.sp, color = Color.Gray)
-            )
-            RangeSlider(
-                value = salaryRange,
-                onValueChange = { range ->
-                    salaryRange = range
-                    val minValue = range.start
-                    val maxValue = range.endInclusive
-                    val minText = if (minValue <= salaryMinBound) "" else minValue.toInt().toString()
-                    val maxText = if (maxValue >= salaryMaxBound) "" else maxValue.toInt().toString()
-                    tempFilterState = tempFilterState.copy(minSalary = minText, maxSalary = maxText)
-                },
-                valueRange = salaryMinBound..salaryMaxBound,
-                steps = 10
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedTextField(
+                    value = tempFilterState.minSalary,
+                    onValueChange = { tempFilterState = tempFilterState.copy(minSalary = it) },
+                    placeholder = { Text("Min Salary") },
+                    label = { Text("Min") },
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                OutlinedTextField(
+                    value = tempFilterState.maxSalary,
+                    onValueChange = { tempFilterState = tempFilterState.copy(maxSalary = it) },
+                    placeholder = { Text("Max Salary") },
+                    label = { Text("Max") },
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
 
             Text(text = "Location", fontWeight = FontWeight.SemiBold)
             OutlinedTextField(
@@ -855,10 +717,7 @@ fun JobFilterBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedButton(
-                    onClick = {
-                        tempFilterState = JobFilterState()
-                        salaryRange = salaryMinBound..salaryMaxBound
-                    },
+                    onClick = { tempFilterState = JobFilterState() },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Reset")
