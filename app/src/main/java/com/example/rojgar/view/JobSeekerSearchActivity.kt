@@ -6,10 +6,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -32,16 +47,28 @@ import com.example.rojgar.model.JobModel
 import com.example.rojgar.repository.CompanyRepoImpl
 import com.example.rojgar.repository.JobRepoImpl
 import com.example.rojgar.ui.theme.*
+import com.example.rojgar.view.ui.theme.RojgarTheme
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobViewModel
 import com.google.gson.Gson
+import java.text.NumberFormat
+import java.util.Locale
+
+data class JobFilterState(
+    val selectedCategories: List<String> = emptyList(),
+    val selectedJobTypes: List<String> = emptyList(),
+    val selectedExperience: String = "",
+    val selectedEducation: List<String> = emptyList(),
+    val minSalary: String = "",
+    val maxSalary: String = "",
+    val location: String = ""
+)
 
 class JobSeekerSearchActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Get search query and filter from intent
         val searchQuery = intent.getStringExtra("searchQuery") ?: ""
         val filterStateJson = intent.getStringExtra("filterState")
         val filterState = if (filterStateJson != null) {
@@ -188,11 +215,6 @@ fun JobSeekerSearchScreen(
                 true
             }
 
-            // Location filter (if JobModel has location field - for now we'll skip as it's not in the model)
-            // Note: JobModel doesn't have a location field, so we'll skip this filter
-            // If you add location to JobModel, uncomment below:
-            // val matchesLocation = filterState.location.isEmpty() ||
-            //     job.location.contains(filterState.location, ignoreCase = true)
 
             matchesSearch && matchesCategories && matchesJobType && 
                 matchesExperience && matchesEducation && matchesSalary
@@ -215,7 +237,7 @@ fun JobSeekerSearchScreen(
                     navigationIconContentColor = Color.Black,
                     titleContentColor = Color.Black
                 ),
-                title = { Text("Search Jobs") },
+                title = { Text("Search") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -245,7 +267,7 @@ fun JobSeekerSearchScreen(
                     onValueChange = { searchQuery = it },
                     placeholder = {
                         Text(
-                            "Search jobs",
+                            "Search ",
                             style = TextStyle(
                                 fontSize = 16.sp,
                                 color = Color.Gray
@@ -667,5 +689,193 @@ fun extractSalaryValue(salary: String): Double {
         numbers.toDoubleOrNull() ?: 0.0
     } catch (e: Exception) {
         0.0
+    }
+}
+
+fun formatSalaryDisplay(value: Float): String {
+    val formatter = NumberFormat.getIntegerInstance(Locale.getDefault())
+    return formatter.format(value.toInt())
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun JobFilterBottomSheet(
+    showFilter: Boolean,
+    onDismiss: () -> Unit,
+    onApplyFilter: (JobFilterState) -> Unit,
+    initialFilterState: JobFilterState
+) {
+    if (!showFilter) return
+
+    val scrollState = rememberScrollState()
+    var tempFilterState by remember(initialFilterState) { mutableStateOf(initialFilterState) }
+
+    val categoryOptions = listOf(
+        "IT & Telecommunication",
+        "Creative / Graphics / Designing",
+        "Accounting / Finance",
+        "Sales / Public Relations",
+        "General Management"
+    )
+    val jobTypeOptions = listOf("Full Time", "Part Time", "Internship", "Contract", "Remote")
+    val experienceOptions = listOf("Fresher", "1-2 years", "3-5 years", "5+ years")
+    val educationOptions = listOf("High School", "Diploma", "Bachelor", "Master", "PhD")
+    val salaryMinBound = 0f
+    val salaryMaxBound = 200_000f
+
+    fun parseSalaryToFloat(value: String, fallback: Float): Float {
+        return value.replace(",", "").toFloatOrNull() ?: fallback
+    }
+
+    var salaryRange by remember(initialFilterState) {
+        val min = parseSalaryToFloat(initialFilterState.minSalary, salaryMinBound).coerceAtLeast(salaryMinBound)
+        val max = parseSalaryToFloat(initialFilterState.maxSalary, salaryMaxBound).coerceAtLeast(min).coerceAtMost(salaryMaxBound)
+        mutableStateOf(min..max)
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.9f)
+                .verticalScroll(scrollState)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Filters",
+                style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            )
+
+            Text(text = "Categories", fontWeight = FontWeight.SemiBold)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                categoryOptions.forEach { category ->
+                    val selected = tempFilterState.selectedCategories.contains(category)
+                    FilterChip(
+                        selected = selected,
+                        onClick = {
+                            val updated = if (selected) {
+                                tempFilterState.selectedCategories - category
+                            } else {
+                                tempFilterState.selectedCategories + category
+                            }
+                            tempFilterState = tempFilterState.copy(selectedCategories = updated)
+                        },
+                        label = { Text(category) }
+                    )
+                }
+            }
+
+            Text(text = "Job Type", fontWeight = FontWeight.SemiBold)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                jobTypeOptions.forEach { type ->
+                    val selected = tempFilterState.selectedJobTypes.contains(type)
+                    FilterChip(
+                        selected = selected,
+                        onClick = {
+                            val updated = if (selected) {
+                                tempFilterState.selectedJobTypes - type
+                            } else {
+                                tempFilterState.selectedJobTypes + type
+                            }
+                            tempFilterState = tempFilterState.copy(selectedJobTypes = updated)
+                        },
+                        label = { Text(type) }
+                    )
+                }
+            }
+
+            Text(text = "Experience", fontWeight = FontWeight.SemiBold)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                experienceOptions.forEach { experience ->
+                    val selected = tempFilterState.selectedExperience == experience
+                    FilterChip(
+                        selected = selected,
+                        onClick = {
+                            tempFilterState = tempFilterState.copy(
+                                selectedExperience = if (selected) "" else experience
+                            )
+                        },
+                        label = { Text(experience) }
+                    )
+                }
+            }
+
+            Text(text = "Education", fontWeight = FontWeight.SemiBold)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                educationOptions.forEach { education ->
+                    val selected = tempFilterState.selectedEducation.contains(education)
+                    FilterChip(
+                        selected = selected,
+                        onClick = {
+                            val updated = if (selected) {
+                                tempFilterState.selectedEducation - education
+                            } else {
+                                tempFilterState.selectedEducation + education
+                            }
+                            tempFilterState = tempFilterState.copy(selectedEducation = updated)
+                        },
+                        label = { Text(education) }
+                    )
+                }
+            }
+
+            Text(text = "Salary Range (per month)", fontWeight = FontWeight.SemiBold)
+            Text(
+                text = "Rs ${formatSalaryDisplay(salaryRange.start)} - Rs ${formatSalaryDisplay(salaryRange.endInclusive)}",
+                style = TextStyle(fontSize = 14.sp, color = Color.Gray)
+            )
+            RangeSlider(
+                value = salaryRange,
+                onValueChange = { range ->
+                    salaryRange = range
+                    val minValue = range.start
+                    val maxValue = range.endInclusive
+                    val minText = if (minValue <= salaryMinBound) "" else minValue.toInt().toString()
+                    val maxText = if (maxValue >= salaryMaxBound) "" else maxValue.toInt().toString()
+                    tempFilterState = tempFilterState.copy(minSalary = minText, maxSalary = maxText)
+                },
+                valueRange = salaryMinBound..salaryMaxBound,
+                steps = 10
+            )
+
+            Text(text = "Location", fontWeight = FontWeight.SemiBold)
+            OutlinedTextField(
+                value = tempFilterState.location,
+                onValueChange = { tempFilterState = tempFilterState.copy(location = it) },
+                placeholder = { Text("e.g. Kathmandu") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        tempFilterState = JobFilterState()
+                        salaryRange = salaryMinBound..salaryMaxBound
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Reset")
+                }
+                Button(
+                    onClick = {
+                        onApplyFilter(tempFilterState)
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Purple)
+                ) {
+                    Text("Apply", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
     }
 }

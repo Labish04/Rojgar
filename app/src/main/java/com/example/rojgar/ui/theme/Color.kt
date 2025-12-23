@@ -8,7 +8,7 @@ val Gray = Color(0xFF7C7C7E)
 val White = Color(0xFFFFFFFF)
 val NormalBlue = Color(0xFF0028C0)
 
-val Purple = Color(0xFF7253F8)
+val Purple = Color(0xFF451CF3)
 val Blue = Color(0xFFE4EEFC)
 val DarkBlue = Color(0xFFC3D5EE)
 val DarkBlue2 = Color(0xFF525DF0)
