@@ -152,7 +152,6 @@ fun VerificationBody() {
                     .fillMaxWidth()
                     .padding(horizontal = 40.dp)
             )
-
             Spacer(modifier = Modifier.height(40.dp))
 
             Row(
@@ -162,9 +161,8 @@ fun VerificationBody() {
             ) {
                 Button(
                     onClick = {
-                        // Handle verification
                         if (otpValue.length == 4) {
-                            // Proceed with verification
+
                         }
                     },
                     colors = ButtonDefaults.buttonColors(

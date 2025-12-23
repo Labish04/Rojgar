@@ -12,17 +12,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Rojgar">
         <activity
-            android:name=".view.SavedJobsActivity"
-            android:exported="true"
-            android:label="@string/title_activity_saved_jobs"
-            android:theme="@style/Theme.Rojgar">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <activity
             android:name=".view.ForgetPasswordActivity"
             android:exported="true"
             android:label="@string/title_activity_forget_password"
@@ -90,6 +79,17 @@
         </activity>
         <activity
             android:name=".view.SignUpCompanyActivity"
+            android:exported="true"
+            android:label="@string/title_activity_sign_up_company"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".view.FollowingListActivity"
             android:exported="true"
             android:label="@string/title_activity_sign_up_company"
             android:theme="@style/Theme.Rojgar">
@@ -352,6 +352,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".view.JobSeekerSearchActivity"
+            android:exported="true"
+            android:label="@string/title_activity_company_dashboard"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
     </application>
 
 </manifest>
