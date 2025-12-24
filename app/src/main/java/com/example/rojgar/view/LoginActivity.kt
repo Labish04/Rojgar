@@ -3,6 +3,7 @@ package com.example.rojgar.view
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -52,9 +53,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.R
+import com.example.rojgar.repository.CompanyRepoImpl
+import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.NormalBlue
 import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
+import com.example.rojgar.viewmodel.CompanyViewModel
+import com.example.rojgar.viewmodel.JobSeekerViewModel
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,9 +78,12 @@ fun LoginBody() {
     val context = LocalContext.current
     val activity = context as Activity
 
+    val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
+    val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
+
+
     var email by remember { mutableStateOf("") }
     var password by remember {mutableStateOf("")}
-    var visibility by remember {mutableStateOf(false)}
 
     var rememberMe by remember { mutableStateOf(false) }
 
@@ -211,7 +219,15 @@ fun LoginBody() {
                         "Forget Password?", style = TextStyle(
                             fontSize = 15.sp,
                             color = Purple
-                        )
+                        ),
+                        modifier = Modifier
+                            .clickable(interactionSource = remember {
+                                MutableInteractionSource()
+                            },
+                                indication = null    ){
+                                val intent = Intent(context, ForgetPasswordActivity::class.java)
+                                context.startActivity(intent)
+                            },
                     )
                 }
             }
@@ -224,7 +240,51 @@ fun LoginBody() {
                 horizontalArrangement = Arrangement.Center
             ){
                 Button(
-                    onClick = {},
+                    onClick = {
+                        if (email.isEmpty() || password.isEmpty()) {
+                            Toast.makeText(context, "Email and password required", Toast.LENGTH_SHORT).show()
+                        } else {
+                            findUserTypeByEmail(
+                                email = email,
+                                onUserTypeFound = { userType ->
+                                    when (userType) {
+                                        "JOBSEEKER" -> {
+                                            jobSeekerViewModel.login(email, password) { success, message ->
+                                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                                if (success) {
+                                                    Toast.makeText(context, "Login Successful as JobSeeker", Toast.LENGTH_SHORT).show()
+                                                    val intent = Intent(context, JobSeekerDashboardActivity::class.java)
+                                                    context.startActivity(intent)
+                                                    activity.finish()
+                                                }
+                                            }
+                                        }
+                                        "COMPANY" -> {
+                                            companyViewModel.login(email, password) { success, message ->
+                                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                                                if (success) {
+                                                    Toast.makeText(context, "Login Successful as Company", Toast.LENGTH_SHORT).show()
+                                                    val intent = Intent(context, CompanyDashboardActivity::class.java)
+                                                    context.startActivity(intent)
+                                                    activity.finish()
+                                                }
+                                            }
+                                        }
+                                        else -> {
+                                            Toast.makeText(
+                                                context,
+                                                "Email not found. Please check and try again.",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    }
+                                },
+                                onError = { errorMessage ->
+                                    Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+                                }
+                            )
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Purple
                     ),

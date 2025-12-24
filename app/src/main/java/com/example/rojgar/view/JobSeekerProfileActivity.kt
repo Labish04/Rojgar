@@ -16,8 +16,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,9 +31,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,19 +50,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.runtime.*
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.example.rojgar.R
-import com.example.rojgar.ui.theme.Black
-import com.example.rojgar.ui.theme.Purple
-
-
+import com.example.rojgar.repository.JobSeekerRepoImpl
 
 
 class JobSeekerProfileActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -71,52 +68,53 @@ class JobSeekerProfileActivity : ComponentActivity() {
         }
     }
 }
-
 @Composable
-fun JobSeekerProfileBody() {
-
+fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
     val context = LocalContext.current
     val activity = context as Activity
 
+    // Repository instance
+    val repository = remember { JobSeekerRepoImpl() }
+
+    // Get current user ID
+    val currentUserId = repository.getCurrentJobSeeker()?.uid ?: ""
+
     var selectedVideoUri by remember { mutableStateOf<Uri?>(null) }
     var videoThumbnail by remember { mutableStateOf<Bitmap?>(null) }
-    var showMenu by remember { mutableStateOf(false) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var showDeactivateDialog by remember { mutableStateOf(false) }
-    var showLogoutDialog by remember { mutableStateOf(false) }
-    var showPasswordDialog by remember { mutableStateOf(false) }
-    var pendingAction by remember { mutableStateOf("") } // "delete" or "deactivate"
+    var isFollowing by remember { mutableStateOf(false) }
+    var showMoreDialog by remember { mutableStateOf(false) }
+    var isPlaying by remember { mutableStateOf(false) }
 
+    // Check if currently following when screen loads
+    LaunchedEffect(targetJobSeekerId) {
+        if (targetJobSeekerId.isNotEmpty() && currentUserId.isNotEmpty()) {
+            repository.isFollowing(currentUserId, targetJobSeekerId) { following ->
+                isFollowing = following
+            }
+        }
+    }
 
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
             selectedVideoUri = uri
-
             val filePath = getRealPathFromURI(context, uri)
-
             if (filePath != null) {
                 videoThumbnail = ThumbnailUtils.createVideoThumbnail(
                     filePath,
                     MediaStore.Video.Thumbnails.MINI_KIND
                 )
             }
-
             Toast.makeText(context, "Video Selected!", Toast.LENGTH_SHORT).show()
         }
     }
-
-
-    var isPlaying by remember { mutableStateOf(false) }
-
 
     Scaffold { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding()
                 .background(color = Blue)
         ) {
             // Top Bar
@@ -127,82 +125,20 @@ fun JobSeekerProfileBody() {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Icon(
                     painter = painterResource(R.drawable.outline_arrow_back_ios_24),
                     contentDescription = "Back",
                     modifier = Modifier
                         .size(30.dp)
-                        .clickable {
-                            activity.finish()
-                        }
+                        .clickable { activity.finish() }
                 )
 
-                Box {
-                    Icon(
-                        painter = painterResource(R.drawable.outline_more_vert_24),
-                        contentDescription = "Menu",
-                        modifier = Modifier
-                            .size(30.dp)
-                            .clickable {
-                                showMenu = true
-                            }
-                    )
-
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.baseline_settings_24),
-                                        contentDescription = "Settings",
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = "Settings",
-                                        style = TextStyle(fontSize = 16.sp)
-                                    )
-                                }
-                            },
-                            onClick = {
-                                showMenu = false
-                                showSettingsDialog = true
-                            }
-                        )
-
-                        DropdownMenuItem(
-                            text = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.baseline_logout_24),
-                                        contentDescription = "Logout",
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = "Logout",
-                                        style = TextStyle(fontSize = 16.sp)
-                                    )
-                                }
-                            },
-                            onClick = {
-                                showMenu = false
-                                showLogoutDialog = true
-                            }
-                        )
-                    }
-                }
+                Icon(
+                    painter = painterResource(R.drawable.outline_more_vert_24),
+                    contentDescription = "Menu",
+                    modifier = Modifier.size(30.dp)
+                )
             }
-
-
 
             Row(
                 modifier = Modifier
@@ -211,14 +147,12 @@ fun JobSeekerProfileBody() {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-
                 // LEFT SIDE TEXT
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .padding(10.dp)
-                )
-                {
+                ) {
                     Spacer(modifier = Modifier.height(110.dp))
                     Text(
                         text = "Sarah Johnson",
@@ -226,7 +160,6 @@ fun JobSeekerProfileBody() {
                             fontSize = 30.sp,
                             fontWeight = FontWeight.Normal
                         )
-
                     )
 
                     Spacer(modifier = Modifier.height(40.dp))
@@ -236,6 +169,7 @@ fun JobSeekerProfileBody() {
                         style = TextStyle(fontSize = 13.sp)
                     )
                 }
+
                 Card(
                     modifier = Modifier
                         .width(220.dp)
@@ -249,8 +183,8 @@ fun JobSeekerProfileBody() {
                         modifier = Modifier.fillMaxSize()
                     )
                 }
-
             }
+
             Card(
                 shape = RoundedCornerShape(25.dp),
                 modifier = Modifier
@@ -264,17 +198,13 @@ fun JobSeekerProfileBody() {
                     modifier = Modifier
                         .fillMaxSize()
                         .background(DarkBlue)
-
-
                 ) {
-                    Spacer(modifier = Modifier.height(10.dp))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 20.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-
                         Button(
                             onClick = {
                                 val intent = Intent(
@@ -311,7 +241,124 @@ fun JobSeekerProfileBody() {
                                 )
                             }
                         }
+
+                        // ---------- FOLLOW BUTTON WITH DATABASE ----------
+                        Button(
+                            onClick = {
+                                if (isFollowing) {
+                                    showMoreDialog = !showMoreDialog
+                                } else {
+                                    // Follow the user
+                                    repository.followJobSeeker(
+                                        currentUserId,
+                                        targetJobSeekerId
+                                    ) { success, message ->
+                                        if (success) {
+                                            isFollowing = true
+                                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(25.dp),
+                            modifier = Modifier
+                                .width(150.dp)
+                                .height(45.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = SkyBlue,
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (isFollowing) R.drawable.following_icon else R.drawable.follow_icon
+                                    ),
+                                    contentDescription = "Follow Icon",
+                                    modifier = Modifier.size(26.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (isFollowing) "Following" else "Follow",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
                     }
+
+                    // ---------- MORE OPTIONS MENU ----------
+                    if (showMoreDialog) {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 70.dp, end = 20.dp)
+                                .background(SkyBlue, RoundedCornerShape(12.dp))
+                                .width(150.dp)
+                        ) {
+                            Text(
+                                text = "Unfollow",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.Black,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        // Unfollow the user
+                                        repository.unfollowJobSeeker(
+                                            currentUserId,
+                                            targetJobSeekerId
+                                        ) { success, message ->
+                                            if (success) {
+                                                isFollowing = false
+                                                showMoreDialog = false
+                                                Toast
+                                                    .makeText(context, message, Toast.LENGTH_SHORT)
+                                                    .show()
+                                            } else {
+                                                Toast
+                                                    .makeText(context, message, Toast.LENGTH_SHORT)
+                                                    .show()
+                                            }
+                                        }
+                                    }
+                                    .padding(16.dp)
+                            )
+
+                            Spacer(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(Color.Gray)
+                            )
+
+                            Text(
+                                text = "Message",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.Black,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                "Message clicked",
+                                                Toast.LENGTH_SHORT
+                                            )
+                                            .show()
+                                        showMoreDialog = false
+                                    }
+                                    .padding(16.dp)
+                            )
+                        }
+                    }
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -327,15 +374,12 @@ fun JobSeekerProfileBody() {
                             )
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
-
                                 if (isPlaying && selectedVideoUri != null) {
-                                    // Show video using ExoPlayer
                                     VideoPlayer(
                                         uri = selectedVideoUri!!,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 } else {
-                                    // If video selected → show thumbnail
                                     if (videoThumbnail != null) {
                                         Image(
                                             bitmap = videoThumbnail!!.asImageBitmap(),
@@ -346,7 +390,6 @@ fun JobSeekerProfileBody() {
                                     }
                                 }
 
-                                // Upload icon (always visible)
                                 Icon(
                                     painter = painterResource(R.drawable.baseline_upload_24),
                                     contentDescription = "Upload Video",
@@ -359,7 +402,6 @@ fun JobSeekerProfileBody() {
                                         }
                                 )
 
-                                // Play icon
                                 Icon(
                                     painter = painterResource(R.drawable.baseline_play_arrow_24),
                                     contentDescription = "Play Video",
@@ -381,415 +423,13 @@ fun JobSeekerProfileBody() {
                                         }
                                 )
                             }
-
                         }
-
-                    }
-                }
-            }
-        }
-    }
-
-    // Settings Dialog
-    if (showSettingsDialog) {
-        SettingsDialog(
-            onDismiss = { showSettingsDialog = false },
-            onDeleteClick = {
-                showSettingsDialog = false
-                showDeleteDialog = true
-            },
-            onDeactivateClick = {
-                showSettingsDialog = false
-                showDeactivateDialog = true
-            }
-        )
-    }
-
-    // Delete Confirmation Dialog
-    if (showDeleteDialog) {
-        ConfirmationDialog(
-            title = "Delete Account",
-            message = "Are you sure you want to delete your account? This action cannot be undone.",
-            confirmText = "Delete",
-            onConfirm = {
-                showDeleteDialog = false
-                pendingAction = "delete"
-                showPasswordDialog = true
-            },
-            onDismiss = { showDeleteDialog = false }
-        )
-    }
-
-    // Deactivate Confirmation Dialog
-    if (showDeactivateDialog) {
-        ConfirmationDialog(
-            title = "Deactivate Account",
-            message = "Are you sure you want to deactivate your account? You can reactivate it later.",
-            confirmText = "Deactivate",
-            onConfirm = {
-                showDeactivateDialog = false
-                pendingAction = "deactivate"
-                showPasswordDialog = true
-            },
-            onDismiss = { showDeactivateDialog = false }
-        )
-    }
-
-    // Password Confirmation Dialog
-    if (showPasswordDialog) {
-        PasswordConfirmationDialog(
-            action = pendingAction,
-            onConfirm = { password ->
-                // Here you would validate the password with your backend
-                // For now, we'll just check if it's not empty
-                if (password.isNotEmpty()) {
-                    when (pendingAction) {
-                        "delete" -> {
-                            Toast.makeText(context, "Account Deleted", Toast.LENGTH_SHORT).show()
-                            // Add your actual delete logic here
-                        }
-                        "deactivate" -> {
-                            Toast.makeText(context, "Account Deactivated", Toast.LENGTH_SHORT).show()
-                            // Add your actual deactivate logic here
-                        }
-                    }
-                    showPasswordDialog = false
-                    pendingAction = ""
-                } else {
-                    Toast.makeText(context, "Please enter your password", Toast.LENGTH_SHORT).show()
-                }
-            },
-            onDismiss = {
-                showPasswordDialog = false
-                pendingAction = ""
-            }
-        )
-    }
-
-    // Logout Confirmation Dialog
-    if (showLogoutDialog) {
-        ConfirmationDialog(
-            title = "Logout",
-            message = "Are you sure you want to logout?",
-            confirmText = "Logout",
-            onConfirm = {
-                Toast.makeText(context, "Logged Out Successfully", Toast.LENGTH_SHORT).show()
-                showLogoutDialog = false
-                // Add your logout logic here (clear session, navigate to login, etc.)
-            },
-            onDismiss = { showLogoutDialog = false }
-        )
-    }
-}
-
-@Composable
-fun SettingsDialog(
-    onDismiss: () -> Unit,
-    onDeleteClick: () -> Unit,
-    onDeactivateClick: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
-            ) {
-                // Settings Title
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 20.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.baseline_settings_24),
-                        contentDescription = "Settings",
-                        modifier = Modifier.size(28.dp),
-                        tint = Purple
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Settings",
-                        style = TextStyle(
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Purple
-                        )
-                    )
-                }
-
-                Divider(color = Color.Black, thickness = 1.dp)
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Delete Account Button
-                Button(
-                    onClick = onDeleteClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFF5252),
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.delete),
-                        contentDescription = "Delete",
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Delete Account",
-                        style = TextStyle(
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Deactivate Account Button
-                Button(
-                    onClick = onDeactivateClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor =Purple,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.deactivate),
-                        contentDescription = "Deactivate",
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Deactivate Account",
-                        style = TextStyle(
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Cancel Button
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Cancel",
-                        style = TextStyle(
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Black
-                        )
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ConfirmationDialog(
-    title: String,
-    message: String,
-    confirmText: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val buttonColor = when (confirmText) {
-        "Logout" -> Purple
-        "Deactivate" -> Purple
-        else -> Color(0xFFFF5252) // Delete
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = title,
-                style = TextStyle(
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            )
-        },
-        text = {
-            Text(
-                text = message,
-                style = TextStyle(fontSize = 16.sp)
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = buttonColor,
-                    contentColor = Color.White
-                )
-            ) {
-                Text(confirmText)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Black)
-            }
-        },
-        containerColor = Color.White
-    )
-}
-
-@Composable
-fun PasswordConfirmationDialog(
-    action: String,
-    onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-
-    val title = when (action) {
-        "delete" -> "Confirm Delete"
-        "deactivate" -> "Confirm Deactivation"
-        else -> "Confirm Action"
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
-            ) {
-                // Title
-                Text(
-                    text = title,
-                    style = TextStyle(
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    ),
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                // Message
-                Text(
-                    text = "Please enter your password to confirm this action.",
-                    style = TextStyle(
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    ),
-                    modifier = Modifier.padding(bottom = 20.dp)
-                )
-
-                // Password Field
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Password") },
-                    placeholder = { Text("Enter your password") },
-                    visualTransformation = if (passwordVisible)
-                        VisualTransformation.None
-                    else
-                        PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password
-                    ),
-                    trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(
-                                painter = painterResource(
-                                    if (passwordVisible)
-                                        R.drawable.baseline_visibility_24
-                                    else
-                                        R.drawable.baseline_visibility_off_24
-                                ),
-                                contentDescription = if (passwordVisible)
-                                    "Hide password"
-                                else
-                                    "Show password"
-                            )
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 20.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Purple,
-                        focusedLabelColor = Purple,
-                        cursorColor = Purple
-                    ),
-                    singleLine = true
-                )
-
-                // Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Text(
-                            text = "Cancel",
-                            style = TextStyle(
-                                fontSize = 16.sp,
-                                color = Black
-                            )
-                        )
-                    }
-
-                    val buttonColor = when (action) {
-                        "delete" -> Color(0xFFFF5252)
-                        else -> Purple
-                    }
-
-                    Button(
-                        onClick = { onConfirm(password) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = buttonColor,
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = "Confirm",
-                            style = TextStyle(fontSize = 16.sp)
-                        )
                     }
                 }
             }
         }
     }
 }
-
 
 @Preview()
 @Composable

@@ -1,60 +1,29 @@
 package com.example.rojgar.view
 
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MenuDefaults
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -65,22 +34,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.rojgar.R
-import com.example.rojgar.ui.theme.Black
-import com.example.rojgar.ui.theme.Blue
-import com.example.rojgar.ui.theme.DarkBlue2
-import com.example.rojgar.ui.theme.Purple
-import com.example.rojgar.ui.theme.White
-import java.util.Calendar
-
-data class Training(
-    val trainingName: String,
-    val institutionName: String,
-    val duration: String,
-    val durationType: String,
-    val completionDate: String,
-    val certificateUri: Uri? = null
-)
+import com.example.rojgar.model.TrainingModel
+import com.example.rojgar.repository.TrainingRepoImpl
+import com.example.rojgar.ui.theme.*
+import com.example.rojgar.viewmodel.TrainingViewModel
+import com.google.firebase.auth.FirebaseAuth
+import java.util.*
 
 class JobSeekerTrainingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,17 +57,243 @@ class JobSeekerTrainingActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobSeekerTrainingBody() {
-
     val context = LocalContext.current
 
-    val snackbarHostState = remember { SnackbarHostState() }
-    var showBottomSheet by remember { mutableStateOf(false) }
-    val trainingList = remember { mutableStateListOf<Training>() }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
+    val trainingViewModel = remember { TrainingViewModel(TrainingRepoImpl()) }
+
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
+    val jobSeekerId = currentUser?.uid ?: ""
+
+    var trainings by remember { mutableStateOf(listOf<TrainingModel>()) }
+    var showTrainingSheet by remember { mutableStateOf(false) }
+    var showDetailDialog by remember { mutableStateOf(false) }
+    var isEditing by remember { mutableStateOf(false) }
+    var selectedTraining by remember { mutableStateOf<TrainingModel?>(null) }
+
+    var trainingName by remember { mutableStateOf("") }
+    var instituteName by remember { mutableStateOf("") }
+    var duration by remember { mutableStateOf("") }
+    var durationType by remember { mutableStateOf("Month") }
+    var completionDate by remember { mutableStateOf("") }
+    var certificateUri by remember { mutableStateOf<Uri?>(null) }
+    var certificateName by remember { mutableStateOf("") }
+
+    var currentTrainingId by remember { mutableStateOf("") }
+    var showDeleteAlert by remember { mutableStateOf(false) }
+    var trainingToDelete by remember { mutableStateOf<String?>(null) }
+
+    val durationTypes = listOf("Month", "Year", "Week", "Day")
+
+    // Completion Date (similar to birthdate selection)
+    val calendar = Calendar.getInstance()
+    val year = calendar.get(Calendar.YEAR)
+    val month = calendar.get(Calendar.MONTH)
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, y, m, d ->
+            completionDate = "$d/${m + 1}/$y"
+        },
+        year,
+        month,
+        day
+    )
+
+    // Gallery launcher for certificate
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            certificateUri = it
+            certificateName = "Certificate uploaded"
+        }
+    }
+
+
+    // Load trainings
+    LaunchedEffect(Unit) {
+        if (jobSeekerId.isNotEmpty()) {
+            trainingViewModel.getTrainingsByJobSeekerId(jobSeekerId) { success, message, trainingList ->
+                if (success) {
+                    trainingList?.let {
+                        trainings = it
+                    }
+                } else {
+                    Toast.makeText(context, "Failed to load trainings: $message", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    // Function to reset form
+    fun resetForm() {
+        trainingName = ""
+        instituteName = ""
+        duration = ""
+        durationType = "Month"
+        completionDate = ""
+        certificateUri = null
+        certificateName = ""
+        currentTrainingId = ""
+        isEditing = false
+    }
+
+    // Function to adding new training
+    fun openAddForm() {
+        resetForm()
+        showTrainingSheet = true
+    }
+
+    // Function to editing existing training
+    fun openEditForm(training: TrainingModel) {
+        trainingName = training.trainingName
+        instituteName = training.instituteName
+        duration = training.duration
+        durationType = training.durationType
+        completionDate = training.completionDate
+        certificateName = if (training.certificate.isNotEmpty()) "Certificate uploaded" else ""
+        currentTrainingId = training.trainingId
+        isEditing = true
+        showTrainingSheet = true
+    }
+
+    // Function to save training
+    fun saveTraining() {
+        if (trainingName.isEmpty() || instituteName.isEmpty() || duration.isEmpty() || completionDate.isEmpty()) {
+            Toast.makeText(context, "Please fill all required fields", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val trainingModel = TrainingModel(
+            trainingId = if (isEditing) currentTrainingId else "",
+            trainingName = trainingName,
+            instituteName = instituteName,
+            duration = duration,
+            durationType = durationType,
+            completionDate = completionDate,
+            certificate = certificateUri?.toString() ?: "",
+            jobSeekerId = jobSeekerId
+        )
+
+        if (isEditing) {
+            trainingViewModel.updateTraining(currentTrainingId, trainingModel) { success, message ->
+                if (success) {
+                    Toast.makeText(context, "Training updated", Toast.LENGTH_SHORT).show()
+                    // Refresh list
+                    trainingViewModel.getTrainingsByJobSeekerId(jobSeekerId) { success2, message2, trainingList ->
+                        if (success2) {
+                            trainingList?.let { trainings = it }
+                        }
+                    }
+                    showTrainingSheet = false
+                    resetForm()
+                } else {
+                    Toast.makeText(context, "Update failed: $message", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            trainingViewModel.addTraining(trainingModel) { success, message ->
+                if (success) {
+                    Toast.makeText(context, "Training added", Toast.LENGTH_SHORT).show()
+                    // Refresh list
+                    trainingViewModel.getTrainingsByJobSeekerId(jobSeekerId) { success2, message2, trainingList ->
+                        if (success2) {
+                            trainingList?.let { trainings = it }
+                        }
+                    }
+                    showTrainingSheet = false
+                    resetForm()
+                } else {
+                    Toast.makeText(context, "Add failed: $message", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    fun deleteTraining(trainingId: String) {
+        trainingToDelete = trainingId
+        showDeleteAlert = true
+    }
+
+    // Delete Dialog
+    if (showDeleteAlert) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteAlert = false
+                trainingToDelete = null
+            },
+            title = {
+                Text(
+                    text = "Delete Training",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.Red
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to delete this training? ",
+                    fontSize = 16.sp
+                )
+            },
+            confirmButton = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Cancel Button
+                    TextButton(
+                        onClick = {
+                            showDeleteAlert = false
+                            trainingToDelete = null
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = Color.Gray
+                        )
+                    ) {
+                        Text("Cancel")
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Delete Button
+                    Button(
+                        onClick = {
+                            trainingToDelete?.let { trainingId ->
+                                trainingViewModel.deleteTraining(trainingId) { success, message ->
+                                    if (success) {
+                                        Toast.makeText(context, "Training deleted", Toast.LENGTH_SHORT).show()
+                                        trainingViewModel.getTrainingsByJobSeekerId(jobSeekerId) { success2, message2, trainingList ->
+                                            if (success2) {
+                                                trainingList?.let { trainings = it }
+                                            }
+                                        }
+                                        showDetailDialog = false
+                                    } else {
+                                        Toast.makeText(context, "Delete failed: $message", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                            showDeleteAlert = false
+                            trainingToDelete = null
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Red
+                        )
+                    ) {
+                        Text("Delete", color = Color.White)
+                    }
+                }
+            }
+        )
+    }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Card(
                 modifier = Modifier
@@ -149,8 +337,6 @@ fun JobSeekerTrainingBody() {
                 .fillMaxSize()
                 .padding(padding)
                 .background(Blue)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
         ) {
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -158,494 +344,625 @@ fun JobSeekerTrainingBody() {
                 "Which certification or training achievement stands out for you?",
                 fontWeight = FontWeight.Normal,
                 fontSize = 18.sp,
-                color = Color.Black
+                color = Color.Black,
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            if (trainingList.isNotEmpty()) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    trainingList.forEach { training ->
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            colors = CardDefaults.cardColors(containerColor = White)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = training.trainingName,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Text(text = training.institutionName, color = Color.DarkGray)
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text = "Duration: ${training.duration} ${training.durationType}",
-                                    color = Color.Gray
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text = "Completed: ${training.completionDate}",
-                                    color = Color.Gray
-                                )
-                                if (training.certificateUri != null) {
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        text = "Certificate uploaded",
-                                        color = DarkBlue2,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
+            if (trainings.isEmpty()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(380.dp),
+                        .fillMaxHeight(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Spacer(modifier = Modifier.height(200.dp))
+                    Spacer(modifier = Modifier.height(40.dp))
+
                     Icon(
                         painter = painterResource(id = R.drawable.noexperience),
-                        contentDescription = "no education",
+                        contentDescription = "no training",
                         tint = Color.Gray,
                         modifier = Modifier.size(110.dp)
                     )
-                    Spacer(modifier = Modifier.height(40.dp))
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
                     Text(
-                        "You haven't added any training details. Tap + to get started.",
+                        "Your Training Section is currently empty. Tap the + button to add your training details.",
                         textAlign = TextAlign.Center,
                         color = Color.DarkGray,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 24.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Button(
+                            onClick = { openAddForm() },
+                            shape = RoundedCornerShape(25.dp),
+                            modifier = Modifier
+                                .width(170.dp)
+                                .height(50.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = DarkBlue2,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.addexperience),
+                                contentDescription = "Add",
+                                modifier = Modifier.size(26.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(text = "Add", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
                 }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Button(
-                    onClick = { showBottomSheet = true },
-                    shape = RoundedCornerShape(25.dp),
+            } else {
+                LazyColumn(
                     modifier = Modifier
-                        .width(170.dp)
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = DarkBlue2,
-                        contentColor = Color.White
-                    )
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 20.dp, vertical = 0.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.addexperience),
-                        contentDescription = "Add",
-                        modifier = Modifier.size(26.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(text = "Add", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    items(trainings) { training ->
+                        TrainingCard(
+                            training = training,
+                            onClick = {
+                                selectedTraining = training
+                                showDetailDialog = true
+                            },
+                            onEditClick = { openEditForm(training) },
+                            onDeleteClick = { deleteTraining(training.trainingId) }
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp, top = 16.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Button(
+                        onClick = { openAddForm() },
+                        shape = RoundedCornerShape(25.dp),
+                        modifier = Modifier
+                            .width(170.dp)
+                            .height(50.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DarkBlue2,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.addexperience),
+                            contentDescription = "Add",
+                            modifier = Modifier.size(26.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(text = "Add", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }
+    }
 
-        if (showBottomSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showBottomSheet = false },
-                sheetState = sheetState,
-                containerColor = White
-            ) {
-                AddTrainingSheet(
-                    onDismiss = { showBottomSheet = false },
-                    onSave = { training ->
-                        trainingList.add(training)
-                        showBottomSheet = false
-                    }
+    // Training Detail Dialog
+    if (showDetailDialog && selectedTraining != null) {
+        AlertDialog(
+            onDismissRequest = { showDetailDialog = false },
+            title = {
+                Text(
+                    text = "Training Details",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = DarkBlue2
                 )
+            },
+            text = {
+                Column {
+                    selectedTraining?.let { training ->
+                        Detail(title = "Training Name", value = training.trainingName)
+                        Detail(title = "Institution", value = training.instituteName)
+                        Detail(title = "Duration", value = "${training.duration} ${training.durationType}")
+                        Detail(title = "Completion Date", value = training.completionDate)
+                        if (training.certificate.isNotEmpty()) {
+                            Detail(title = "Certificate", value = "Uploaded")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Button(
+                        onClick = {
+                            showDetailDialog = false
+                            selectedTraining?.let { openEditForm(it) }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkBlue2),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Edit")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Button(
+                        onClick = {
+                            selectedTraining?.let {
+                                trainingToDelete = it.trainingId
+                                showDeleteAlert = true
+                                showDetailDialog = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Delete")
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    // Training Form Dialog
+    if (showTrainingSheet) {
+        Dialog(
+            onDismissRequest = {
+                showTrainingSheet = false
+                resetForm()
+            },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize()
+                    .clickable{showTrainingSheet = false
+                            resetForm()},
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Card(
+                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.62f),
+                    colors = CardDefaults.cardColors(containerColor = White)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Text(
+                            text = if (isEditing) "Edit Training" else "Add Training",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+
+                        // Training Name
+                        OutlinedTextField(
+                            value = trainingName,
+                            onValueChange = { trainingName = it },
+                            label = { Text("Name of Training *") },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.document),
+                                    contentDescription = "Training",
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            shape = RoundedCornerShape(15.dp),
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = White,
+                                unfocusedContainerColor = White,
+                                focusedIndicatorColor = DarkBlue2,
+                                unfocusedIndicatorColor = Color.LightGray
+                            )
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Institution Name
+                        OutlinedTextField(
+                            value = instituteName,
+                            onValueChange = { instituteName = it },
+                            label = { Text("Institution Name *") },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.companynameicon),
+                                    contentDescription = "Institution",
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            shape = RoundedCornerShape(15.dp),
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = White,
+                                unfocusedContainerColor = White,
+                                focusedIndicatorColor = DarkBlue2,
+                                unfocusedIndicatorColor = Color.LightGray
+                            )
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Duration and Type
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Duration TextField
+                            OutlinedTextField(
+                                value = duration,
+                                onValueChange = { duration = it },
+                                label = { Text("Duration *") },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.durationicon),
+                                        contentDescription = "Duration",
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(60.dp),
+                                shape = RoundedCornerShape(15.dp),
+                                singleLine = true,
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = White,
+                                    unfocusedContainerColor = White,
+                                    focusedIndicatorColor = DarkBlue2,
+                                    unfocusedIndicatorColor = Color.LightGray
+                                )
+                            )
+
+                            // Duration Type Dropdown
+                            var expandedDuration by remember { mutableStateOf(false) }
+
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(60.dp)
+                            ) {
+                                // TextField that acts as the dropdown trigger
+                                OutlinedTextField(
+                                    value = durationType,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    enabled = false,
+                                    label = { Text("Type") },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { expandedDuration = true },
+                                    shape = RoundedCornerShape(15.dp),
+                                    singleLine = true,
+                                    trailingIcon = {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
+                                            contentDescription = "Dropdown",
+                                            modifier = Modifier.clickable { expandedDuration = true }
+                                        )
+                                    },
+                                    colors = TextFieldDefaults.colors(
+                                        disabledIndicatorColor = Color.LightGray,
+                                        disabledContainerColor = White,
+                                        disabledTextColor = Color.Black,
+                                        focusedContainerColor = White,
+                                        unfocusedContainerColor = White,
+                                        focusedIndicatorColor = DarkBlue2,
+                                        unfocusedIndicatorColor = Color.LightGray
+                                    )
+                                )
+
+                                // Dropdown menu anchored to the Box
+                                DropdownMenu(
+                                    expanded = expandedDuration,
+                                    onDismissRequest = { expandedDuration = false },
+                                    modifier = Modifier
+                                        .background(White)
+                                        .width(100.dp)
+                                ) {
+                                    durationTypes.forEach { type ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    type,
+                                                    color = if (type == durationType) DarkBlue2 else Color.Black
+                                                )
+                                            },
+                                            onClick = {
+                                                durationType = type
+                                                expandedDuration = false
+                                            },
+                                            modifier = Modifier.background(
+                                                if (type == durationType) Color(0xFFE3F2FD) else White
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        OutlinedTextField(
+                            value = completionDate,
+                            onValueChange = {},
+                            label = { Text("Completion Date *") },
+                            readOnly = true,
+                            enabled = false,
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.calendaricon),
+                                    contentDescription = "Calendar",
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            },
+
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp)
+                                .clickable { datePickerDialog.show() },
+                            shape = RoundedCornerShape(15.dp),
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                disabledIndicatorColor = Color.LightGray,
+                                disabledContainerColor = White,
+                                disabledLeadingIconColor = Black,
+                                disabledTextColor = Color.Black,
+                                disabledLabelColor = Black,
+                                focusedContainerColor = White,
+                                unfocusedContainerColor = White,
+                                focusedIndicatorColor = DarkBlue2,
+                                unfocusedIndicatorColor = Color.LightGray
+                            )
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Upload Certificate
+                        OutlinedTextField(
+                            value = certificateName,
+                            onValueChange = {},
+                            label = { Text("Upload Certificate") },
+                            readOnly = true,
+                            enabled = false,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp)
+                                .clickable{galleryLauncher.launch("image/*")},
+                            shape = RoundedCornerShape(15.dp),
+                            singleLine = true,
+                            trailingIcon = {
+
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.baseline_upload_24),
+                                        contentDescription = "Upload Certificate",
+                                        modifier = Modifier.size(22.dp),
+                                        tint = Black
+                                    )
+
+                            },
+                            colors = TextFieldDefaults.colors(
+                                disabledIndicatorColor = Color.LightGray,
+                                disabledContainerColor = White,
+                                disabledLeadingIconColor = Black,
+                                disabledTextColor = Color.Black,
+                                disabledLabelColor = Black,
+                                focusedContainerColor = White,
+                                unfocusedContainerColor = White,
+                                focusedIndicatorColor = DarkBlue2,
+                                unfocusedIndicatorColor = Color.LightGray
+                            )
+                        )
+
+                        Spacer(Modifier.height(24.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            // Back Button
+                            OutlinedButton(
+                                onClick = {
+                                    showTrainingSheet = false
+                                    resetForm()
+                                },
+                                shape = RoundedCornerShape(15.dp),
+                                modifier = Modifier
+                                    .weight(0.4f)
+                                    .height(50.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = DarkBlue2
+                                )
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.outline_arrow_back_ios_24),
+                                    contentDescription = "Back",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            // Save Button
+                            Button(
+                                onClick = { saveTraining() },
+                                shape = RoundedCornerShape(15.dp),
+                                modifier = Modifier
+                                    .weight(0.6f)
+                                    .height(50.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = DarkBlue2,
+                                    contentColor = Color.White
+                                )
+                            ) {
+                                Text(
+                                    text = if (isEditing) "Update" else "Save",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddTrainingSheet(
-    onDismiss: () -> Unit,
-    onSave: (Training) -> Unit
+fun TrainingCard(
+    training: TrainingModel,
+    onClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
-    var trainingName by remember { mutableStateOf("") }
-    var institutionName by remember { mutableStateOf("") }
-    var duration by remember { mutableStateOf("") }
-    var selectedDurationType by remember { mutableStateOf("Month") }
-    var completionDate by remember { mutableStateOf("") }
-    var expandedDuration by remember { mutableStateOf(false) }
-    var certificateUri by remember { mutableStateOf<Uri?>(null) }
-    var certificateName by remember { mutableStateOf("") }
-    var showDatePicker by remember { mutableStateOf(false) }
-
-    val context = LocalContext.current
-    val durationTypes = listOf("Month", "Year", "Week", "Day")
-
-    // Date picker state
-    val datePickerState = rememberDatePickerState()
-    val confirmEnabled = remember {
-        derivedStateOf { datePickerState.selectedDateMillis != null }
-    }
-
-    // Gallery launcher
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            certificateUri = it
-            certificateName = "Certificate uploaded"
-        }
-    }
-
-    Column(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .padding(bottom = 40.dp)
-            .verticalScroll(rememberScrollState())
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Name of Training
-        OutlinedTextField(
-            value = trainingName,
-            onValueChange = { trainingName = it },
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(id = R.drawable.document),
-                    contentDescription = "Training",
-                    tint = Color.Black,
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            label = { Text("Name of Training") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp),
-            shape = RoundedCornerShape(15.dp),
-            singleLine = true,
-            colors = TextFieldDefaults.colors(
-                disabledIndicatorColor = Color.Transparent,
-                disabledContainerColor = White,
-                focusedContainerColor = White,
-                unfocusedContainerColor = White,
-                focusedIndicatorColor = Purple,
-                unfocusedIndicatorColor = Color.Black
-            )
-        )
-
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Institution Name
-        OutlinedTextField(
-            value = institutionName,
-            onValueChange = { institutionName = it },
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(id = R.drawable.companynameicon),
-                    contentDescription = "Institution",
-                    tint = Color.Black,
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            label = { Text("Institution Name") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp),
-            shape = RoundedCornerShape(15.dp),
-            singleLine = true,
-            colors = TextFieldDefaults.colors(
-                disabledIndicatorColor = Color.Transparent,
-                disabledContainerColor = White,
-                focusedContainerColor = White,
-                unfocusedContainerColor = White,
-                focusedIndicatorColor = Purple,
-                unfocusedIndicatorColor = Color.Black
-            )
-        )
-
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Duration and Month (Dropdown)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Column(
+            modifier = Modifier.padding(16.dp)
         ) {
-            // Duration TextField
-            OutlinedTextField(
-                value = duration,
-                onValueChange = { duration = it },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(id = R.drawable.durationicon),
-                        contentDescription = "Duration",
-                        tint = Color.Black,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                label = { Text("Duration") },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(60.dp),
-                shape = RoundedCornerShape(15.dp),
-                singleLine = true,
-                colors = TextFieldDefaults.colors(
-                    disabledIndicatorColor = Color.Transparent,
-                    disabledContainerColor = White,
-                    focusedContainerColor = White,
-                    unfocusedContainerColor = White,
-                    focusedIndicatorColor = Purple,
-                    unfocusedIndicatorColor = Color.Black
-                )
-            )
-
-
-            // Duration Type Dropdown
-            ExposedDropdownMenuBox(
-                expanded = expandedDuration,
-                onExpandedChange = { expandedDuration = !expandedDuration },
-                modifier = Modifier.weight(1f)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedTextField(
-                    value = selectedDurationType,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Month") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDuration)
-                    },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = TextFieldDefaults.colors(
-                        disabledIndicatorColor = Color.Transparent,
-                        disabledContainerColor = White,
-                        focusedContainerColor = White,
-                        unfocusedContainerColor = White,
-                        focusedIndicatorColor = DarkBlue2,
-                        unfocusedIndicatorColor = Color.LightGray
-                    )
-                )
-                ExposedDropdownMenu(
-                    expanded = expandedDuration,
-                    onDismissRequest = { expandedDuration = false },
-                    modifier = Modifier.background(White)
-                ) {
-                    durationTypes.forEach { type ->
-                        DropdownMenuItem(
-                            text = { Text(type, color = Color.DarkGray) },
-                            onClick = {
-                                selectedDurationType = type
-                                expandedDuration = false
-                            },
-                            colors = MenuDefaults.itemColors(
-                                textColor = Color.DarkGray
-                            ),
-                            modifier = Modifier.background(
-                                if (type == selectedDurationType) Color(0xFFE3F2FD) else White
-                            )
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Completion Date
-        OutlinedTextField(
-            value = completionDate,
-            onValueChange = {},
-            label = { Text("Completion Date") },
-            readOnly = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true,
-            trailingIcon = {
-                IconButton(onClick = {
-                    showDatePicker = true
-                }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.calendaricon),
-                        contentDescription = "Select Date",
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            },
-            colors = TextFieldDefaults.colors(
-                disabledIndicatorColor = Color.Transparent,
-                disabledContainerColor = White,
-                focusedContainerColor = White,
-                unfocusedContainerColor = White,
-                focusedIndicatorColor = DarkBlue2,
-                unfocusedIndicatorColor = Color.LightGray
-            )
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Upload Certificate
-        OutlinedTextField(
-            value = certificateName,
-            onValueChange = {},
-            label = { Text("Upload Certificate") },
-            readOnly = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true,
-            trailingIcon = {
-                IconButton(onClick = {
-                    galleryLauncher.launch("image/*")
-                }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.baseline_upload_24),
-                        contentDescription = "Upload Certificate",
-                        modifier = Modifier.size(22.dp),
-                        tint = Black
-                    )
-                }
-            },
-            colors = TextFieldDefaults.colors(
-                disabledIndicatorColor = Color.Transparent,
-                disabledContainerColor = White,
-                focusedContainerColor = White,
-                unfocusedContainerColor = White,
-                focusedIndicatorColor = DarkBlue2,
-                unfocusedIndicatorColor = Color.LightGray
-            )
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Back Button
-            OutlinedButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(15.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.LightGray,
-                    contentColor = Color.Black
-                )
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.outline_arrow_back_ios_24),
-                    contentDescription = "Back",
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Spacer(Modifier.width(12.dp))
-
-            // Save Button
-            Button(
-                onClick = {
-                    if (trainingName.isNotEmpty() && institutionName.isNotEmpty() &&
-                        duration.isNotEmpty() && completionDate.isNotEmpty()
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        onSave(
-                            Training(
-                                trainingName = trainingName,
-                                institutionName = institutionName,
-                                duration = duration,
-                                durationType = selectedDurationType,
-                                completionDate = completionDate,
-                                certificateUri = certificateUri
-                            )
+                        Text(
+                            text = training.trainingName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = Color.Black
                         )
+                        Spacer(modifier = Modifier.width(18.dp))
+                        Row (
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ){
+                            IconButton(
+                                onClick = onEditClick,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit",
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            // Delete Icon
+                            IconButton(
+                                onClick = onDeleteClick,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = Color.Red,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+                        }
                     }
-                },
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .weight(0.7f)
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DarkBlue2,
-                    contentColor = Color.White
-                )
-            ) {
-                Text(
-                    text = "Save",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
+
+                    Spacer(modifier = Modifier.height(5.dp))
+
+                    // Institution Name
+                    Text(
+                        text = training.instituteName,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp,
+                        color = Color.Gray
+                    )
+
+                    Spacer(modifier = Modifier.height(5.dp))
+
+                    Text(
+                        text = "Duration: ${training.duration} ${training.durationType}",
+                        fontSize = 14.sp,
+                        color = Color.DarkGray
+                    )
+                }
             }
         }
     }
+}
 
-    if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val calendar = Calendar.getInstance().apply {
-                                timeInMillis = millis
-                            }
-                            completionDate = "${calendar.get(Calendar.MONTH) + 1}/${calendar.get(Calendar.YEAR)}"
-                        }
-                        showDatePicker = false
-                    },
-                    enabled = confirmEnabled.value
-                ) {
-                    Text("OK", color = DarkBlue2)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel", color = DarkBlue2)
-                }
-            },
-            colors = DatePickerDefaults.colors(
-                containerColor = White
-            )
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    containerColor = White,
-                    titleContentColor = DarkBlue2,
-                    headlineContentColor = DarkBlue2,
-                    weekdayContentColor = DarkBlue2,
-                    subheadContentColor = DarkBlue2,
-                    yearContentColor = Color.DarkGray,
-                    currentYearContentColor = DarkBlue2,
-                    selectedYearContentColor = White,
-                    selectedYearContainerColor = DarkBlue2,
-                    dayContentColor = Color.DarkGray,
-                    selectedDayContentColor = White,
-                    selectedDayContainerColor = DarkBlue2,
-                    todayContentColor = DarkBlue2,
-                    todayDateBorderColor = DarkBlue2
-                )
-            )
-        }
+@Composable
+fun Detail(title: String, value: String) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(
+            text = title,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            color = Color.Gray
+        )
+        Text(
+            text = value,
+            fontSize = 16.sp,
+            color = Color.Black,
+            modifier = Modifier.padding(top = 2.dp)
+        )
     }
 }
 

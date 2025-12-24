@@ -1,4 +1,4 @@
-package com.example.rojgar.ui.theme.ui.theme
+package com.example.rojgar.view.ui.theme
 
 import android.app.Activity
 import android.os.Build

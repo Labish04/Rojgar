@@ -1,6 +1,8 @@
 package com.example.rojgar.repository
 
 import androidx.compose.runtime.mutableStateListOf
+import com.example.rojgar.model.CompanyModel
+import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -17,8 +19,6 @@ class JobSeekerRepoImpl : JobSeekerRepo {
     val database : FirebaseDatabase = FirebaseDatabase.getInstance()
 
     val ref : DatabaseReference = database.getReference("JobSeekers")
-
-
 
     override fun register(
         email: String,
@@ -78,7 +78,7 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         jobSeekerId: String,
         callback: (Boolean, String, JobSeekerModel?) -> Unit
     ) {
-        ref.child(jobSeekerId).addValueEventListener(object : ValueEventListener{
+        ref.child(jobSeekerId).addListenerForSingleValueEvent(object : ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()){
                     val jobSeeker = snapshot.getValue(JobSeekerModel::class.java)
@@ -142,29 +142,137 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         }
     }
 
-
-    override fun deleteAccount(
-        userId: String,
+    override fun updateProfile(
+        model: JobSeekerModel,
         callback: (Boolean, String) -> Unit
     ) {
-        ref.child(userId).removeValue().addOnCompleteListener {
-            if (it.isSuccessful) {
-                callback(true, "Account deleted successfully")
-            } else {
-                callback(false, "${it.exception?.message}")
+        ref.child(model.jobSeekerId).updateChildren(model.toMap()).addOnCompleteListener {
+            if(it.isSuccessful){
+                callback(true,"Profile updated successfully")
+            }else{
+                callback(false,"${it.exception?.message}")
             }
         }
     }
 
-    override fun deactivateAccount(
-        userId: String,
+    // ============================================
+    // NEW FOLLOW FUNCTIONALITY METHODS
+    // ============================================
+
+    override fun followJobSeeker(
+        currentUserId: String,
+        targetJobSeekerId: String,
         callback: (Boolean, String) -> Unit
     ) {
-        ref.child(userId).removeValue().addOnCompleteListener {
-            if (it.isSuccessful) {
-                callback(true, "Account deactivated successfully")
-            } else {
-                callback(false, "${it.exception?.message}")
-            }
-        }    }
+        // Get the target job seeker's current followers list
+        ref.child(targetJobSeekerId).child("followers")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val currentFollowers = mutableListOf<String>()
+
+                    // Get existing followers
+                    if (snapshot.exists()) {
+                        for (followerSnapshot in snapshot.children) {
+                            val followerId = followerSnapshot.getValue(String::class.java)
+                            if (followerId != null) {
+                                currentFollowers.add(followerId)
+                            }
+                        }
+                    }
+
+                    // Check if already following
+                    if (currentFollowers.contains(currentUserId)) {
+                        callback(false, "Already following this user")
+                        return
+                    }
+
+                    // Add current user to followers list
+                    currentFollowers.add(currentUserId)
+
+                    // Update in database
+                    ref.child(targetJobSeekerId).child("followers").setValue(currentFollowers)
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                callback(true, "Following successfully")
+                            } else {
+                                callback(false, task.exception?.message ?: "Failed to follow")
+                            }
+                        }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    callback(false, error.message)
+                }
+            })
+    }
+
+    override fun unfollowJobSeeker(
+        currentUserId: String,
+        targetJobSeekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        // Get the target job seeker's current followers list
+        ref.child(targetJobSeekerId).child("followers")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val currentFollowers = mutableListOf<String>()
+
+                    // Get existing followers
+                    if (snapshot.exists()) {
+                        for (followerSnapshot in snapshot.children) {
+                            val followerId = followerSnapshot.getValue(String::class.java)
+                            if (followerId != null) {
+                                currentFollowers.add(followerId)
+                            }
+                        }
+                    }
+
+                    // Remove current user from followers list
+                    currentFollowers.remove(currentUserId)
+
+                    // Update in database
+                    ref.child(targetJobSeekerId).child("followers").setValue(currentFollowers)
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                callback(true, "Unfollowed successfully")
+                            } else {
+                                callback(false, task.exception?.message ?: "Failed to unfollow")
+                            }
+                        }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    callback(false, error.message)
+                }
+            })
+    }
+
+    override fun isFollowing(
+        currentUserId: String,
+        targetJobSeekerId: String,
+        callback: (Boolean) -> Unit
+    ) {
+        ref.child(targetJobSeekerId).child("followers")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    var following = false
+
+                    if (snapshot.exists()) {
+                        for (followerSnapshot in snapshot.children) {
+                            val followerId = followerSnapshot.getValue(String::class.java)
+                            if (followerId == currentUserId) {
+                                following = true
+                                break
+                            }
+                        }
+                    }
+
+                    callback(following)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    callback(false)
+                }
+            })
+    }
 }

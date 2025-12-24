@@ -43,9 +43,11 @@ android {
 }
 
 dependencies {
+    implementation("androidx.compose.runtime:runtime-livedata:1.10.0")
     implementation("com.google.android.exoplayer:exoplayer:2.19.0")
     implementation("androidx.media3:media3-exoplayer:1.1.1")
     implementation("androidx.media3:media3-ui:1.1.1")
+    implementation("com.google.code.gson:gson:2.10.1")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -66,5 +68,4 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("io.coil-kt:coil-compose:2.4.0")
-
 }

@@ -1,5 +1,6 @@
 package com.example.rojgar.repository
-
+import com.example.rojgar.model.CompanyModel
+import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
 import com.google.firebase.auth.FirebaseUser
 
@@ -42,8 +43,28 @@ interface JobSeekerRepo {
         email : String,
         callback : (Boolean, String) ->Unit
     )
-    fun deleteAccount(userId: String, callback: (Boolean, String) -> Unit)
 
-    fun deactivateAccount(userId: String, callback: (Boolean, String) -> Unit)
+    fun followJobSeeker(
+        currentUserId: String,
+        targetJobSeekerId: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun unfollowJobSeeker(
+        currentUserId: String,
+        targetJobSeekerId: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun isFollowing(
+        currentUserId: String,
+        targetJobSeekerId: String,
+        callback: (Boolean) -> Unit
+    )
+
+    fun updateProfile(
+        model: JobSeekerModel,
+        callback: (Boolean, String) -> Unit
+    )
 
 }
