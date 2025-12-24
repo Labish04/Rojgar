@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -542,7 +543,10 @@ fun JobSeekerEducationBody() {
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
+                    .clickable {
+                        showDegreeSheet = false
+                    },
                 contentAlignment = Alignment.BottomCenter
             ) {
                 Card(
@@ -619,7 +623,9 @@ fun JobSeekerEducationBody() {
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
+                    .clickable{showDetailSheet = false
+                        resetForm()},
                 contentAlignment = Alignment.BottomCenter
             ) {
                 Card(
@@ -956,7 +962,7 @@ fun JobSeekerEducationBody() {
                             // Back Button
                             OutlinedButton(
                                 onClick = {
-                                    showDetailSheet = false
+                                    showDegreeSheet = true
                                     resetForm()
                                 },
                                 shape = RoundedCornerShape(15.dp),
@@ -1061,8 +1067,11 @@ fun EducationCard(
                             fontSize = 18.sp,
                             color = Color.Black
                         )
-                        Spacer(modifier = Modifier.width(78.dp))
-                        Row {
+
+                        Row (
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ){
                             IconButton(
                                 onClick = onEditClick,
                                 modifier = Modifier.size(32.dp)
@@ -1071,7 +1080,7 @@ fun EducationCard(
                                     imageVector = Icons.Default.Edit,
                                     contentDescription = "Edit",
                                     tint = Color.Black,
-                                    modifier = Modifier.size(26.dp)
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
@@ -1084,7 +1093,7 @@ fun EducationCard(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = "Delete",
                                     tint = Color.Red,
-                                    modifier = Modifier.size(26.dp)
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
