@@ -1,4 +1,6 @@
 package com.example.rojgar.repository
+
+import com.example.rojgar.model.AppliedJobModel
 import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
@@ -67,4 +69,37 @@ interface JobSeekerRepo {
         callback: (Boolean, String) -> Unit
     )
 
+    // Applied Jobs Methods
+    fun applyForJob(
+        appliedJobModel: AppliedJobModel,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun getAppliedJobsByJobSeeker(
+        jobSeekerId: String,
+        callback: (Boolean, String, List<AppliedJobModel>?) -> Unit
+    )
+
+    fun getAppliedJobsByStatus(
+        jobSeekerId: String,
+        status: String,
+        callback: (Boolean, String, List<AppliedJobModel>?) -> Unit
+    )
+
+    fun updateApplicationStatus(
+        applicationId: String,
+        newStatus: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun withdrawApplication(
+        applicationId: String,
+        jobSeekerId: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun getApplicationById(
+        applicationId: String,
+        callback: (Boolean, String, AppliedJobModel?) -> Unit
+    )
 }
