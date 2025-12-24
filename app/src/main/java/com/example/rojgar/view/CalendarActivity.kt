@@ -4,37 +4,22 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -44,14 +29,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.R
-import com.example.rojgar.ui.theme.Blue
-import com.example.rojgar.ui.theme.DarkBlue
-import com.example.rojgar.ui.theme.NormalBlue
-import com.example.rojgar.ui.theme.SkyBlue
-import com.example.rojgar.ui.theme.White
+import com.example.rojgar.ui.theme.*
 import com.example.rojgar.view.ui.theme.RojgarTheme
-import java.time.LocalDate
-import java.time.YearMonth
 
 class CalendarActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,215 +46,397 @@ class CalendarActivity : ComponentActivity() {
 
 @Composable
 fun CalendarBody() {
+    var selectedDay by remember { mutableStateOf(11) }
+
     Scaffold { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .background(Blue)
-                .padding(20.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                    contentDescription = null
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text(
-                    "Calendar", style = TextStyle(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFAFCEFC),
+                            Color(0xFF5594FA)
+                        )
                     )
                 )
-            }
-
-            Spacer(modifier = Modifier.height(30.dp))
-
-            // Calendar Title
-            Text(
-                text = "November",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 15.dp),
-                textAlign = TextAlign.Center
-            )
+                .padding(padding)
+        ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxSize()
+                    .padding(20.dp)
             ) {
-                Text(
-                    text = "2006",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 0.dp),
-                    textAlign = TextAlign.Center
-                )
-
-                IconButton(
-                    onClick = {}
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.outline_keyboard_arrow_down_24),
-                        contentDescription = null
-                    )
-                }
-            }
-
-            // Days of Week Header
-            Card (
-                colors = CardDefaults.cardColors(
-                    containerColor = White
-                )
-            ){
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 15.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val daysOfWeek = listOf("SU", "MO", "TU", "WE", "TH", "FR", "SA")
-                    daysOfWeek.forEach { day ->
-                        Text(
-                            text = day,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.Gray,
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.Center
+                    IconButton(
+                        onClick = { },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f))
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Text(
+                        "Calendar",
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 28.sp,
+                            color = Color.White
+                        )
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-                // Calendar Grid
-                val calendarDays = generateCalendarDays()
-                Column {
-                    for (week in 0 until 6) {
+                // Calendar Card
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(24.dp),
+                            spotColor = Color.Black.copy(alpha = 0.25f)
+                        ),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                    ) {
+                        // Month Navigation
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            IconButton(
+                                onClick = { },
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFF1F5F9))
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                                    contentDescription = "Previous",
+                                    tint = Color(0xFF334155),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "November",
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0F172A)
+                                )
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable(
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() }
+                                    ) { }
+                                ) {
+                                    Text(
+                                        text = "2006",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFF64748B)
+                                    )
+                                    Icon(
+                                        painter = painterResource(R.drawable.outline_keyboard_arrow_down_24),
+                                        contentDescription = "Change year",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = Color(0xFF64748B)
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { },
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFF1F5F9))
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.outline_keyboard_arrow_right_24),
+                                    contentDescription = "Next",
+                                    tint = Color(0xFF334155),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Days of Week
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            for (dayIndex in 0 until 7) {
-                                val dayNumber = calendarDays[week * 7 + dayIndex]
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f)
-                                        .padding(2.dp),
-                                    contentAlignment = Alignment.Center
+                            val daysOfWeek = listOf("SU", "MO", "TU", "WE", "TH", "FR", "SA")
+                            daysOfWeek.forEach { day ->
+                                Text(
+                                    text = day,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF94A3B8),
+                                    modifier = Modifier.weight(1f),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Calendar Grid
+                        val calendarDays = generateCalendarDays()
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            for (week in 0 until 6) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly
                                 ) {
-                                    if (dayNumber > 0) {
-                                        // Highlight Nov 11 with blue background
-                                        val isHighlighted = dayNumber == 11
+                                    for (dayIndex in 0 until 7) {
+                                        val dayNumber = calendarDays[week * 7 + dayIndex]
+                                        val isSelected = dayNumber == selectedDay
+                                        val hasEvent = dayNumber == 11
+
                                         Box(
                                             modifier = Modifier
-                                                .fillMaxSize()
-                                                .clip(RoundedCornerShape(100.dp))
+                                                .weight(1f)
+                                                .aspectRatio(1f)
+                                                .padding(2.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .clickable(
+                                                    enabled = dayNumber > 0,
+                                                    indication = null,
+                                                    interactionSource = remember { MutableInteractionSource() }
+                                                ) {
+                                                    if (dayNumber > 0) selectedDay = dayNumber
+                                                }
                                                 .background(
-                                                    if (isHighlighted) Color(0xFF2196F3) else Color.Transparent
+                                                    when {
+                                                        isSelected -> Brush.linearGradient(
+                                                            colors = listOf(
+                                                                Color(0xFF3B82F6),
+                                                                Color(0xFF2563EB)
+                                                            )
+                                                        )
+                                                        else -> Brush.linearGradient(
+                                                            colors = listOf(
+                                                                Color.Transparent,
+                                                                Color.Transparent
+                                                            )
+                                                        )
+                                                    }
                                                 ),
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Text(
-                                                text = dayNumber.toString(),
-                                                fontSize = 16.sp,
-                                                color = if (isHighlighted) Color.White else Color.Black,
-                                                fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Normal
-                                            )
+                                            if (dayNumber > 0) {
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally
+                                                ) {
+                                                    Text(
+                                                        text = dayNumber.toString(),
+                                                        fontSize = 16.sp,
+                                                        color = if (isSelected) Color.White else Color(0xFF0F172A),
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                                    )
+                                                    if (hasEvent && !isSelected) {
+                                                        Spacer(modifier = Modifier.height(2.dp))
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(5.dp)
+                                                                .clip(CircleShape)
+                                                                .background(Color(0xFF3B82F6))
+                                                        )
+                                                    }
+                                                }
+                                            }
                                         }
-                                    } else {
-                                        // Empty cell for days outside the month
-                                        Text(
-                                            text = "",
-                                            fontSize = 16.sp
-                                        )
                                     }
                                 }
                             }
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // Events Section
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Upcoming Events",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+
+                    Text(
+                        text = "See all",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.clickable { }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Event Items
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        EventItem(
+                            title = "Job Interview at Google",
+                            date = "Nov 11",
+                            time = "8:00 AM",
+                            color = Color(0xFF3B82F6)
+                        )
+                    }
+                    item {
+                        EventItem(
+                            title = "Team Meeting",
+                            date = "Nov 15",
+                            time = "2:30 PM",
+                            color = Color(0xFF8B5CF6)
+                        )
+                    }
+                    item {
+                        EventItem(
+                            title = "Project Deadline",
+                            date = "Nov 20",
+                            time = "11:59 PM",
+                            color = Color(0xFFEC4899)
+                        )
+                    }
+                }
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Divider
-            Divider(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Color.LightGray)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Events Section
-            Text(
-                text = "Events",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            // Event Item
-            EventItem(
-                title = "Job interview of Google",
-                date = "Nov 11",
-                time = "8:00AM"
-            )
         }
     }
 }
 
 @Composable
-fun EventItem(title: String, date: String, time: String) {
-    Surface(
+fun EventItem(
+    title: String,
+    date: String,
+    time: String,
+    color: Color
+) {
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        color = SkyBlue,
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, Color.Transparent)
+            .shadow(
+                elevation = 4.dp,
+                shape = RoundedCornerShape(16.dp),
+                spotColor = Color.Black.copy(alpha = 0.1f)
+            ),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            // Color indicator
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(color)
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
                     text = title,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.Black
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF0F172A)
                 )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color(0xFF64748B)
+                        )
+                        Text(
+                            text = date,
+                            fontSize = 13.sp,
+                            color = Color(0xFF64748B),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color(0xFF64748B)
+                        )
+                        Text(
+                            text = time,
+                            fontSize = 13.sp,
+                            color = Color(0xFF64748B),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            IconButton(
+                onClick = { },
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.1f))
             ) {
-                Text(
-                    text = date,
-                    fontSize = 14.sp,
-                    color = Color.Black
-                )
-                Text(
-                    text = time,
-                    fontSize = 14.sp,
-                    color = Color.Black
+                Icon(
+                    painter = painterResource(R.drawable.outline_keyboard_arrow_right_24),
+                    contentDescription = "View details",
+                    tint = color,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -283,10 +444,9 @@ fun EventItem(title: String, date: String, time: String) {
 }
 
 private fun generateCalendarDays(): List<Int> {
-    // November 2006 starts on Wednesday (index 3)
     val daysInMonth = 30
     val startDayOfWeek = 3  // Wednesday
-    val totalCells = 42  // 6 weeks * 7 days
+    val totalCells = 42
 
     return List(totalCells) { index ->
         if (index >= startDayOfWeek && index < startDayOfWeek + daysInMonth) {
@@ -307,8 +467,9 @@ fun CalendarBodyPreview() {
 @Composable
 fun EventItemPreview() {
     EventItem(
-        title = "Job interview of Google",
+        title = "Job Interview at Google",
         date = "Nov 11",
-        time = "8:00AM"
+        time = "8:00 AM",
+        color = Color(0xFF3B82F6)
     )
 }

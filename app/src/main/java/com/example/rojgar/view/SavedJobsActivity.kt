@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +22,7 @@ import com.example.rojgar.model.JobModel
 import com.example.rojgar.repository.JobRepoImpl
 import com.example.rojgar.repository.SavedJobRepoImpl
 import com.example.rojgar.ui.theme.Blue
+import com.example.rojgar.ui.theme.DarkBlue2
 import com.example.rojgar.viewmodel.JobViewModel
 import com.example.rojgar.viewmodel.JobViewModelFactory
 import com.example.rojgar.viewmodel.SavedJobViewModel
@@ -28,11 +30,23 @@ import com.example.rojgar.viewmodel.SavedJobViewModelFactory
 import kotlinx.coroutines.launch
 
 class SavedJobsActivity : ComponentActivity() {
+
+    private val savedJobViewModel by viewModels<SavedJobViewModel> {
+        SavedJobViewModelFactory(SavedJobRepoImpl())
+    }
+
+    private val jobViewModel by viewModels<JobViewModel> {
+        JobViewModelFactory(JobRepoImpl())
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-//            SavedJobsBody(SavedJobViewModel, JobViewModel)
+            SavedJobsBody(
+                savedJobViewModel = savedJobViewModel,
+                jobViewModel = jobViewModel
+            )
         }
     }
 }
@@ -77,7 +91,7 @@ fun SavedJobsBody(savedJobViewModel: SavedJobViewModel,
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Blue,
+                    containerColor = DarkBlue2,
                     titleContentColor = Color.White
                 )
             )
