@@ -12,9 +12,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Rojgar">
         <activity
-            android:name=".view.AppliedJobsActivity"
+            android:name=".view.CalendarActivity"
             android:exported="true"
-            android:label="@string/title_activity_applied_jobs"
+            android:label="@string/title_activity_calendar"
             android:theme="@style/Theme.Rojgar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
