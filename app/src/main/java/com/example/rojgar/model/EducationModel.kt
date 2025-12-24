@@ -17,13 +17,14 @@ data class EducationModel(
         return mapOf(
             "educationId" to educationId,
             "educationDegree" to educationDegree,
-            "eduInstituteName" to instituteName,
-            "eduBoard" to board,
-            "eduField" to field,
-            "eduStartYear" to startYear,
-            "eduEndYear" to endYear,
-            "eduGradeType" to gradeType,
-            "eduStatus" to currentlyStudying,
+            "instituteName" to instituteName,
+            "board" to board,
+            "field" to field,
+            "startYear" to startYear,
+            "endYear" to endYear,
+            "gradeType" to gradeType,
+            "score" to score,
+            "currentlyStudying" to currentlyStudying,
             "jobSeekerId" to jobSeekerId,
         )
     }

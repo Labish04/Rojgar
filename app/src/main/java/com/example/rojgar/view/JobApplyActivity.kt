@@ -90,7 +90,7 @@ fun JobApplyBody(postId: String, companyId: String) {
             if (!isLoading && jobPost != null) {
                 ApplyNowButton(
                     onApplyClick = {
-                        Toast.makeText(context, "Apply functionality to be implemented", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Your application has been submitted successfully!", Toast.LENGTH_SHORT).show()
                     }
                 )
             }

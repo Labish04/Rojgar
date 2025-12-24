@@ -387,26 +387,27 @@ fun JobSeekerPostCard(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            Box(
-                                modifier = Modifier
-                                    .background(
-                                        color = Color(0xFF00BCD4).copy(alpha = 0.15f),
-                                        shape = RoundedCornerShape(6.dp)
-                                    )
-                                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                            ) {
-                                Text(
-                                    text = job.jobType,
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF00BCD4),
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            color = Color(0xFF00BCD4).copy(alpha = 0.15f),
+                                            shape = RoundedCornerShape(6.dp)
+                                        )
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = job.jobType,
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF00BCD4),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
                                 Icon(
                                     painter = painterResource(id = R.drawable.shareicon),
                                     contentDescription = "Share Job",
@@ -420,23 +421,7 @@ fun JobSeekerPostCard(
                     }
                 }
 
-                if (isUrgent) {
-                    Surface(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color.Red
-                    ) {
-                        Text(
-                            text = "⚠ URGENT",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
+
             }
         }
     }
