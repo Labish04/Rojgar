@@ -12,6 +12,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Rojgar">
         <activity
+            android:name=".view.AppliedJobsActivity"
+            android:exported="true"
+            android:label="@string/title_activity_calendar"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".view.CalendarActivity"
             android:exported="true"
             android:label="@string/title_activity_calendar"
