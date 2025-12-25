@@ -1,23 +1,23 @@
 package com.example.rojgar.model
 
 data class PreferenceModel(
-    val preferenceId : String = "",
-    val category : String = "",
-    val industry : String = "",
-    val title : String = "",
-    val availability : String = "",
+    val preferenceId: String = "",
+    val categories: List<String> = emptyList(),
+    val industries: List<String> = emptyList(),
+    val titles: List<String> = emptyList(),
+    val availabilities: List<String> = emptyList(),
     val location: String = "",
-    val jobSeekerId : String = ""
-){
-    fun toMap() : Map<String,Any?>{
+    val jobSeekerId: String = ""
+) {
+    fun toMap(): Map<String, Any?> {
         return mapOf(
             "preferenceId" to preferenceId,
-            "category" to category,
-            "industry" to industry,
-            "title" to title,
-            "availability" to availability,
+            "categories" to categories,
+            "industries" to industries,
+            "titles" to titles,
+            "availabilities" to availabilities,
             "location" to location,
-            "jobSeekerId" to jobSeekerId,
+            "jobSeekerId" to jobSeekerId
         )
     }
 }
