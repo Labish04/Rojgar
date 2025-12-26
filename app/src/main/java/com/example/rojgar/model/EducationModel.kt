@@ -2,6 +2,7 @@ package com.example.rojgar.model
 
 data class EducationModel(
     val educationId : String = "",
+    val educationDegree : String = "",
     val instituteName : String = "",
     val board : String = "",
     val field : String = "",
@@ -15,13 +16,15 @@ data class EducationModel(
     fun toMap() : Map<String,Any?>{
         return mapOf(
             "educationId" to educationId,
-            "eduInstituteName" to instituteName,
-            "eduBoard" to board,
-            "eduField" to field,
-            "eduStartYear" to startYear,
-            "eduEndYear" to endYear,
-            "eduGradeType" to gradeType,
-            "eduStatus" to currentlyStudying,
+            "educationDegree" to educationDegree,
+            "instituteName" to instituteName,
+            "board" to board,
+            "field" to field,
+            "startYear" to startYear,
+            "endYear" to endYear,
+            "gradeType" to gradeType,
+            "score" to score,
+            "currentlyStudying" to currentlyStudying,
             "jobSeekerId" to jobSeekerId,
         )
     }

@@ -115,7 +115,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
             modifier = Modifier
                 .fillMaxSize()
                 .padding()
-                .background(color = Blue)
+                .background(Blue)
         ) {
             // Top Bar
             Row(
@@ -174,7 +174,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                     modifier = Modifier
                         .width(220.dp)
                         .height(340.dp)
-                        .background(Blue)
+                        .background(DarkBlue)
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.profilepicture),

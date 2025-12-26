@@ -1015,13 +1015,51 @@ fun ExperienceCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            // Job Title
-            Text(
-                text = experience.title,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = DarkBlue2
-            )
+            Row (
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+
+            ) {
+                // Job Title
+                Text(
+                    text = experience.title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = DarkBlue2
+                )
+
+                // Edit and Delete buttons on the right side
+                Row (
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ){
+                    IconButton(
+                        onClick = onEditClick,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = Color.Black,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    // Delete Icon
+                    IconButton(
+                        onClick = onDeleteClick,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = Color.Red,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+            }
 
             Spacer(modifier = Modifier.height(6.dp))
 
@@ -1054,58 +1092,7 @@ fun ExperienceCard(
                     )
                 }
 
-//                // Date range in smaller text
-//                Text(
-//                    text = experience.getFormattedDateRange(),
-//                    fontSize = 12.sp,
-//                    color = Color.DarkGray
-//                )
 
-
-//            Spacer(modifier = Modifier.height(12.dp))
-
-                // Edit and Delete buttons on the right side
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Edit Button
-                    OutlinedButton(
-                        onClick = onEditClick,
-                        modifier = Modifier
-                            .height(36.dp)
-                            .padding(end = 8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = DarkBlue2
-                        )
-                    ) {
-                        Icon(
-                            Icons.Default.Edit,
-                            contentDescription = "Edit",
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Edit", fontSize = 12.sp)
-                    }
-
-                    // Delete Button
-                    OutlinedButton(
-                        onClick = onDeleteClick,
-                        modifier = Modifier.height(36.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color.Red
-                        )
-                    ) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Delete", fontSize = 12.sp)
-                    }
-                }
             }
         }
     }

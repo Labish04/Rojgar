@@ -65,6 +65,13 @@ data class JobFilterState(
     val location: String = ""
 )
 
+data class JobPostWithCompany(
+    val jobPost: JobModel,
+    val companyName: String,
+    val companyProfile: String,
+    val isLoading: Boolean
+)
+
 class JobSeekerSearchActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -145,8 +152,8 @@ fun JobSeekerSearchScreen(
     val filteredJobs = remember(allJobs, searchQuery, filterState, companyDetailsMap) {
         allJobs.filter { job ->
             val companyName = companyDetailsMap[job.companyId]?.companyName ?: ""
-            
-            val matchesSearch = searchQuery.isEmpty() || 
+
+            val matchesSearch = searchQuery.isEmpty() ||
                 listOf(job.title, job.position, job.jobDescription, job.skills, companyName)
                     .any { it.contains(searchQuery, ignoreCase = true) }
 
@@ -176,7 +183,7 @@ fun JobSeekerSearchScreen(
                 (job.jobDescription.contains(filterState.location, ignoreCase = true) ||
                  companyName.contains(filterState.location, ignoreCase = true))
 
-            matchesSearch && matchesCategories && matchesJobType && 
+            matchesSearch && matchesCategories && matchesJobType &&
                 matchesExperience && matchesEducation && matchesSalary && matchesLocation
         }
     }
