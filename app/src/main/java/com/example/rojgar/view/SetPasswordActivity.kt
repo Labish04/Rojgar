@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -22,7 +23,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.R
+import com.example.rojgar.ui.theme.NormalBlue
 import com.example.rojgar.ui.theme.Purple
+import com.example.rojgar.ui.theme.White
 
 class SetPasswordActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,150 +39,178 @@ class SetPasswordActivity : ComponentActivity() {
 
 @Composable
 fun SetPasswordScreen() {
-    // State variables for password fields
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
     Scaffold { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding()
                 .background(Color.White)
-                .padding(horizontal = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top Logo
+            Box {
+                Image(
+                    painter = painterResource(R.drawable.design1),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .offset(x = -80.dp, y = -80.dp)
+                        .rotate(10f)
+                        .size(260.dp)
+                )
+                Image(
+                    painter = painterResource(R.drawable.logo),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .offset(x = 230.dp, y = -50.dp)
+                        .size(300.dp)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.forgetpassworddesign),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .offset(y = 150.dp)
+                            .size(250.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(110.dp))
+
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp),
-                horizontalArrangement = Arrangement.End
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.logo),
-                    contentDescription = "Rojgar Logo",
-                    modifier = Modifier
-                        .height(200.dp)
-                        .fillMaxWidth()
-                        .offset(x = 150.dp, y = (-40).dp)
+                Text(
+                    "     Set \nPassword",
+                    style = TextStyle(
+                        fontSize = 35.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF201375)
+                    )
                 )
             }
 
-            // Illustration
-            Image(
-                painter = painterResource(id = R.drawable.design4),
-                contentDescription = "Jobseeker Illustration",
-                modifier = Modifier
-                    .height(200.dp)
-                    .fillMaxWidth()
-                    .padding(vertical = 10.dp)
-            )
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Title
-            Text(
-                text = "Set",
-                style = TextStyle(
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-            )
-            Text(
-                text = "Password",
-                style = TextStyle(
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-            )
-            Spacer(modifier = Modifier.height(30.dp))
 
-            // Password Field
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Password") },
+            Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                shape = RoundedCornerShape(15.dp),
-                singleLine = true,
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            painter = painterResource(
-                                id = if (passwordVisible) R.drawable.baseline_visibility_24 else R.drawable.baseline_visibility_off_24
-                            ),
-                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Purple,
-                    focusedLabelColor = Purple
+                    .padding(horizontal = 30.dp)
+            ) {
+                PasswordTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "Password",
+                    leadingIcon = R.drawable.outline_lock_24
                 )
-            )
+            }
             Spacer(modifier = Modifier.height(25.dp))
-
-            // Confirm Password Field
-            OutlinedTextField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
-                label = { Text("Confirm Password") },
+            Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                shape = RoundedCornerShape(15.dp),
-                singleLine = true,
-                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                        Icon(
-                            painter = painterResource(
-                                id = if (confirmPasswordVisible) R.drawable.baseline_visibility_24 else R.drawable.baseline_visibility_off_24
-                            ),
-                            contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Purple,
-                    focusedLabelColor = Purple
-                )
-            )
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Done Button
-            Button(
-                onClick = { },
-                modifier = Modifier
-                    .width(100.dp)
-                    .height(45.dp),
-                shape = RoundedCornerShape(15.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Purple)
+                    .padding(horizontal = 30.dp)
             ) {
-                Text("Done", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp )
+                PasswordTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    label = "Confirm Password",
+                    leadingIcon = R.drawable.outline_lock_24
+                )
             }
-
-
-            // Bottom decorative image
-            Image(
-                painter = painterResource(id = R.drawable.design5),
-                contentDescription = "Decorative Element",
+            Spacer(modifier = Modifier.height(30.dp))
+            // Done Button
+            Row(
                 modifier = Modifier
-                    .size(250.dp)
-                    .offset(x = (-119).dp, y = 2.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Button(
+                    onClick = {
+
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Purple
+                    ),
+                    shape = RoundedCornerShape(15.dp),
+                    modifier = Modifier
+                        .height(45.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 73.dp)
+                ) {
+                    Text(
+                        "Done",
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 22.sp
+                        )
+                    )
+                }
+            }
+            Image(
+                painter = painterResource(R.drawable.design2),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(510.dp)
+                    .offset(x = 110.dp, y = 115.dp)
             )
         }
     }
+}
+@Composable
+fun PasswordTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    leadingIcon: Int
+) {
+    var visibility by remember { mutableStateOf(false) }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        visualTransformation = if (!visibility) PasswordVisualTransformation()
+        else VisualTransformation.None,
+        leadingIcon = {
+            Icon(
+                painter = painterResource(id = leadingIcon),
+                contentDescription = null,
+                tint = NormalBlue,
+                modifier = Modifier.size(22.dp)
+            )
+        },
+        trailingIcon = {
+            IconButton(onClick = { visibility = !visibility }) {
+                Icon(
+                    painter = painterResource(
+                        id = if (visibility)
+                            R.drawable.baseline_visibility_off_24
+                        else R.drawable.baseline_visibility_24
+                    ),
+                    contentDescription = null,
+                    tint = NormalBlue,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(15.dp),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = White,
+            unfocusedContainerColor = White,
+            focusedIndicatorColor = NormalBlue,
+            unfocusedIndicatorColor = NormalBlue
+        )
+    )
 }
 
 @Preview

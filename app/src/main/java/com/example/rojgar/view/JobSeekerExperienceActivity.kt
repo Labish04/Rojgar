@@ -5,6 +5,7 @@ import android.app.DatePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -13,9 +14,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,17 +37,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.rojgar.R
+import com.example.rojgar.model.ExperienceModel
+import com.example.rojgar.repository.ExperienceRepoImpl
 import com.example.rojgar.ui.theme.*
+import com.example.rojgar.viewmodel.ExperienceViewModel
+import com.google.firebase.auth.FirebaseAuth
 import java.util.*
-
-data class Experience(
-    val company: String,
-    val role: String,
-    val startDate: String,
-    val endDate: String,
-    val currentlyWorking: Boolean,
-    val description: String
-)
 
 class JobSeekerExperienceActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,16 +60,31 @@ fun JobSeekerExperienceBody() {
     val context = LocalContext.current
     val activity = context as Activity
 
-    var experiences by remember { mutableStateOf(listOf<Experience>()) }
-    var showSheet by remember { mutableStateOf(false) }
+    // Initialize ViewModel
+    val experienceViewModel = remember { ExperienceViewModel(ExperienceRepoImpl()) }
 
+    // Get current job seeker ID
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
+    val jobSeekerId = currentUser?.uid ?: ""
+
+    var experiences by remember { mutableStateOf(listOf<ExperienceModel>()) }
+    var showSheet by remember { mutableStateOf(false) }
+    var isEditing by remember { mutableStateOf(false) }
+    var currentExperienceId by remember { mutableStateOf("") }
+    var showDetailDialog by remember { mutableStateOf(false) }
+    var selectedExperience by remember { mutableStateOf<ExperienceModel?>(null) }
+
+    // Form fields
     var companyName by remember { mutableStateOf("") }
     var jobTitle by remember { mutableStateOf("") }
+    var jobLevel by remember { mutableStateOf("") }
     var startDate by remember { mutableStateOf("") }
     var endDate by remember { mutableStateOf("") }
     var currentlyWorking by remember { mutableStateOf(false) }
-    var description by remember { mutableStateOf("") }
+    var experienceLetterUrl by remember { mutableStateOf("") }
 
+    // Date pickers
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
 
@@ -77,6 +93,225 @@ fun JobSeekerExperienceBody() {
     val month = calendar.get(Calendar.MONTH)
     val day = calendar.get(Calendar.DAY_OF_MONTH)
 
+    // Image picker
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        selectedImageUri = uri
+        experienceLetterUrl = uri?.toString() ?: ""
+    }
+
+    // Dropdown states
+    var expandedCategory by remember { mutableStateOf(false) }
+    var selectedCategory by remember { mutableStateOf("") }
+    var expandedLevel by remember { mutableStateOf(false) }
+
+    var showDeleteAlert by remember { mutableStateOf(false) }
+    var experienceToDelete by remember { mutableStateOf<String?>(null) }
+
+    val jobCategories = listOf(
+        "Accounting / Finance",
+        "Architecture",
+        "Banking",
+        "Construction / Engineering",
+        "Graphics / Designing",
+        "IT (Information Technology)",
+        "Computer Engineering",
+        "Others"
+    )
+
+    val jobLevels = listOf("Top Level", "Senior Level", "Mid Level", "Entry Level")
+
+    // Load experiences when activity starts
+    LaunchedEffect(Unit) {
+        if (jobSeekerId.isNotEmpty()) {
+            experienceViewModel.getExperiencesByJobSeekerId(jobSeekerId) { success, message, expList ->
+                if (success) {
+                    expList?.let {
+                        experiences = it
+                    }
+                } else {
+                    Toast.makeText(context, "Failed to load experiences: $message", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    // Function to reset form
+    fun resetForm() {
+        companyName = ""
+        jobTitle = ""
+        selectedCategory = ""
+        jobLevel = ""
+        startDate = ""
+        endDate = ""
+        currentlyWorking = false
+        experienceLetterUrl = ""
+        selectedImageUri = null
+        currentExperienceId = ""
+        isEditing = false
+    }
+
+    // Function to open form for adding new experience
+    fun openAddForm() {
+        resetForm()
+        showSheet = true
+    }
+
+    // Function to open form for editing existing experience
+    // Function to open form for editing existing experience
+    fun openEditForm(experience: ExperienceModel) {
+        companyName = experience.companyName
+        jobTitle = experience.title
+        selectedCategory = experience.jobCategory  // Add this line
+        jobLevel = experience.level
+        startDate = experience.startDate
+        endDate = experience.endDate
+        currentlyWorking = experience.currentlyWorkingStatus == "Yes"
+        experienceLetterUrl = experience.experienceLetter
+        currentExperienceId = experience.experienceId
+        isEditing = true
+        showSheet = true
+    }
+
+    // Function to save experience
+    fun saveExperience() {
+        if (companyName.isEmpty() || jobTitle.isEmpty() || startDate.isEmpty()) {
+            Toast.makeText(context, "Please fill required fields", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val experienceModel = ExperienceModel(
+            experienceId = if (isEditing) currentExperienceId else "",
+            companyName = companyName,
+            title = jobTitle,
+            jobCategory = selectedCategory,
+            level = jobLevel,
+            startDate = startDate,
+            endDate = if (currentlyWorking) "" else endDate,
+            currentlyWorkingStatus = if (currentlyWorking) "Yes" else "No",
+            experienceLetter = experienceLetterUrl,
+            jobSeekerId = jobSeekerId
+        )
+
+        if (isEditing) {
+            experienceViewModel.updateExperience(currentExperienceId, experienceModel) { success, message ->
+                if (success) {
+                    Toast.makeText(context, "Experience updated", Toast.LENGTH_SHORT).show()
+                    // Refresh list
+                    experienceViewModel.getExperiencesByJobSeekerId(jobSeekerId) { success2, message2, expList ->
+                        if (success2) {
+                            expList?.let { experiences = it }
+                        }
+                    }
+                    showSheet = false
+                    resetForm()
+                } else {
+                    Toast.makeText(context, "Update failed: $message", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            experienceViewModel.addExperience(experienceModel) { success, message ->
+                if (success) {
+                    Toast.makeText(context, "Experience added", Toast.LENGTH_SHORT).show()
+                    // Refresh list
+                    experienceViewModel.getExperiencesByJobSeekerId(jobSeekerId) { success2, message2, expList ->
+                        if (success2) {
+                            expList?.let { experiences = it }
+                        }
+                    }
+                    showSheet = false
+                    resetForm()
+                } else {
+                    Toast.makeText(context, "Add failed: $message", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    fun deleteExperience(experienceId: String) {
+        // Set the experience to delete and show alert
+        experienceToDelete = experienceId
+        showDeleteAlert = true
+    }
+
+// Add this AlertDialog after the existing dialogs (after the detail dialog)
+    if (showDeleteAlert) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteAlert = false
+                experienceToDelete = null
+            },
+            title = {
+                Text(
+                    text = "Delete Experience",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.Red
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to delete this experience? This action cannot be undone.",
+                    fontSize = 16.sp
+                )
+            },
+            confirmButton = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Cancel Button
+                    TextButton(
+                        onClick = {
+                            showDeleteAlert = false
+                            experienceToDelete = null
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = Color.Gray
+                        )
+                    ) {
+                        Text("Cancel")
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Delete Button
+                    Button(
+                        onClick = {
+                            experienceToDelete?.let { expId ->
+                                // Perform actual deletion
+                                experienceViewModel.deleteExperience(expId) { success, message ->
+                                    if (success) {
+                                        Toast.makeText(context, "Experience deleted", Toast.LENGTH_SHORT).show()
+                                        // Refresh list
+                                        experienceViewModel.getExperiencesByJobSeekerId(jobSeekerId) { success2, message2, expList ->
+                                            if (success2) {
+                                                expList?.let { experiences = it }
+                                            }
+                                        }
+                                        // Close detail dialog if open
+                                        showDetailDialog = false
+                                    } else {
+                                        Toast.makeText(context, "Delete failed: $message", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                            showDeleteAlert = false
+                            experienceToDelete = null
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Red
+                        )
+                    ) {
+                        Text("Delete", color = Color.White)
+                    }
+                }
+            }
+        )
+    }
+
+    // Date pickers
     if (showStartDatePicker) {
         DatePickerDialog(
             context,
@@ -99,29 +334,6 @@ fun JobSeekerExperienceBody() {
         ).show()
     }
 
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        selectedImageUri = uri
-    }
-
-    var expandedCategory by remember { mutableStateOf(false) }
-    var selectedCategory by remember { mutableStateOf("") }
-
-    val jobCategories = listOf(
-        "Accounting / Finance",
-        "Architecture",
-        "Banking",
-        "Construction / Engineering",
-        "Graphics / Designing",
-        "IT (Information Technology)",
-        "Computer Engineering",
-        "Others"
-    )
-
-    val jobLevels = listOf("Top Level", "Senior Level", "Mid Level", "Entry Level")
-    var expandedLevel by remember { mutableStateOf(false) }
-    var selectedLevel by remember { mutableStateOf("") }
-
     Scaffold(
         topBar = {
             Card(
@@ -140,8 +352,7 @@ fun JobSeekerExperienceBody() {
                     horizontalArrangement = Arrangement.Start
                 ) {
                     IconButton(onClick = {
-                        val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
-                        context.startActivity(intent)
+                        activity.finish()
                     }) {
                         Icon(
                             painter = painterResource(R.drawable.outline_arrow_back_ios_24),
@@ -170,25 +381,24 @@ fun JobSeekerExperienceBody() {
                 .fillMaxSize()
                 .padding(padding)
                 .background(Blue)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
         ) {
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                "What are your most relevant experiences?",
+                text = "What are your most relevant experiences?",
                 fontWeight = FontWeight.Normal,
                 fontSize = 18.sp,
-                color = Color.Black
+                color = Color.Black,
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
 
-            Spacer(modifier = Modifier.height(200.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             if (experiences.isEmpty()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(520.dp),
+                        .fillMaxHeight(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Spacer(modifier = Modifier.height(40.dp))
@@ -203,7 +413,7 @@ fun JobSeekerExperienceBody() {
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
-                        "You haven't added any experience yet.\nTap the + button to add your work experience.",
+                        "You haven't added any experience yet.\nTap the Add button to add your work experience.",
                         textAlign = TextAlign.Center,
                         color = Color.DarkGray,
                         modifier = Modifier.padding(horizontal = 16.dp)
@@ -218,18 +428,7 @@ fun JobSeekerExperienceBody() {
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Button(
-                            onClick = {
-                                companyName = ""
-                                jobTitle = ""
-                                startDate = ""
-                                endDate = ""
-                                currentlyWorking = false
-                                description = ""
-                                selectedCategory = ""
-                                selectedLevel = ""
-                                selectedImageUri = null
-                                showSheet = true
-                            },
+                            onClick = { openAddForm() },
                             shape = RoundedCornerShape(25.dp),
                             modifier = Modifier
                                 .width(170.dp)
@@ -245,100 +444,171 @@ fun JobSeekerExperienceBody() {
                                 modifier = Modifier.size(26.dp)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "Add",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            Text(text = "Add", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
             } else {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    experiences.forEach { exp ->
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            colors = CardDefaults.cardColors(containerColor = White)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = exp.role,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(text = exp.company, color = Color.Gray)
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = if (exp.currentlyWorking) "${exp.startDate} - Present" else "${exp.startDate} - ${exp.endDate}",
-                                    color = Color.DarkGray
-                                )
-                                if (exp.description.isNotBlank()) {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(text = exp.description)
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(300.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Button(
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 20.dp, vertical = 0.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(experiences) { experience ->
+                        ExperienceCard(
+                            experience = experience,
                             onClick = {
-                                companyName = ""
-                                jobTitle = ""
-                                startDate = ""
-                                endDate = ""
-                                currentlyWorking = false
-                                description = ""
-                                selectedCategory = ""
-                                selectedLevel = ""
-                                selectedImageUri = null
-                                showSheet = true
+                                selectedExperience = experience
+                                showDetailDialog = true
                             },
-                            shape = RoundedCornerShape(25.dp),
-                            modifier = Modifier
-                                .width(150.dp)
-                                .height(45.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = DarkBlue2,
-                                contentColor = Color.White
-                            )
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.addexperience),
-                                contentDescription = "Add",
-                                modifier = Modifier.size(26.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "Add Another")
-                        }
+                            onEditClick = { openEditForm(experience) },
+                            onDeleteClick = { deleteExperience(experience.experienceId) }
+                        )
+                    }
+                }
+
+                // Bottom Center Add Another Button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp, top = 16.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Button(
+                        onClick = { openAddForm() },
+                        shape = RoundedCornerShape(25.dp),
+                        modifier = Modifier
+                            .width(170.dp)
+                            .height(50.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DarkBlue2,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.addexperience),
+                            contentDescription = "Add",
+                            modifier = Modifier.size(26.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(text = "Add", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
         }
     }
 
+    // Experience Detail Dialog
+    // Experience Detail Dialog
+    if (showDetailDialog && selectedExperience != null) {
+        AlertDialog(
+            onDismissRequest = { showDetailDialog = false },
+            title = {
+                Text(
+                    text = "Experience Details",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = DarkBlue2
+                )
+            },
+            text = {
+                Column {
+                    selectedExperience?.let { exp ->
+                        DetailItem(title = "Job Title", value = exp.title)
+                        DetailItem(title = "Company", value = exp.companyName)
+                        DetailItem(title = "Job Category", value = exp.jobCategory)
+                        DetailItem(title = "Job Level", value = exp.level)
+                        DetailItem(title = "Start Date", value = exp.startDate)
+                        DetailItem(title = "End Date",
+                            value = if (exp.currentlyWorkingStatus == "Yes") "Present" else exp.endDate)
+                        DetailItem(title = "Currently Working", value = exp.currentlyWorkingStatus)
+                        DetailItem(title = "Duration", value = exp.calculateYearsOfExperience())
+
+                        if (exp.experienceLetter.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Experience Letter: Uploaded",
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Green
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Experience Letter: Not Uploaded",
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Button(
+                        onClick = {
+                            showDetailDialog = false
+                            selectedExperience?.let { openEditForm(it) }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkBlue2),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Edit")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Button(
+                        onClick = {
+                            selectedExperience?.let {
+                                // Show delete confirmation and close detail dialog
+                                experienceToDelete = it.experienceId
+                                showDeleteAlert = true
+                                showDetailDialog = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Delete")
+                        }
+                    }
+                }
+            }
+        )
+    }
+    // Add/Edit Experience Dialog
     if (showSheet) {
         Dialog(
             onDismissRequest = {
                 showSheet = false
-                companyName = ""
-                jobTitle = ""
-                startDate = ""
-                endDate = ""
-                currentlyWorking = false
-                description = ""
-                selectedCategory = ""
-                selectedLevel = ""
-                selectedImageUri = null
+                resetForm()
             },
             properties = DialogProperties(
                 usePlatformDefaultWidth = false
@@ -352,7 +622,7 @@ fun JobSeekerExperienceBody() {
                     shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight(0.75f),
+                        .fillMaxHeight(0.72f),
                     colors = CardDefaults.cardColors(containerColor = White)
                 ) {
                     Column(
@@ -361,43 +631,16 @@ fun JobSeekerExperienceBody() {
                             .padding(20.dp)
                             .verticalScroll(rememberScrollState())
                     ) {
+                        // Company Name
                         OutlinedTextField(
                             value = companyName,
                             onValueChange = { companyName = it },
-                            label = { Text("Company Name") },
+                            label = { Text("Company Name *") },
                             leadingIcon = {
                                 Icon(
                                     painterResource(id = R.drawable.companynameicon),
                                     contentDescription = null,
-                                    tint = Color.Blue,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp),
-                            shape = RoundedCornerShape(15.dp),
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                disabledIndicatorColor = Color.Transparent,
-                                focusedIndicatorColor = DarkBlue2,
-                                unfocusedIndicatorColor = Color.Black,
-                                focusedContainerColor =White,
-                                unfocusedContainerColor = White
-                            )
-                        )
-
-                        Spacer(Modifier.height(12.dp))
-
-                        OutlinedTextField(
-                            value = jobTitle,
-                            onValueChange = { jobTitle = it },
-                            label = { Text("Job Title") },
-                            leadingIcon = {
-                                Icon(
-                                    painterResource(id = R.drawable.jobtitleicon),
-                                    contentDescription = null,
-                                    tint = Color.Blue,
+                                    tint = Black,
                                     modifier = Modifier.size(24.dp)
                                 )
                             },
@@ -416,6 +659,35 @@ fun JobSeekerExperienceBody() {
 
                         Spacer(Modifier.height(12.dp))
 
+                        // Job Title
+                        OutlinedTextField(
+                            value = jobTitle,
+                            onValueChange = { jobTitle = it },
+                            label = { Text("Job Title *") },
+                            leadingIcon = {
+                                Icon(
+                                    painterResource(id = R.drawable.jobtitleicon),
+                                    contentDescription = null,
+                                    tint = Black,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            shape = RoundedCornerShape(15.dp),
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedIndicatorColor = DarkBlue2,
+                                unfocusedIndicatorColor = Color.Black,
+                                focusedContainerColor = White,
+                                unfocusedContainerColor = White
+                            )
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Job Category
                         Box(modifier = Modifier.fillMaxWidth()) {
                             OutlinedTextField(
                                 value = selectedCategory,
@@ -426,7 +698,7 @@ fun JobSeekerExperienceBody() {
                                     Icon(
                                         painter = painterResource(id = R.drawable.jobcategoryicon),
                                         contentDescription = "Category Icon",
-                                        tint = Color.Blue,
+                                        tint = Black,
                                         modifier = Modifier.size(27.dp)
                                     )
                                 },
@@ -440,7 +712,7 @@ fun JobSeekerExperienceBody() {
                                     Icon(
                                         painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
                                         contentDescription = "Dropdown Arrow",
-                                        tint = Color.Blue,
+                                        tint = Black,
                                         modifier = Modifier
                                             .size(24.dp)
                                             .clickable { expandedCategory = true }
@@ -457,12 +729,11 @@ fun JobSeekerExperienceBody() {
                                     disabledTextColor = Color.Black
                                 )
                             )
-
                             DropdownMenu(
                                 expanded = expandedCategory,
                                 onDismissRequest = { expandedCategory = false },
                                 modifier = Modifier
-                                    .background(Blue)
+                                    .background(White)
                                     .fillMaxWidth()
                             ) {
                                 jobCategories.forEach { category ->
@@ -479,9 +750,10 @@ fun JobSeekerExperienceBody() {
 
                         Spacer(Modifier.height(12.dp))
 
+                        // Job Level
                         Box(modifier = Modifier.fillMaxWidth()) {
                             OutlinedTextField(
-                                value = selectedLevel,
+                                value = jobLevel,
                                 onValueChange = {},
                                 readOnly = true,
                                 enabled = false,
@@ -489,7 +761,7 @@ fun JobSeekerExperienceBody() {
                                     Icon(
                                         painter = painterResource(id = R.drawable.joblevelicon),
                                         contentDescription = "Level Icon",
-                                        tint = Color.Blue,
+                                        tint = Black,
                                         modifier = Modifier.size(27.dp)
                                     )
                                 },
@@ -503,7 +775,7 @@ fun JobSeekerExperienceBody() {
                                     Icon(
                                         painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
                                         contentDescription = "Dropdown",
-                                        tint = Color.Blue,
+                                        tint = Black,
                                         modifier = Modifier
                                             .size(24.dp)
                                             .clickable { expandedLevel = true }
@@ -532,7 +804,7 @@ fun JobSeekerExperienceBody() {
                                     DropdownMenuItem(
                                         text = { Text(level) },
                                         onClick = {
-                                            selectedLevel = level
+                                            jobLevel = level
                                             expandedLevel = false
                                         }
                                     )
@@ -542,17 +814,20 @@ fun JobSeekerExperienceBody() {
 
                         Spacer(Modifier.height(12.dp))
 
+                        // Date Range
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            // Start Date
                             OutlinedTextField(
                                 value = startDate,
                                 onValueChange = {},
                                 readOnly = true,
-                                placeholder = { Text("dd/mm/yyyy") },
+                                placeholder = { Text("Start Date *") },
+                                label = { Text("Start Date *") },
                                 leadingIcon = {
                                     Icon(
                                         painter = painterResource(id = R.drawable.calendaricon),
                                         contentDescription = "Open Calendar",
-                                        tint = Color.Blue,
+                                        tint = Black,
                                         modifier = Modifier
                                             .size(24.dp)
                                             .clickable { showStartDatePicker = true }
@@ -574,17 +849,19 @@ fun JobSeekerExperienceBody() {
                                 )
                             )
 
+                            // End Date
                             OutlinedTextField(
                                 value = endDate,
                                 onValueChange = {},
                                 enabled = !currentlyWorking,
                                 readOnly = true,
-                                placeholder = { Text("dd/mm/yyyy") },
+                                placeholder = { Text("End Date") },
+                                label = { Text("End Date") },
                                 leadingIcon = {
                                     Icon(
                                         painter = painterResource(id = R.drawable.calendaricon),
                                         contentDescription = "Open Calendar",
-                                        tint = Color.Blue,
+                                        tint = Black,
                                         modifier = Modifier
                                             .size(24.dp)
                                             .clickable {
@@ -613,6 +890,7 @@ fun JobSeekerExperienceBody() {
 
                         Spacer(Modifier.height(12.dp))
 
+                        // Currently Working Switch
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Switch(
                                 checked = currentlyWorking,
@@ -633,8 +911,9 @@ fun JobSeekerExperienceBody() {
 
                         Spacer(Modifier.height(12.dp))
 
+                        // Experience Letter Upload
                         OutlinedTextField(
-                            value = selectedImageUri?.lastPathSegment ?: "",
+                            value = selectedImageUri?.lastPathSegment ?: "No file chosen",
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Upload Experience Letter") },
@@ -642,7 +921,7 @@ fun JobSeekerExperienceBody() {
                                 Icon(
                                     painterResource(id = R.drawable.baseline_upload_24),
                                     contentDescription = null,
-                                    tint = Color.Blue,
+                                    tint = Black,
                                     modifier = Modifier
                                         .size(28.dp)
                                         .clickable { launcher.launch("image/*") }
@@ -665,22 +944,16 @@ fun JobSeekerExperienceBody() {
 
                         Spacer(Modifier.height(32.dp))
 
+                        // Action Buttons
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
+                            // Cancel Button
                             OutlinedButton(
                                 onClick = {
                                     showSheet = false
-                                    companyName = ""
-                                    jobTitle = ""
-                                    startDate = ""
-                                    endDate = ""
-                                    currentlyWorking = false
-                                    description = ""
-                                    selectedCategory = ""
-                                    selectedLevel = ""
-                                    selectedImageUri = null
+                                    resetForm()
                                 },
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
@@ -698,30 +971,9 @@ fun JobSeekerExperienceBody() {
                             }
                             Spacer(Modifier.width(12.dp))
 
+                            // Save Button
                             Button(
-                                onClick = {
-                                    if (companyName.isNotBlank() && jobTitle.isNotBlank()) {
-                                        val newExperience = Experience(
-                                            company = companyName,
-                                            role = jobTitle,
-                                            startDate = startDate,
-                                            endDate = if (currentlyWorking) "Present" else endDate,
-                                            currentlyWorking = currentlyWorking,
-                                            description = description
-                                        )
-                                        experiences = experiences + newExperience
-                                        showSheet = false
-                                        companyName = ""
-                                        jobTitle = ""
-                                        startDate = ""
-                                        endDate = ""
-                                        currentlyWorking = false
-                                        description = ""
-                                        selectedCategory = ""
-                                        selectedLevel = ""
-                                        selectedImageUri = null
-                                    }
-                                },
+                                onClick = { saveExperience() },
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
                                     .weight(0.7f)
@@ -732,7 +984,7 @@ fun JobSeekerExperienceBody() {
                                 )
                             ) {
                                 Text(
-                                    text = "Save Changes",
+                                    text = if (isEditing) "Update Experience" else "Save Experience",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -742,6 +994,125 @@ fun JobSeekerExperienceBody() {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun ExperienceCard(
+    experience: ExperienceModel,
+    onClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row (
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+
+            ) {
+                // Job Title
+                Text(
+                    text = experience.title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = DarkBlue2
+                )
+
+                // Edit and Delete buttons on the right side
+                Row (
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ){
+                    IconButton(
+                        onClick = onEditClick,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = Color.Black,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    // Delete Icon
+                    IconButton(
+                        onClick = onDeleteClick,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = Color.Red,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Company Name
+            Text(
+                text = experience.companyName,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                color = Color.Gray
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Duration (instead of date range)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Duration badge
+                Box(
+                    modifier = Modifier
+                        .background(DarkBlue2, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = experience.calculateYearsOfExperience(),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+
+
+            }
+        }
+    }
+}
+
+@Composable
+fun DetailItem(title: String, value: String) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(
+            text = title,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            color = Color.Gray
+        )
+        Text(
+            text = value,
+            fontSize = 16.sp,
+            color = Color.Black,
+            modifier = Modifier.padding(top = 2.dp)
+        )
     }
 }
 

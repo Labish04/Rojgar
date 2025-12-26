@@ -11,5 +11,7 @@
     <string name="title_activity_document_company">DocumentCompany</string>
     <string name="title_activity_cv_view">CvViewActivity</string>
     <string name="title_activity_company_dashboard">CompanyDashboardActivity</string>
+    <string name="title_activity_forget_password">ForgetPasswordActivity</string>
+    <string name="title_activity_job_apply">JobApplyActivity</string>
     >>>>>>> 11ff9ba53955b48b2637d77df4cf1169dbf7c2a0
 </resources>
