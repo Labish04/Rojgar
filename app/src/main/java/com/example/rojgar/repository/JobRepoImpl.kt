@@ -1,6 +1,7 @@
 package com.example.rojgar.repository
 
 import com.example.rojgar.model.JobModel
+import com.example.rojgar.model.PreferenceModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -103,7 +104,11 @@ class JobRepoImpl : JobRepo {
                     val jobPost = snapshot.getValue(JobModel::class.java)
                     if (jobPost != null) {
                         // Ensure postId is set correctly
-                        callback(true, "Job post fetched", jobPost.copy(postId = snapshot.key ?: jobPost.postId))
+                        callback(
+                            true,
+                            "Job post fetched",
+                            jobPost.copy(postId = snapshot.key ?: jobPost.postId)
+                        )
                     } else {
                         callback(false, "Failed to parse job post", null)
                     }
@@ -142,6 +147,78 @@ class JobRepoImpl : JobRepo {
                 jobList.sortByDescending { it.timestamp }
 
                 callback(true, "Fetched ${jobList.size} jobs successfully", jobList)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                callback(false, error.message, null)
+            }
+        })
+    }
+
+    override fun getRecommendedJobs(
+        preference: PreferenceModel,
+        callback: (Boolean, String, List<JobModel>?) -> Unit
+    ) {
+        ref.addListenerForSingleValueEvent(object : ValueEventListener {
+
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (!snapshot.exists()) {
+                    callback(true, "No jobs found", emptyList())
+                    return
+                }
+
+                val scoredJobs = mutableListOf<Pair<JobModel, Int>>()
+
+                for (postSnapshot in snapshot.children) {
+                    val job = postSnapshot.getValue(JobModel::class.java)
+                    if (job != null) {
+                        val jobWithId =
+                            job.copy(postId = postSnapshot.key ?: job.postId)
+
+                        var score = 0
+
+                        // 🔹 Category match (list)
+                        if (job.categories.any { it.equals(preference.category, true) }) {
+                            score += 3
+                        }
+
+                        // 🔹 Job type match
+                        if (job.jobType.equals(preference.availability, true)) {
+                            score += 2
+                        }
+
+                        // 🔹 Title / position match
+                        if (
+                            job.title.contains(preference.title, true) ||
+                            job.position.contains(preference.title, true)
+                        ) {
+                            score += 2
+                        }
+
+                        // 🔹 Skills match (comma-separated)
+                        val jobSkills = job.skills.split(",").map { it.trim().lowercase() }
+                        val userSkills =
+                            preference.title.split(",").map { it.trim().lowercase() }
+
+                        if (jobSkills.any { it in userSkills }) {
+                            score += 3
+                        }
+
+                        if (score > 0) {
+                            scoredJobs.add(jobWithId to score)
+                        }
+                    }
+                }
+
+                val recommendedJobs = scoredJobs
+                    .sortedByDescending { it.second }
+                    .map { it.first }
+
+                callback(
+                    true,
+                    "Found ${recommendedJobs.size} recommended jobs",
+                    recommendedJobs
+                )
             }
 
             override fun onCancelled(error: DatabaseError) {

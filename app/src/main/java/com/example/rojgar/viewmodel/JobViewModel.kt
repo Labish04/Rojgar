@@ -1,8 +1,10 @@
 package com.example.rojgar.viewmodel
 
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.rojgar.model.JobModel
+import com.example.rojgar.model.PreferenceModel
 import com.example.rojgar.repository.JobRepo
 
 class JobViewModel(private val repo: JobRepo) : ViewModel() {
@@ -72,6 +74,21 @@ class JobViewModel(private val repo: JobRepo) : ViewModel() {
             _loading.postValue(false)
             // FIX: Post the actual data, not empty list
             _companyJobs.postValue(data ?: emptyList())
+        }
+    }
+
+    private val _recommendedJobs = MutableLiveData<List<JobModel>>()
+    val recommendedJobs: LiveData<List<JobModel>> = _recommendedJobs
+
+    private val _message = MutableLiveData<String>()
+    val message: LiveData<String> = _message
+
+    fun loadRecommendations(preference: PreferenceModel) {
+        repo.getRecommendedJobs(preference) { success, msg, jobs ->
+            if (success && jobs != null) {
+                _recommendedJobs.value = jobs
+            }
+            _message.value = msg
         }
     }
 }

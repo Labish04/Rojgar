@@ -53,6 +53,11 @@ import com.example.rojgar.ui.theme.NormalBlue
 import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.livedata.observeAsState
+import com.example.rojgar.model.PreferenceModel
+import com.example.rojgar.repository.JobRepoImpl
+import com.example.rojgar.viewmodel.JobViewModel
 
 // Filter State Data Class
 data class JobFilterState(
@@ -68,9 +73,19 @@ data class JobFilterState(
 @Composable
 fun JobSeekerHomeScreenBody(){
 
+    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    val preference = remember { PreferenceModel() }
+    val recommendedJobs by jobViewModel.recommendedJobs.observeAsState(emptyList())
+    val message by jobViewModel.message.observeAsState("")
+
+
     var search by remember { mutableStateOf("") }
     var showFilterSheet by remember { mutableStateOf(false) }
     var currentFilter by remember { mutableStateOf(JobFilterState()) }
+
+    LaunchedEffect (Unit) {
+        jobViewModel.loadRecommendations(preference)
+    }
 
     Column (
         modifier = Modifier
@@ -231,7 +246,43 @@ fun JobSeekerHomeScreenBody(){
                 containerColor = Color.Transparent
             )
         ){
-            // Display filtered jobs here based on currentFilter
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(10.dp)
+            ) {
+
+                if (recommendedJobs.isEmpty()) {
+                    Text(
+                        text = if (message.isNotEmpty()) message else "No recommended jobs yet",
+                        color = Color.Gray
+                    )
+                } else {
+                    LazyColumn {
+                        items(recommendedJobs.size) { index ->
+                            val job = recommendedJobs[index]
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 5.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.White
+                                )
+
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text(text = job.title, color = Color.Black)
+                                    Text(text = job.position, color = Color.DarkGray)
+                                    Text(text = job.jobType, color = Color.Blue)
+                                    Text(text = job.skills, color = Color.Gray)
+                                    Text(text = job.salary, color = Color.Green)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

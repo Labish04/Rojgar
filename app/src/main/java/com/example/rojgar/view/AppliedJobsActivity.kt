@@ -464,11 +464,3 @@ fun AppliedJobsScreenPreview() {
         AppliedJobsScreen()
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview4() {
-    RojgarTheme {
-        AppliedJobsScreen()
-    }
-}
