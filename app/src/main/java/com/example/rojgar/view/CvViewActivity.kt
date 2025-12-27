@@ -6,39 +6,28 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.rojgar.R
 import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
-import com.example.rojgar.ui.theme.RojgarTheme
 import com.example.rojgar.ui.theme.White
 
 class CvViewActivity : ComponentActivity() {
@@ -54,56 +43,783 @@ class CvViewActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CvViewBody() {
-    Scaffold (
+    val gradientBackground = Brush.verticalGradient(
+        colors = listOf(
+            Color(0xFF1E88E5),
+            Color(0xFF1565C0),
+            Color(0xFFF5F5F5)
+        ),
+        startY = 0f,
+        endY = 1200f
+    )
+
+    Scaffold(
         topBar = {
-                CenterAlignedTopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        titleContentColor = Black,
-                        actionIconContentColor = Black,
-                        containerColor = Blue,
-                        navigationIconContentColor = Black
-                    ),
-                    title = {
-                        Text("Curriculum Vitae")
-                    },
-                    navigationIcon = {
-                            IconButton(onClick = {}) {
-                                Icon(
-                                    painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                                    contentDescription = null
-                                )
-                            }
-                    },
-                    actions = {}
-                )
-        }
-    ){ padding ->
-        Column (
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ){
-            Card (
-                shape = RoundedCornerShape(0.dp),
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(150.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Blue
-                )
-            ){
-                Box(){
-                    Row {
-                        Image(
-                            painter = painterResource(R.drawable.img),
+            CenterAlignedTopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    titleContentColor = White,
+                    actionIconContentColor = White,
+                    containerColor = Color.Transparent,
+                    navigationIconContentColor = White
+                ),
+                title = {
+                    Text(
+                        "Curriculum Vitae",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = {}) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
                             contentDescription = null
                         )
                     }
+                },
+                actions = {}
+            )
+        },
+        containerColor = Color.Transparent
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(gradientBackground)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Modern Profile Header
+                ModernProfileHeader()
+
+                // Two Column Layout for Personal Info
+                PersonalInfoGrid()
+
+                // Objective with Icon
+                StylishSectionCard(
+                    title = "Career Objective",
+                    icon = "🎯"
+                ) {
+                    Text(
+                        text = "Seeking a challenging position in a reputable organization to expand and utilize my learning, skills and knowledge. Passionate about creating innovative solutions and contributing to team success.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF424242),
+                        lineHeight = 22.sp,
+                        letterSpacing = 0.3.sp
+                    )
+                }
+
+                // Education Timeline
+                StylishSectionCard(
+                    title = "Education",
+                    icon = "🎓"
+                ) {
+                    TimelineEducationItem(
+                        degree = "Bachelor of Computer Application",
+                        institution = "Tribhuvan University",
+                        year = "2016 - 2020",
+                        grade = "First Division",
+                        isLast = false
+                    )
+                    TimelineEducationItem(
+                        degree = "Higher Secondary Education (+2)",
+                        institution = "XYZ College, Kathmandu",
+                        year = "2014 - 2016",
+                        grade = "3.5 GPA",
+                        isLast = true
+                    )
+                }
+
+                // Experience with Modern Design
+                StylishSectionCard(
+                    title = "Professional Experience",
+                    icon = "💼"
+                ) {
+                    ModernExperienceItem(
+                        position = "Android Developer",
+                        company = "Tech Solutions Pvt. Ltd.",
+                        duration = "2020 - Present",
+                        description = "Developing and maintaining Android applications using Kotlin and Jetpack Compose. Leading mobile development projects and mentoring junior developers.",
+                        isActive = true
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ModernExperienceItem(
+                        position = "Mobile Developer Intern",
+                        company = "Digital Nepal",
+                        duration = "2019 - 2020",
+                        description = "Assisted in developing mobile applications and learned industry best practices under senior developers.",
+                        isActive = false
+                    )
+                }
+
+                // Skills with Progress Style
+                StylishSectionCard(
+                    title = "Technical Skills",
+                    icon = "⚡"
+                ) {
+                    ModernSkillChipGroup(
+                        skills = listOf(
+                            "Kotlin" to Color(0xFF7C4DFF),
+                            "Java" to Color(0xFFFF6F00),
+                            "Jetpack Compose" to Color(0xFF00BCD4),
+                            "Android SDK" to Color(0xFF4CAF50),
+                            "MVVM" to Color(0xFFE91E63),
+                            "REST API" to Color(0xFF3F51B5),
+                            "Firebase" to Color(0xFFFF9800),
+                            "Git" to Color(0xFFF44336),
+                            "SQL" to Color(0xFF009688),
+                            "Problem Solving" to Color(0xFF9C27B0)
+                        )
+                    )
+                }
+
+                // Training Cards
+                StylishSectionCard(
+                    title = "Training & Certifications",
+                    icon = "📜"
+                ) {
+                    ModernTrainingCard(
+                        title = "Advanced Android Development",
+                        organization = "Google Developer Training",
+                        year = "2021"
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ModernTrainingCard(
+                        title = "Kotlin for Android Developers",
+                        organization = "Udacity",
+                        year = "2020"
+                    )
+                }
+
+                // Languages with Proficiency Bars
+                StylishSectionCard(
+                    title = "Languages",
+                    icon = "🌐"
+                ) {
+                    LanguageWithBar(language = "Nepali", proficiency = 1.0f)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LanguageWithBar(language = "English", proficiency = 0.9f)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LanguageWithBar(language = "Hindi", proficiency = 0.7f)
+                }
+
+                // Portfolio with Social Links
+                StylishSectionCard(
+                    title = "Portfolio & Connect",
+                    icon = "🔗"
+                ) {
+                    SocialLinkItem(platform = "GitHub", handle = "github.com/johndoe", color = Color(0xFF333333))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SocialLinkItem(platform = "LinkedIn", handle = "linkedin.com/in/johndoe", color = Color(0xFF0077B5))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SocialLinkItem(platform = "Portfolio", handle = "johndoe.dev", color = Color(0xFF1E88E5))
+                }
+
+                // References
+                StylishSectionCard(
+                    title = "References",
+                    icon = "👥"
+                ) {
+                    ModernReferenceCard(
+                        name = "Dr. Ram Sharma",
+                        designation = "Professor, Computer Science",
+                        organization = "Tribhuvan University",
+                        contact = "+977 9841234567"
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ModernReferenceCard(
+                        name = "Sita Thapa",
+                        designation = "Senior Android Developer",
+                        organization = "Tech Solutions Pvt. Ltd.",
+                        contact = "+977 9856781234"
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernProfileHeader() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(
+                    elevation = 16.dp,
+                    shape = RoundedCornerShape(24.dp),
+                    spotColor = Color.Black.copy(alpha = 0.25f)
+                ),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = White)
+        ) {
+            Box {
+                // Decorative background
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF1E88E5),
+                                    Color(0xFF1565C0)
+                                )
+                            )
+                        )
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(40.dp))
+
+                    // Profile Photo with Ring
+                    Box(
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(136.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                        )
+                        Image(
+                            painter = painterResource(R.drawable.ic_launcher_foreground),
+                            contentDescription = "Profile Photo",
+                            modifier = Modifier
+                                .size(128.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE3F2FD)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "John Doe",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 28.sp,
+                        color = Color(0xFF212121)
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF1E88E5).copy(alpha = 0.1f)
+                        )
+                    ) {
+                        Text(
+                            text = "Android Developer",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color(0xFF1565C0),
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
     }
+}
 
+@Composable
+fun PersonalInfoGrid() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(20.dp)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = White)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Personal Details",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1565C0)
+                )
+                Text(text = "📋", fontSize = 24.sp)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.weight(1f)) {
+                    CompactInfoItem(icon = "📱", label = "Phone", value = "+977 981234")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    CompactInfoItem(icon = "📧", label = "Email", value = "john.doe@")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    CompactInfoItem(icon = "🎂", label = "DOB", value = "Jan 15, 1995")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    CompactInfoItem(icon = "⚧", label = "Gender", value = "Male")
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    CompactInfoItem(icon = "🕉", label = "Religion", value = "Hindu")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    CompactInfoItem(icon = "🇳🇵", label = "Nationality", value = "Nepali")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    CompactInfoItem(icon = "💑", label = "Status", value = "Single")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    CompactInfoItem(icon = "📍", label = "Location", value = "Kathmandu")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CompactInfoItem(icon: String, label: String, value: String) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray,
+            fontSize = 11.sp
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(text = icon, fontSize = 14.sp)
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF424242),
+                fontSize = 13.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun StylishSectionCard(
+    title: String,
+    icon: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(20.dp)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = White)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                Text(text = icon, fontSize = 24.sp)
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1565C0),
+                    fontSize = 20.sp
+                )
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+fun TimelineEducationItem(degree: String, institution: String, year: String, grade: String, isLast: Boolean) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF1E88E5))
+            )
+            if (!isLast) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .height(80.dp)
+                        .background(Color(0xFFBBDEFB))
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = degree,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF212121)
+            )
+            Text(
+                text = institution,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Card(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+                ) {
+                    Text(
+                        text = year,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFE65100),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Card(
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
+                ) {
+                    Text(
+                        text = grade,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF2E7D32),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+            if (!isLast) {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernExperienceItem(position: String, company: String, duration: String, description: String, isActive: Boolean) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isActive) Color(0xFFE3F2FD) else Color(0xFFF5F5F5)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = position,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF212121)
+                    )
+                    Text(
+                        text = company,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF1565C0),
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                if (isActive) {
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF4CAF50))
+                    ) {
+                        Text(
+                            text = "Current",
+                            color = White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = duration,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF424242),
+                lineHeight = 20.sp,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun ModernSkillChipGroup(skills: List<Pair<String, Color>>) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        skills.chunked(2).forEach { rowSkills ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                rowSkills.forEach { (skill, color) ->
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = color.copy(alpha = 0.15f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Text(
+                            text = skill,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = color,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+                if (rowSkills.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernTrainingCard(title: String, organization: String, year: String) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF212121)
+                )
+                Text(
+                    text = organization,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            Card(
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFF6F00))
+            ) {
+                Text(
+                    text = year,
+                    color = White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun LanguageWithBar(language: String, proficiency: Float) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = language,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF212121)
+            )
+            Text(
+                text = "${(proficiency * 100).toInt()}%",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF1565C0),
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFFE0E0E0))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(proficiency)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF1E88E5),
+                                Color(0xFF1565C0)
+                            )
+                        )
+                    )
+            )
+        }
+    }
+}
+
+@Composable
+fun SocialLinkItem(platform: String, handle: String, color: Color) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(color),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = platform.first().toString(),
+                    color = White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = platform,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    fontSize = 11.sp
+                )
+                Text(
+                    text = handle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = color
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernReferenceCard(name: String, designation: String, organization: String, contact: String) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF9C27B0)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = name.split(" ").map { it.first() }.take(2).joinToString(""),
+                        color = White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF212121)
+                    )
+                    Text(
+                        text = designation,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF9C27B0),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = organization,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = contact,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF1565C0),
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
 }
 
 @Preview
