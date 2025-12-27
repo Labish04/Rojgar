@@ -1,6 +1,9 @@
 package com.example.rojgar.repository
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.mutableStateListOf
+import com.cloudinary.Cloudinary
 import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
@@ -19,6 +22,8 @@ class JobSeekerRepoImpl : JobSeekerRepo {
     val database : FirebaseDatabase = FirebaseDatabase.getInstance()
 
     val ref : DatabaseReference = database.getReference("JobSeekers")
+
+
 
     override fun register(
         email: String,
@@ -154,6 +159,8 @@ class JobSeekerRepoImpl : JobSeekerRepo {
             }
         }
     }
+
+
 
     // ============================================
     // NEW FOLLOW FUNCTIONALITY METHODS

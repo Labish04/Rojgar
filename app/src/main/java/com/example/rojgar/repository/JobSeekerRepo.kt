@@ -1,4 +1,6 @@
 package com.example.rojgar.repository
+import android.content.Context
+import android.net.Uri
 import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
@@ -66,5 +68,7 @@ interface JobSeekerRepo {
         model: JobSeekerModel,
         callback: (Boolean, String) -> Unit
     )
+
+
 
 }

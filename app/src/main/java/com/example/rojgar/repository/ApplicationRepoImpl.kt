@@ -97,4 +97,18 @@ class ApplicationRepoImpl : ApplicationRepo {
                 callback(false, "Failed to update status: ${e.message}")
             }
     }
+    override fun deleteApplication(
+        applicationId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        applicationsRef.child(applicationId)
+            .removeValue()
+            .addOnSuccessListener {
+                callback(true, "Application deleted successfully")
+            }
+            .addOnFailureListener { e ->
+                callback(false, "Failed to delete application: ${e.message}")
+            }
+    }
+
 }

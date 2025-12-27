@@ -23,4 +23,8 @@ interface ApplicationRepo {
         status: String,
         callback: (Boolean, String) -> Unit
     )
+    fun deleteApplication(
+        applicationId: String,
+        callback: (Boolean, String) -> Unit
+    )
 }

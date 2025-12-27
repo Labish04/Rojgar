@@ -43,6 +43,9 @@ android {
 }
 
 dependencies {
+    implementation("com.cloudinary:cloudinary-android:2.1.0")
+    implementation("io.coil-kt.coil3:coil-compose:3.3.0")
+
     implementation("androidx.compose.runtime:runtime-livedata:1.10.0")
     implementation("com.google.android.exoplayer:exoplayer:2.19.0")
     implementation("androidx.media3:media3-exoplayer:1.1.1")

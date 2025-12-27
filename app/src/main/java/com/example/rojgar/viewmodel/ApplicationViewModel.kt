@@ -54,4 +54,12 @@ class ApplicationViewModel(private val repo: ApplicationRepo) : ViewModel() {
         }
     }
 
+    fun deleteApplication(applicationId: String) {
+        _loading.value = true
+        repo.deleteApplication(applicationId) { success, message ->
+            _loading.value = false
+            _applyResult.value = Pair(success, message)
+        }
+    }
+
 }
