@@ -36,8 +36,10 @@ import com.example.rojgar.R
 import com.example.rojgar.repository.EducationRepoImpl
 import com.example.rojgar.repository.ExperienceRepoImpl
 import com.example.rojgar.repository.JobSeekerRepoImpl
+import com.example.rojgar.repository.LanguageRepoImpl
 import com.example.rojgar.repository.ObjectiveRepoImpl
 import com.example.rojgar.repository.PortfolioRepoImpl
+import com.example.rojgar.repository.ReferenceRepoImpl
 import com.example.rojgar.repository.SkillRepoImpl
 import com.example.rojgar.repository.TrainingRepoImpl
 import com.example.rojgar.ui.theme.Black
@@ -46,8 +48,10 @@ import com.example.rojgar.ui.theme.White
 import com.example.rojgar.viewmodel.EducationViewModel
 import com.example.rojgar.viewmodel.ExperienceViewModel
 import com.example.rojgar.viewmodel.JobSeekerViewModel
+import com.example.rojgar.viewmodel.LanguageViewModel
 import com.example.rojgar.viewmodel.ObjectiveViewModel
 import com.example.rojgar.viewmodel.PortfolioViewModel
+import com.example.rojgar.viewmodel.ReferenceViewModel
 import com.example.rojgar.viewmodel.SkillViewModel
 import com.example.rojgar.viewmodel.TrainingViewModel
 
@@ -71,7 +75,9 @@ fun CvViewBody() {
     val experienceViewModel = remember { ExperienceViewModel(ExperienceRepoImpl()) }
     val skillViewModel = remember { SkillViewModel(SkillRepoImpl()) }
     val trainingViewModel = remember { TrainingViewModel(TrainingRepoImpl()) }
+    val languageViewModel = remember { LanguageViewModel(LanguageRepoImpl()) }
     val portfolioViewModel = remember { PortfolioViewModel(PortfolioRepoImpl()) }
+    val referenceViewModel = remember { ReferenceViewModel(ReferenceRepoImpl()) }
 
     val jobSeeker = jobSeekerViewModel.jobSeeker.observeAsState(initial = null)
     val loading = jobSeekerViewModel.loading.observeAsState(initial = false)
@@ -80,7 +86,9 @@ fun CvViewBody() {
     val allExperiences = experienceViewModel.allExperiences.observeAsState(initial = emptyList())
     val allSkills = skillViewModel.allSkills.observeAsState(initial = emptyList())
     val allTrainings = trainingViewModel.allTrainings.observeAsState(initial = emptyList())
+    val allLanguages = languageViewModel.allLanguages.observeAsState(initial = emptyList())
     val allPortfolios = portfolioViewModel.allPortfolios.observeAsState(initial = emptyList())
+    val allReferences = referenceViewModel.allReferences.observeAsState(initial = emptyList())
 
     val currentUser = jobSeekerViewModel.getCurrentJobSeeker()
 
@@ -102,6 +110,11 @@ fun CvViewBody() {
             objectiveViewModel.fetchObjectiveByJobSeekerId(userId)
             educationViewModel.fetchEducationsByJobSeekerId(userId)
             experienceViewModel.fetchExperiencesByJobSeekerId(userId)
+            skillViewModel.fetchSkillsByJobSeekerId(userId)
+            trainingViewModel.fetchTrainingsByJobSeekerId(userId)
+            languageViewModel.fetchLanguagesByJobSeekerId(userId)
+            portfolioViewModel.fetchPortfoliosByJobSeekerId(userId)
+            referenceViewModel.fetchReferencesByJobSeekerId(userId)
         } else {
             Log.e("CvViewBody", "Current user is null!")
         }
@@ -162,6 +175,7 @@ fun CvViewBody() {
                 // Modern Profile Header
                 ModernProfileHeader(
                     name = jobSeeker.value?.fullName,
+                    profession = jobSeeker.value?.profession,
                 )
 
                 // Two Column Layout for Personal Info
@@ -228,20 +242,27 @@ fun CvViewBody() {
                     title = "Technical Skills",
                     icon = "⚡"
                 ) {
-                    ModernSkillChipGroup(
-                        skills = listOf(
-                            "Kotlin" to Color(0xFF7C4DFF),
-                            "Java" to Color(0xFFFF6F00),
-                            "Jetpack Compose" to Color(0xFF00BCD4),
-                            "Android SDK" to Color(0xFF4CAF50),
-                            "MVVM" to Color(0xFFE91E63),
-                            "REST API" to Color(0xFF3F51B5),
-                            "Firebase" to Color(0xFFFF9800),
-                            "Git" to Color(0xFFF44336),
-                            "SQL" to Color(0xFF009688),
-                            "Problem Solving" to Color(0xFF9C27B0)
+                    if (allSkills.value!!.isEmpty()) {
+                        Text(
+                            text = "No skills added yet",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(8.dp)
                         )
-                    )
+                    } else {
+                        ModernSkillChipGroup(
+                            skills = allSkills.value!!.map { skillModel ->
+                                val color = when (skillModel.level?.lowercase()) {
+                                    "expert" -> Color(0xFF4CAF50)
+                                    "advanced" -> Color(0xFF2196F3)
+                                    "intermediate" -> Color(0xFFFF9800)
+                                    "beginner" -> Color(0xFF9C27B0)
+                                    else -> Color(0xFF607D8B)
+                                }
+                                (skillModel.skill ?: "Unknown") to color
+                            }
+                        )
+                    }
                 }
 
                 // Training Cards
@@ -249,17 +270,37 @@ fun CvViewBody() {
                     title = "Training & Certifications",
                     icon = "📜"
                 ) {
-                    ModernTrainingCard(
-                        title = "Advanced Android Development",
-                        organization = "Google Developer Training",
-                        year = "2021"
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    ModernTrainingCard(
-                        title = "Kotlin for Android Developers",
-                        organization = "Udacity",
-                        year = "2020"
-                    )
+                    if (allTrainings.value!!.isEmpty()) {
+                        Text(
+                            text = "No trainings added yet",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    } else {
+                        allTrainings.value!!.forEachIndexed { index, training ->
+                            ModernTrainingCard(
+                                title = training.trainingName ?: "Unknown Training",
+                                organization = training.instituteName ?: "Unknown Organization",
+                                year = training.completionDate ?: "N/A",
+                                duration = "${training.duration ?: ""} ${training.durationType ?: ""}"
+                            )
+                            if (index != allTrainings.value!!.lastIndex) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                        }
+                    }
+                }
+
+                // function to convert level string to float value:
+                fun getLevelValue(level: String): Float {
+                    return when (level.lowercase()) {
+                        "expert", "fluent", "native" -> 1.0f
+                        "advanced", "proficient" -> 0.75f
+                        "intermediate" -> 0.5f
+                        "beginner", "basic" -> 0.25f
+                        else -> 0.5f
+                    }
                 }
 
                 // Languages with Proficiency Bars
@@ -267,11 +308,31 @@ fun CvViewBody() {
                     title = "Languages",
                     icon = "🌐"
                 ) {
-                    LanguageWithBar(language = "Nepali", proficiency = 1.0f)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    LanguageWithBar(language = "English", proficiency = 0.9f)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    LanguageWithBar(language = "Hindi", proficiency = 0.7f)
+                    if (allLanguages.value!!.isEmpty()) {
+                        Text(
+                            text = "No languages added yet",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    } else {
+                        allLanguages.value!!.forEachIndexed { index, language ->
+                            // Calculate average proficiency
+                            val readingProf = getLevelValue(language.readingLevel ?: "Beginner")
+                            val speakingProf = getLevelValue(language.speakingLevel ?: "Beginner")
+                            val writingProf = getLevelValue(language.writingLevel ?: "Beginner")
+                            val listeningProf = getLevelValue(language.listeningLevel ?: "Beginner")
+                            val averageProficiency = (readingProf + speakingProf + writingProf + listeningProf) / 4f
+
+                            LanguageWithBar(
+                                language = language.language ?: "Unknown",
+                                proficiency = averageProficiency
+                            )
+                            if (index != allLanguages.value!!.lastIndex) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                        }
+                    }
                 }
 
                 // Portfolio with Social Links
@@ -279,11 +340,26 @@ fun CvViewBody() {
                     title = "Portfolio & Connect",
                     icon = "🔗"
                 ) {
-                    SocialLinkItem(platform = "GitHub", handle = "github.com/johndoe", color = Color(0xFF333333))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    SocialLinkItem(platform = "LinkedIn", handle = "linkedin.com/in/johndoe", color = Color(0xFF0077B5))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    SocialLinkItem(platform = "Portfolio", handle = "johndoe.dev", color = Color(0xFF1E88E5))
+                    if (allPortfolios.value!!.isEmpty()) {
+                        Text(
+                            text = "No portfolio links added yet",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    } else {
+                        allPortfolios.value!!.forEachIndexed { index, portfolio ->
+                            val color = getPortfolioColor(portfolio.accountName ?: "")
+                            SocialLinkItem(
+                                platform = portfolio.accountName ?: "Unknown",
+                                handle = portfolio.accountLink ?: "",
+                                color = color
+                            )
+                            if (index != allPortfolios.value!!.lastIndex) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                        }
+                    }
                 }
 
                 // References
@@ -291,19 +367,26 @@ fun CvViewBody() {
                     title = "References",
                     icon = "👥"
                 ) {
-                    ModernReferenceCard(
-                        name = "Dr. Ram Sharma",
-                        designation = "Professor, Computer Science",
-                        organization = "Tribhuvan University",
-                        contact = "+977 9841234567"
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    ModernReferenceCard(
-                        name = "Sita Thapa",
-                        designation = "Senior Android Developer",
-                        organization = "Tech Solutions Pvt. Ltd.",
-                        contact = "+977 9856781234"
-                    )
+                    if (allReferences.value!!.isEmpty()) {
+                        Text(
+                            text = "No references added yet",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    } else {
+                        allReferences.value!!.forEachIndexed { index, reference ->
+                            ModernReferenceCard(
+                                name = reference.name ?: "Unknown",
+                                designation = reference.jobTitle ?: "Unknown Position",
+                                organization = reference.companyName ?: "Unknown Company",
+                                contact = reference.contactNumber ?: reference.email ?: "N/A"
+                            )
+                            if (index != allReferences.value!!.lastIndex) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -315,6 +398,7 @@ fun CvViewBody() {
 @Composable
 fun ModernProfileHeader(
     name: String? = null,
+    profession: String? = null,
 ) {
     Box(
         modifier = Modifier
@@ -396,7 +480,7 @@ fun ModernProfileHeader(
                         )
                     ) {
                         Text(
-                            text = "Android Developer",
+                            text = profession?:"Loading...",
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color(0xFF1565C0),
                             fontWeight = FontWeight.Medium,
@@ -712,7 +796,7 @@ fun ModernSkillChipGroup(skills: List<Pair<String, Color>>) {
 }
 
 @Composable
-fun ModernTrainingCard(title: String, organization: String, year: String) {
+fun ModernTrainingCard(title: String, organization: String, year: String, duration: String = "") {
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1))
@@ -737,6 +821,15 @@ fun ModernTrainingCard(title: String, organization: String, year: String) {
                     color = Color.Gray,
                     modifier = Modifier.padding(top = 4.dp)
                 )
+                if (duration.isNotBlank()) {
+                    Text(
+                        text = "Duration: $duration",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF666666),
+                        modifier = Modifier.padding(top = 2.dp),
+                        fontSize = 11.sp
+                    )
+                }
             }
             Card(
                 shape = RoundedCornerShape(8.dp),
@@ -848,6 +941,7 @@ fun SocialLinkItem(platform: String, handle: String, color: Color) {
 @Composable
 fun ModernReferenceCard(name: String, designation: String, organization: String, contact: String) {
     Card(
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5))
     ) {
@@ -897,6 +991,22 @@ fun ModernReferenceCard(name: String, designation: String, organization: String,
                 fontWeight = FontWeight.Medium
             )
         }
+    }
+}
+fun getPortfolioColor(accountName: String): Color {
+    return when (accountName.lowercase()) {
+        "github" -> Color(0xFF333333)
+        "linkedin" -> Color(0xFF0077B5)
+        "twitter", "x" -> Color(0xFF1DA1F2)
+        "facebook" -> Color(0xFF1877F2)
+        "instagram" -> Color(0xFFE4405F)
+        "youtube" -> Color(0xFFFF0000)
+        "portfolio", "website" -> Color(0xFF1E88E5)
+        "behance" -> Color(0xFF1769FF)
+        "dribbble" -> Color(0xFFEA4C89)
+        "medium" -> Color(0xFF000000)
+        "stackoverflow" -> Color(0xFFF48024)
+        else -> Color(0xFF607D8B)
     }
 }
 

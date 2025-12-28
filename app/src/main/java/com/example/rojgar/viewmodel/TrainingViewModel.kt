@@ -43,4 +43,14 @@ class TrainingViewModel(private val trainingRepo: TrainingRepo) : ViewModel() {
     ) {
         trainingRepo.getTrainingById(trainingId, callback)
     }
+
+    fun fetchTrainingsByJobSeekerId(jobSeekerId: String) {
+        trainingRepo.getTrainingsByJobSeekerId(jobSeekerId) { success, message, experiences ->
+            if (success) {
+                _allTrainings.postValue(experiences ?: emptyList())
+            } else {
+                _allTrainings.postValue(emptyList())
+            }
+        }
+    }
 }

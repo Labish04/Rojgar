@@ -14,8 +14,8 @@ class PortfolioViewModel(private val portfolioRepo: PortfolioRepo) : ViewModel()
     private val _portfolio = MutableLiveData< PortfolioModel?>()
     val portfolio: LiveData<PortfolioModel?> = _portfolio
 
-    private val _allPortfolios = MutableLiveData<List<PortfolioRepo>?>()
-    val allPortfolios : MutableLiveData<List<PortfolioRepo>?> get() = _allPortfolios
+    private val _allPortfolios = MutableLiveData<List<PortfolioModel>?>()
+    val allPortfolios : MutableLiveData<List<PortfolioModel>?> get() = _allPortfolios
 
     private val _portfolios = MutableLiveData<List<PortfolioModel>>()
     val portfolios: MutableLiveData<List<PortfolioModel>> get() = _portfolios
@@ -123,6 +123,16 @@ class PortfolioViewModel(private val portfolioRepo: PortfolioRepo) : ViewModel()
     fun clearMessages() {
         _successMessage.value = null
         _error.value = null
+    }
+
+    fun fetchPortfoliosByJobSeekerId(jobSeekerId: String) {
+        portfolioRepo.getPortfoliosByJobSeekerId(jobSeekerId) { success, message, experiences ->
+            if (success) {
+                _allPortfolios.postValue(experiences ?: emptyList())
+            } else {
+                _allPortfolios.postValue(emptyList())
+            }
+        }
     }
 
 

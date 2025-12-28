@@ -1,5 +1,6 @@
 package com.example.rojgar.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.example.rojgar.model.ObjectiveModel
@@ -48,5 +49,15 @@ class SkillViewModel(private val repo: SkillRepo) {
         callback: (Boolean, String, SkillModel?) -> Unit
     ) {
         repo.getSkillById(skillId, callback)
+    }
+
+    fun fetchSkillsByJobSeekerId(jobSeekerId: String) {
+        repo.getSkillsByJobSeekerId(jobSeekerId) { success, message, experiences ->
+            if (success) {
+                _allSkills.postValue(experiences ?: emptyList())
+            } else {
+                _allSkills.postValue(emptyList())
+            }
+        }
     }
 }

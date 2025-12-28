@@ -110,6 +110,7 @@ fun JobSeekerPersonalInformationBody() {
     var maritalStatus by remember { mutableStateOf("") }
     var expandedStatus by remember { mutableStateOf(false) }
     var bio by remember { mutableStateOf("") }
+    var profession by remember { mutableStateOf("") }
 
     // Dropdown
     var gender by remember { mutableStateOf("") }
@@ -192,6 +193,7 @@ fun JobSeekerPersonalInformationBody() {
                     nationality = jobSeeker.nationality
                     maritalStatus = jobSeeker.maritalStatus
                     bio = jobSeeker.bio
+                    profession = jobSeeker.profession
 
                     // Cover Photo
                     if (jobSeeker.coverPhoto.isNotEmpty()) {
@@ -890,6 +892,35 @@ fun JobSeekerPersonalInformationBody() {
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                OutlinedTextField(
+                    value = profession,
+                    onValueChange = {profession = it},
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.professionicon),
+                            contentDescription = "profession",
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = { Text("Enter Your Profession") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Transparent,
+                        disabledContainerColor = Blue,
+                        focusedContainerColor = Blue,
+                        unfocusedContainerColor = Blue,
+                        focusedIndicatorColor = Purple,
+                        unfocusedIndicatorColor = Color.Black
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
                 // BIO
                 OutlinedTextField(
                     value = bio,
@@ -937,6 +968,7 @@ fun JobSeekerPersonalInformationBody() {
                                     currentAddress = currentAddress,
                                     permanentAddress = permanentAddress,
                                     bio = bio,
+                                    profession = profession,
                                     profilePhoto = existingJobSeeker?.profilePhoto ?: "",
                                     coverPhoto = existingJobSeeker?.coverPhoto ?: "",
                                     religion = religion,
