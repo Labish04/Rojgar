@@ -11,10 +11,11 @@ data class ExperienceModel(
     val level: String = "",
     val startDate: String = "",
     val endDate: String = "",
-    val currentlyWorkingStatus: String = "",
+    val isCurrentlyWorking: Boolean = false,
     val experienceLetter: String = "",
     val jobSeekerId: String = ""
 ) {
+
     fun toMap(): Map<String, Any?> {
         return mapOf(
             "experienceId" to experienceId,
@@ -24,36 +25,34 @@ data class ExperienceModel(
             "level" to level,
             "startDate" to startDate,
             "endDate" to endDate,
-            "currentlyWorkingStatus" to currentlyWorkingStatus,
+            "isCurrentlyWorking" to isCurrentlyWorking,
             "experienceLetter" to experienceLetter,
             "jobSeekerId" to jobSeekerId
         )
     }
 
-    // Helper function to calculate years of experience
+    // Calculate years & months of experience
     fun calculateYearsOfExperience(): String {
         return try {
             val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
             val start = dateFormat.parse(startDate)
-            val end = if (currentlyWorkingStatus == "Yes" || endDate.isEmpty()) {
-                Date() // Current date if currently working
+            val end = if (isCurrentlyWorking || endDate.isEmpty()) {
+                Date()
             } else {
                 dateFormat.parse(endDate)
             }
 
-            if (start != null) {
-                val diffInMillies = end.time - start.time
-                val years = (diffInMillies / (1000L * 60 * 60 * 24 * 365)).toInt()
-                val months = ((diffInMillies % (1000L * 60 * 60 * 24 * 365)) / (1000L * 60 * 60 * 24 * 30)).toInt()
+            if (start != null && end != null) {
+                val diffInMillis = end.time - start.time
+                val years = (diffInMillis / (1000L * 60 * 60 * 24 * 365)).toInt()
+                val months =
+                    ((diffInMillis % (1000L * 60 * 60 * 24 * 365)) /
+                            (1000L * 60 * 60 * 24 * 30)).toInt()
 
-                if (years > 0) {
-                    if (months > 0) {
-                        "$years years $months months"
-                    } else {
-                        "$years years"
-                    }
-                } else {
-                    "$months months"
+                when {
+                    years > 0 && months > 0 -> "$years years $months months"
+                    years > 0 -> "$years years"
+                    else -> "$months months"
                 }
             } else {
                 "N/A"
@@ -63,9 +62,9 @@ data class ExperienceModel(
         }
     }
 
-    // Helper function to get formatted date range
+    // Date range display
     fun getFormattedDateRange(): String {
-        return if (currentlyWorkingStatus == "Yes") {
+        return if (isCurrentlyWorking) {
             "$startDate - Present"
         } else {
             "$startDate - $endDate"

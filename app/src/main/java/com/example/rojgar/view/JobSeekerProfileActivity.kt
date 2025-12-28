@@ -14,7 +14,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -42,6 +41,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.graphics.Bitmap
 import android.media.ThumbnailUtils
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -55,6 +55,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.example.rojgar.R
 import com.example.rojgar.repository.JobSeekerRepoImpl
+import com.example.rojgar.ui.theme.Purple
 
 
 class JobSeekerProfileActivity : ComponentActivity() {
@@ -362,7 +363,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .offset(y = 200.dp),
+                            .offset(y = 180.dp),
                         horizontalArrangement = Arrangement.Center,
                     ) {
                         Card(
@@ -423,6 +424,33 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                         }
                                 )
                             }
+                        }
+                    }
+
+                    Row (
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 30.dp)
+                            .offset(y = 400.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ){
+                        Button(
+                            onClick = {
+                                val intent = Intent(context, CvViewActivity::class.java)
+                                context.startActivity(intent)
+                            },
+                            shape = RoundedCornerShape(20.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Purple,
+                                contentColor = Color.White
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                        ) {
+                            Text("View CV", style = TextStyle(
+                                fontSize = 20.sp
+                            ))
                         }
                     }
                 }

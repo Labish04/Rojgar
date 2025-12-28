@@ -170,43 +170,72 @@ class JobRepoImpl : JobRepo {
                 val scoredJobs = mutableListOf<Pair<JobModel, Int>>()
 
                 for (postSnapshot in snapshot.children) {
-                    val job = postSnapshot.getValue(JobModel::class.java)
-                    if (job != null) {
-                        val jobWithId =
-                            job.copy(postId = postSnapshot.key ?: job.postId)
+                    val job = postSnapshot.getValue(JobModel::class.java) ?: continue
 
-                        var score = 0
+                    val jobWithId = job.copy(
+                        postId = postSnapshot.key ?: job.postId
+                    )
 
-                        // 🔹 Category match (list)
-                        if (job.categories.any { it.equals(preference.category, true) }) {
-                            score += 3
+                    var score = 0
+
+                    /* ---------------- CATEGORY MATCH ---------------- */
+                    if (job.categories.any { jobCategory ->
+                            preference.categories.any { prefCategory ->
+                                jobCategory.equals(prefCategory, true)
+                            }
                         }
+                    ) {
+                        score += 3
+                    }
 
-                        // 🔹 Job type match
-                        if (job.jobType.equals(preference.availability, true)) {
-                            score += 2
+                    /* ---------------- INDUSTRY MATCH ---------------- */
+//                    if (preference.industries.any {
+//                            it.equals(job.industry, true)
+//                        }
+//                    ) {
+//                        score += 2
+//                    }
+
+                    /* ---------------- JOB TYPE / AVAILABILITY ---------------- */
+                    if (preference.availabilities.any {
+                            it.equals(job.jobType, true)
                         }
+                    ) {
+                        score += 2
+                    }
 
-                        // 🔹 Title / position match
-                        if (
-                            job.title.contains(preference.title, true) ||
-                            job.position.contains(preference.title, true)
-                        ) {
-                            score += 2
+                    /* ---------------- TITLE / POSITION MATCH ---------------- */
+                    if (preference.titles.any { prefTitle ->
+                            job.title.contains(prefTitle, true) ||
+                                    job.position.contains(prefTitle, true)
                         }
+                    ) {
+                        score += 3
+                    }
 
-                        // 🔹 Skills match (comma-separated)
-                        val jobSkills = job.skills.split(",").map { it.trim().lowercase() }
-                        val userSkills =
-                            preference.title.split(",").map { it.trim().lowercase() }
+                    /* ---------------- SKILLS MATCH ---------------- */
+                    val jobSkills = job.skills
+                        .split(",")
+                        .map { it.trim().lowercase() }
 
-                        if (jobSkills.any { it in userSkills }) {
-                            score += 3
-                        }
+                    val userSkills = preference.titles
+                        .flatMap { it.split(",") }
+                        .map { it.trim().lowercase() }
 
-                        if (score > 0) {
-                            scoredJobs.add(jobWithId to score)
-                        }
+                    if (jobSkills.any { it in userSkills }) {
+                        score += 3
+                    }
+
+                    /* ---------------- LOCATION MATCH ---------------- */
+//                    if (
+//                        preference.location.isNotBlank() &&
+//                        job.location.equals(preference.location, true)
+//                    ) {
+//                        score += 1
+//                    }
+
+                    if (score > 0) {
+                        scoredJobs.add(jobWithId to score)
                     }
                 }
 
@@ -226,4 +255,5 @@ class JobRepoImpl : JobRepo {
             }
         })
     }
+
 }

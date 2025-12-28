@@ -6,7 +6,6 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -15,8 +14,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,7 +29,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -38,7 +36,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -50,121 +47,84 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import coil.compose.AsyncImage
-import com.example.rojgar.R
-import com.example.rojgar.model.JobSeekerModel
-import com.example.rojgar.repository.CommonRepoImpl
-import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.window.Dialog
+import coil.compose.rememberAsyncImagePainter
+import com.example.rojgar.R
+import com.example.rojgar.model.JobSeekerModel
+import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.Gray
 import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
-import com.example.rojgar.utils.ImageUtils
-import com.example.rojgar.viewmodel.CommonViewModel
 import com.example.rojgar.viewmodel.JobSeekerViewModel
 import java.util.Calendar
 
+
 class JobSeekerPersonalInformationActivity : ComponentActivity() {
-
-    lateinit var imageUtils: ImageUtils
-    var selectedProfileUri by mutableStateOf<Uri?>(null)
-    var selectedCoverUri by mutableStateOf<Uri?>(null)
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        // Initialize ImageUtils for profile photo
-        imageUtils = ImageUtils(this, this)
-        imageUtils.registerLaunchers { uri ->
-            // This can be used for general image picking if needed
-        }
-
         setContent {
-            JobSeekerPersonalInformationBody(
-                selectedProfileUri = selectedProfileUri,
-                selectedCoverUri = selectedCoverUri,
-                onPickProfileImage = {
-                    // Launch profile image picker
-                    imageUtils.launchImagePicker()
-                },
-                onPickCoverImage = {
-                    // Launch cover image picker
-                    imageUtils.launchImagePicker()
-                }
-            )
+            JobSeekerPersonalInformationBody()
         }
     }
 }
 
 @Composable
-fun JobSeekerPersonalInformationBody(
-    selectedProfileUri: Uri?,
-    selectedCoverUri: Uri?,
-    onPickProfileImage: () -> Unit,
-    onPickCoverImage: () -> Unit
-) {
+fun JobSeekerPersonalInformationBody() {
     val context = LocalContext.current
     val activity = context as Activity
 
-    // ViewModels
     val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
-    val commonRepo = remember { CommonRepoImpl() }
-    val commonViewModel = remember { CommonViewModel(commonRepo) }
     val currentUser = jobSeekerViewModel.getCurrentJobSeeker()
+    // Cover Photo states
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var showSampleDialog by remember { mutableStateOf(false) }
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
 
-    // States for form fields
     var name by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var currentAddress by remember { mutableStateOf("") }
     var permanentAddress by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var religion by remember { mutableStateOf("") }
+    var nationality by remember { mutableStateOf("") }
+    var maritalStatus by remember { mutableStateOf("") }
+    var expandedStatus by remember { mutableStateOf(false) }
     var bio by remember { mutableStateOf("") }
-    var gender by remember { mutableStateOf("") }
-    var selectedDate by remember { mutableStateOf("") }
+    var profession by remember { mutableStateOf("") }
 
-    // Dropdown state
+    // Dropdown
+    var gender by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
-    // Upload states
-    var uploadedProfileUrl by remember { mutableStateOf("") }
-    var uploadedCoverUrl by remember { mutableStateOf("") }
-    var isUploadingProfile by remember { mutableStateOf(false) }
-    var isUploadingCover by remember { mutableStateOf(false) }
+    var selectedDate by remember { mutableStateOf("") }
 
-    // Dialog states
-    var showSampleDialog by remember { mutableStateOf(false) }
-    var showErrorDialog by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") }
-
-    // Existing data
-    var existingJobSeeker by remember { mutableStateOf<JobSeekerModel?>(null) }
-
-    // Calendar setup
+    // Calendar
     val calendar = Calendar.getInstance()
     val year = calendar.get(Calendar.YEAR)
     val month = calendar.get(Calendar.MONTH)
     val day = calendar.get(Calendar.DAY_OF_MONTH)
 
+    // DatePickerDialog
     val datePickerDialog = DatePickerDialog(
         context,
         { _, y, m, d ->
@@ -175,31 +135,16 @@ fun JobSeekerPersonalInformationBody(
         day
     )
 
-    // Profile Image Launcher
-    val profileImageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let {
-            isUploadingProfile = true
-            commonViewModel.updateProfilePhoto(context, it) { imageUrl ->
-                isUploadingProfile = false
-                if (imageUrl != null) {
-                    uploadedProfileUrl = imageUrl
-                    Toast.makeText(context, "Profile photo uploaded!", Toast.LENGTH_SHORT).show()
-                } else {
-                    Log.e("Upload Error", "Failed to upload profile photo to Cloudinary")
-                    Toast.makeText(context, "Failed to upload profile photo", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
 
-    // Cover Image Launcher
-    val coverImageLauncher = rememberLauncherForActivityResult(
+
+    // Store existing job seeker model
+    var existingJobSeeker by remember { mutableStateOf<JobSeekerModel?>(null) }
+
+    val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
-            // Validate cover photo dimensions
+            // Validate image dimensions
             try {
                 val inputStream = context.contentResolver.openInputStream(uri)
                 val options = BitmapFactory.Options().apply {
@@ -212,17 +157,7 @@ fun JobSeekerPersonalInformationBody(
                 val height = options.outHeight
 
                 if (width == 1080 && height == 1668) {
-                    isUploadingCover = true
-                    commonViewModel.updateCoverPhoto(context, it) { imageUrl ->
-                        isUploadingCover = false
-                        if (imageUrl != null) {
-                            uploadedCoverUrl = imageUrl
-                            Toast.makeText(context, "Cover photo uploaded!", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Log.e("Upload Error", "Failed to upload cover photo to Cloudinary")
-                            Toast.makeText(context, "Failed to upload cover photo", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                    selectedImageUri = uri
                 } else {
                     errorMessage = "Invalid photo size!\n\nRequired: 1080 × 1668 pixels\nYour photo: $width × $height pixels\n\nPlease upload a photo with exact dimensions."
                     showErrorDialog = true
@@ -234,7 +169,15 @@ fun JobSeekerPersonalInformationBody(
         }
     }
 
-    // Load existing data
+    // Profile
+    var selectedProfileUri by remember { mutableStateOf<Uri?>(null) }
+    val profile = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        selectedProfileUri = uri
+    }
+
+    // Fetch jobSeeker Data
     LaunchedEffect(Unit) {
         currentUser?.uid?.let { userId ->
             jobSeekerViewModel.getJobSeekerById(userId) { success, message, jobSeeker ->
@@ -246,7 +189,19 @@ fun JobSeekerPersonalInformationBody(
                     currentAddress = jobSeeker.currentAddress
                     permanentAddress = jobSeeker.permanentAddress
                     email = jobSeeker.email
+                    religion = jobSeeker.religion
+                    nationality = jobSeeker.nationality
+                    maritalStatus = jobSeeker.maritalStatus
                     bio = jobSeeker.bio
+                    profession = jobSeeker.profession
+
+                    // Cover Photo
+                    if (jobSeeker.coverPhoto.isNotEmpty()) {
+                    }
+
+                    // profile photo
+                    if (jobSeeker.profilePhoto.isNotEmpty()) {
+                    }
                     existingJobSeeker = jobSeeker
                 } else {
                     Toast.makeText(context, "Failed to load profile: $message", Toast.LENGTH_SHORT).show()
@@ -352,7 +307,7 @@ fun JobSeekerPersonalInformationBody(
                         Button(
                             onClick = {
                                 showSampleDialog = false
-                                coverImageLauncher.launch("image/*")
+                                launcher.launch("image/*")
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = DarkBlue2
@@ -365,7 +320,6 @@ fun JobSeekerPersonalInformationBody(
             }
         }
     }
-
     // Error Dialog
     if (showErrorDialog) {
         AlertDialog(
@@ -464,66 +418,24 @@ fun JobSeekerPersonalInformationBody(
             ) {
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Cover Photo Section
                 Box {
                     Card {
+                        // Cover Photo Section
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(250.dp)
-                                .background(Color.LightGray)
-                                .clickable(
-                                    indication = null,
-                                    interactionSource = remember { MutableInteractionSource() }
-                                ) {
-                                    showSampleDialog = true
-                                }
-                                .padding(10.dp),
+                                .background(Color.LightGray),
                             contentAlignment = Alignment.Center
                         ) {
-                            // Show uploaded cover photo or existing one
-                            when {
-                                uploadedCoverUrl.isNotEmpty() -> {
-                                    AsyncImage(
-                                        model = uploadedCoverUrl,
-                                        contentDescription = "Cover Photo",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
-                                existingJobSeeker?.coverPhoto?.isNotEmpty() == true -> {
-                                    AsyncImage(
-                                        model = existingJobSeeker?.coverPhoto,
-                                        contentDescription = "Cover Photo",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
-                                else -> {
-                                    Image(
-                                        painter = painterResource(R.drawable.coveremptypic),
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
-                            }
-
-                            if (isUploadingCover) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = 0.5f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        CircularProgressIndicator(color = Color.White)
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text("Uploading...", color = Color.White)
-                                    }
-                                }
+                            // Show existing cover photo if available
+                            if (existingJobSeeker?.coverPhoto?.isNotEmpty() == true) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(existingJobSeeker?.coverPhoto),
+                                    contentDescription = "Cover Photo",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
                             }
 
                             // Add/Upload Icon
@@ -532,99 +444,61 @@ fun JobSeekerPersonalInformationBody(
                                     .align(Alignment.BottomEnd)
                                     .padding(16.dp)
                             ) {
+                                Spacer(modifier = Modifier.width(9.dp))
+
                                 Icon(
                                     painter = painterResource(id = R.drawable.addprofileicon),
                                     contentDescription = "Add Cover Photo",
                                     tint = Color.White,
-                                    modifier = Modifier.size(35.dp)
+                                    modifier = Modifier
+                                        .size(35.dp)
+                                        .clickable {
+                                            showSampleDialog = true
+                                        }
                                 )
                             }
                         }
                     }
 
-                    // Profile Photo Section
                     Card(
-                        shape = CircleShape,
+                        shape = RoundedCornerShape(500.dp),
                         modifier = Modifier
                             .size(130.dp)
                             .offset(x = 25.dp, y = 180.dp)
-                            .clip(CircleShape)
                     ) {
                         Box(
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            // Show uploaded profile photo or existing one
-                            when {
-                                uploadedProfileUrl.isNotEmpty() -> {
-                                    AsyncImage(
-                                        model = uploadedProfileUrl,
-                                        contentDescription = "Profile Photo",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
-                                existingJobSeeker?.profilePhoto?.isNotEmpty() == true -> {
-                                    AsyncImage(
-                                        model = existingJobSeeker?.profilePhoto,
-                                        contentDescription = "Profile Photo",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
-                                else -> {
-                                    Image(
-                                        painter = painterResource(R.drawable.profileemptypic),
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
-                            }
-
-                            if (isUploadingProfile) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = 0.5f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        color = Color.White,
-                                        strokeWidth = 2.dp,
-                                        modifier = Modifier.size(30.dp)
-                                    )
-                                }
+                            // Show existing profile photo if available
+                            if (existingJobSeeker?.profilePhoto?.isNotEmpty() == true) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(existingJobSeeker?.profilePhoto),
+                                    contentDescription = "Profile Photo",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else if (selectedProfileUri != null) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(selectedProfileUri),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
                             }
                         }
                     }
 
-                    // Profile Photo Upload Button
-                    Card(
-                        shape = CircleShape,
+                    Icon(
+                        painter = painterResource(id = R.drawable.addprofileicon),
+                        contentDescription = "Add Profile Photo",
+                        tint = Color.White,
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(35.dp)
                             .offset(x = 120.dp, y = 260.dp)
-                            .background(DarkBlue2, CircleShape)
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) {
-                                profileImageLauncher.launch("image/*")
-                            },
-                        colors = CardDefaults.cardColors(containerColor = DarkBlue2)
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.addprofileicon),
-                                contentDescription = "Add Profile Photo",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
+                            .clickable {
+                                profile.launch("image/*")
+                            }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(70.dp))
@@ -632,7 +506,7 @@ fun JobSeekerPersonalInformationBody(
                 // NAME TEXTFIELD
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = {name = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.usericon),
@@ -662,7 +536,7 @@ fun JobSeekerPersonalInformationBody(
                 // PHONE NUMBER TEXTFIELD
                 OutlinedTextField(
                     value = phoneNumber,
-                    onValueChange = { phoneNumber = it },
+                    onValueChange = {phoneNumber = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.call),
@@ -695,7 +569,7 @@ fun JobSeekerPersonalInformationBody(
                 ) {
                     OutlinedTextField(
                         value = gender,
-                        onValueChange = { gender = it },
+                        onValueChange = {gender = it},
                         readOnly = true,
                         enabled = false,
                         leadingIcon = {
@@ -755,13 +629,6 @@ fun JobSeekerPersonalInformationBody(
                                 expanded = false
                             }
                         )
-                        DropdownMenuItem(
-                            text = { Text("Other") },
-                            onClick = {
-                                gender = "Other"
-                                expanded = false
-                            }
-                        )
                     }
                 }
 
@@ -770,7 +637,7 @@ fun JobSeekerPersonalInformationBody(
                 // DATE OF BIRTH
                 OutlinedTextField(
                     value = selectedDate,
-                    onValueChange = { selectedDate = it },
+                    onValueChange = {selectedDate = it},
                     placeholder = { Text("dd/mm/yyyy") },
                     enabled = false,
                     leadingIcon = {
@@ -810,7 +677,7 @@ fun JobSeekerPersonalInformationBody(
                 // CURRENT ADDRESS
                 OutlinedTextField(
                     value = currentAddress,
-                    onValueChange = { currentAddress = it },
+                    onValueChange = {currentAddress = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.locationicon),
@@ -840,7 +707,7 @@ fun JobSeekerPersonalInformationBody(
                 // PERMANENT ADDRESS
                 OutlinedTextField(
                     value = permanentAddress,
-                    onValueChange = { permanentAddress = it },
+                    onValueChange = {permanentAddress =it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.locationicon),
@@ -870,7 +737,7 @@ fun JobSeekerPersonalInformationBody(
                 // EMAIL
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = {email = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.emailicon),
@@ -897,10 +764,167 @@ fun JobSeekerPersonalInformationBody(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                OutlinedTextField(
+                    value = religion,
+                    onValueChange = {religion = it},
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.religionicon),
+                            contentDescription = "Religion",
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = { Text("Enter Your Religion") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Transparent,
+                        disabledContainerColor = Blue,
+                        focusedContainerColor = Blue,
+                        unfocusedContainerColor = Blue,
+                        focusedIndicatorColor = Purple,
+                        unfocusedIndicatorColor = Color.Black
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                OutlinedTextField(
+                    value = nationality,
+                    onValueChange = {nationality = it},
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.nationalityicon),
+                            contentDescription = "Nationality",
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = { Text("Enter Your Nationality") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Transparent,
+                        disabledContainerColor = Blue,
+                        focusedContainerColor = Blue,
+                        unfocusedContainerColor = Blue,
+                        focusedIndicatorColor = Purple,
+                        unfocusedIndicatorColor = Color.Black
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = maritalStatus,
+                        onValueChange = {maritalStatus = it},
+                        readOnly = true,
+                        enabled = false,
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.maritalstatusicon),
+                                contentDescription = "Marital Status",
+                                tint = Color.Black,
+                                modifier = Modifier.size(27.dp)
+                            )
+                        },
+                        label = { Text("Select Your Marital Status") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                            .clickable { expandedStatus = true },
+                        shape = RoundedCornerShape(15.dp),
+                        trailingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
+                                contentDescription = "Dropdown",
+                                tint = Color.Black,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clickable { expandedStatus = true }
+                            )
+                        },
+                        singleLine = true,
+                        colors = TextFieldDefaults.colors(
+                            disabledIndicatorColor = Color.Black,
+                            disabledContainerColor = Blue,
+                            focusedContainerColor = Blue,
+                            unfocusedContainerColor = Blue,
+                            focusedIndicatorColor = Purple,
+                            unfocusedIndicatorColor = Color.Black,
+                            disabledTextColor = Color.Black,
+                        )
+                    )
+
+                    DropdownMenu(
+                        expanded = expandedStatus,
+                        onDismissRequest = { expandedStatus = false },
+                        modifier = Modifier
+                            .background(White)
+                            .fillMaxWidth()
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Single") },
+                            onClick = {
+                                maritalStatus = "Single"
+                                expandedStatus = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Married") },
+                            onClick = {
+                                maritalStatus = "Married"
+                                expandedStatus = false
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                OutlinedTextField(
+                    value = profession,
+                    onValueChange = {profession = it},
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.professionicon),
+                            contentDescription = "profession",
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = { Text("Enter Your Profession") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Transparent,
+                        disabledContainerColor = Blue,
+                        focusedContainerColor = Blue,
+                        unfocusedContainerColor = Blue,
+                        focusedIndicatorColor = Purple,
+                        unfocusedIndicatorColor = Color.Black
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
                 // BIO
                 OutlinedTextField(
                     value = bio,
-                    onValueChange = { bio = it },
+                    onValueChange = {bio = it},
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.bioicon),
@@ -934,19 +958,6 @@ fun JobSeekerPersonalInformationBody(
                     Button(
                         onClick = {
                             currentUser?.uid?.let { userId ->
-                                // Determine which photo URLs to use
-                                val finalProfileUrl = if (uploadedProfileUrl.isNotEmpty()) {
-                                    uploadedProfileUrl
-                                } else {
-                                    existingJobSeeker?.profilePhoto ?: ""
-                                }
-
-                                val finalCoverUrl = if (uploadedCoverUrl.isNotEmpty()) {
-                                    uploadedCoverUrl
-                                } else {
-                                    existingJobSeeker?.coverPhoto ?: ""
-                                }
-
                                 val updatedModel = JobSeekerModel(
                                     jobSeekerId = userId,
                                     fullName = name,
@@ -957,19 +968,19 @@ fun JobSeekerPersonalInformationBody(
                                     currentAddress = currentAddress,
                                     permanentAddress = permanentAddress,
                                     bio = bio,
-                                    profilePhoto = finalProfileUrl,
-                                    coverPhoto = finalCoverUrl,
-                                    video = existingJobSeeker?.video ?: "",
-                                    followers = existingJobSeeker?.followers ?: emptyList()
+                                    profession = profession,
+                                    profilePhoto = existingJobSeeker?.profilePhoto ?: "",
+                                    coverPhoto = existingJobSeeker?.coverPhoto ?: "",
+                                    religion = religion,
+                                    nationality = nationality,
+                                    maritalStatus = maritalStatus,
+                                    video = existingJobSeeker?.video ?: ""
                                 )
 
                                 jobSeekerViewModel.updateProfile(updatedModel) { success, message ->
                                     if (success) {
                                         Toast.makeText(context, "Personal Information Updated Successfully!", Toast.LENGTH_SHORT).show()
                                         existingJobSeeker = updatedModel
-                                        // Clear uploaded URLs
-                                        uploadedProfileUrl = ""
-                                        uploadedCoverUrl = ""
                                     } else {
                                         Toast.makeText(context, "Update Failed: $message", Toast.LENGTH_SHORT).show()
                                     }
@@ -985,16 +996,12 @@ fun JobSeekerPersonalInformationBody(
                         colors = ButtonDefaults.buttonColors(
                             containerColor = DarkBlue2,
                             contentColor = Color.White
-                        ),
-                        enabled = !isUploadingProfile && !isUploadingCover
+                        )
                     ) {
-                        if (isUploadingProfile || isUploadingCover) {
-                            CircularProgressIndicator(
-                                color = Color.White,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text(
                                 text = "Save",
                                 style = TextStyle(
@@ -1043,13 +1050,9 @@ fun JobSeekerPersonalInformationBody(
     }
 }
 
+
 @Preview(showBackground = true)
 @Composable
 fun JobSeekerPersonalInformationPreview() {
-    JobSeekerPersonalInformationBody(
-        selectedProfileUri = null,
-        selectedCoverUri = null,
-        onPickProfileImage = {},
-        onPickCoverImage = {}
-    )
+    JobSeekerPersonalInformationBody()
 }

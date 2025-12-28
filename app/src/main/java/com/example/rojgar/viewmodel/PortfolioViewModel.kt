@@ -1,14 +1,21 @@
 // File: PortfolioViewModel.kt
 package com.example.rojgar.viewmodel
 
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.rojgar.model.EducationModel
 import com.example.rojgar.model.PortfolioModel
 import com.example.rojgar.repository.PortfolioRepo
 import kotlinx.coroutines.launch
 
 class PortfolioViewModel(private val portfolioRepo: PortfolioRepo) : ViewModel() {
+    private val _portfolio = MutableLiveData< PortfolioModel?>()
+    val portfolio: LiveData<PortfolioModel?> = _portfolio
+
+    private val _allPortfolios = MutableLiveData<List<PortfolioModel>?>()
+    val allPortfolios : MutableLiveData<List<PortfolioModel>?> get() = _allPortfolios
 
     private val _portfolios = MutableLiveData<List<PortfolioModel>>()
     val portfolios: MutableLiveData<List<PortfolioModel>> get() = _portfolios
@@ -116,6 +123,16 @@ class PortfolioViewModel(private val portfolioRepo: PortfolioRepo) : ViewModel()
     fun clearMessages() {
         _successMessage.value = null
         _error.value = null
+    }
+
+    fun fetchPortfoliosByJobSeekerId(jobSeekerId: String) {
+        portfolioRepo.getPortfoliosByJobSeekerId(jobSeekerId) { success, message, experiences ->
+            if (success) {
+                _allPortfolios.postValue(experiences ?: emptyList())
+            } else {
+                _allPortfolios.postValue(emptyList())
+            }
+        }
     }
 
 
