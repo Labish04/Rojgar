@@ -33,13 +33,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
+import com.example.rojgar.model.ApplicationModel
 import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.JobModel
+import com.example.rojgar.repository.ApplicationRepoImpl
 import com.example.rojgar.repository.CompanyRepoImpl
 import com.example.rojgar.repository.JobRepoImpl
 import com.example.rojgar.ui.theme.Blue
+import com.example.rojgar.viewmodel.ApplicationViewModel
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobViewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 
 class JobApplyActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,12 +64,60 @@ class JobApplyActivity : ComponentActivity() {
 fun JobApplyBody(postId: String, companyId: String) {
     val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
+    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl()) }
     val context = LocalContext.current
 
     var selectedTab by remember { mutableStateOf("Job Description") }
     var jobPost by remember { mutableStateOf<JobModel?>(null) }
     var company by remember { mutableStateOf<CompanyModel?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+
+    // User profile data
+    var userName by remember { mutableStateOf("") }
+    var userPhone by remember { mutableStateOf("") }
+    var userProfile by remember { mutableStateOf("") }
+
+    // Get current user from Firebase Auth
+    val currentUser = FirebaseAuth.getInstance().currentUser
+
+    // Fetch user profile from Firebase Database
+    LaunchedEffect(currentUser) {
+        currentUser?.let { user ->
+            val database = FirebaseDatabase.getInstance()
+
+            // Try JobSeekers node first
+            val jobSeekerRef = database.getReference("JobSeekers").child(user.uid)
+
+            jobSeekerRef.get().addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    // Found in JobSeekers
+                    userName = snapshot.child("fullName").getValue(String::class.java) ?: "Unknown User"
+                    userPhone = snapshot.child("phoneNumber").getValue(String::class.java) ?: ""
+                    userProfile = snapshot.child("profilePhoto").getValue(String::class.java) ?: ""
+                } else {
+                    // Try Companys node as fallback
+                    val companyRef = database.getReference("Companys").child(user.uid)
+                    companyRef.get().addOnSuccessListener { companySnapshot ->
+                        if (companySnapshot.exists()) {
+                            userName = companySnapshot.child("companyName").getValue(String::class.java) ?: "Unknown User"
+                            userPhone = companySnapshot.child("companyContactNumber").getValue(String::class.java) ?: ""
+                            userProfile = companySnapshot.child("companyProfileImage").getValue(String::class.java) ?: ""
+                        } else {
+                            // Fallback to Firebase Auth
+                            userName = user.displayName ?: "Unknown User"
+                            userPhone = user.phoneNumber ?: ""
+                            userProfile = user.photoUrl?.toString() ?: ""
+                        }
+                    }
+                }
+            }.addOnFailureListener {
+                // Fallback to Firebase Auth data
+                userName = user.displayName ?: "Unknown User"
+                userPhone = user.phoneNumber ?: ""
+                userProfile = user.photoUrl?.toString() ?: ""
+            }
+        }
+    }
 
     LaunchedEffect(postId, companyId) {
         if (postId.isNotEmpty()) {
@@ -90,7 +143,30 @@ fun JobApplyBody(postId: String, companyId: String) {
             if (!isLoading && jobPost != null) {
                 ApplyNowButton(
                     onApplyClick = {
-                        Toast.makeText(context, "Your application has been submitted successfully!", Toast.LENGTH_SHORT).show()
+                        // Check if user is logged in
+                        if (currentUser == null) {
+                            Toast.makeText(context, "Please login first", Toast.LENGTH_SHORT).show()
+                            return@ApplyNowButton
+                        }
+
+                        // Create complete application model
+                        val application = ApplicationModel(
+                            applicationId = "", // Will be generated in repository
+                            postId = postId,
+                            companyId = companyId,
+                            jobSeekerId = currentUser.uid,
+                            jobSeekerName = userName,
+                            jobSeekerEmail = currentUser.email ?: "",
+                            jobSeekerPhone = userPhone,
+                            jobSeekerProfile = userProfile,
+                            appliedDate = System.currentTimeMillis(),
+                            status = "Pending",
+                            coverLetter = "", // You can add a text field for this
+                            resumeUrl = "" // You can add file upload for this
+                        )
+
+                        applicationViewModel.applyForJob(application)
+                        Toast.makeText(context, "Application submitted!", Toast.LENGTH_SHORT).show()
                     }
                 )
             }
