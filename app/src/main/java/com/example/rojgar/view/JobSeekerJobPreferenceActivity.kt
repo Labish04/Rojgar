@@ -2,6 +2,7 @@ package com.example.rojgar.view
 
 import android.app.Activity
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,8 +28,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.R
+import com.example.rojgar.model.PreferenceModel
+import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.DarkBlue2
 import com.example.rojgar.ui.theme.White
+import com.example.rojgar.viewmodel.JobSeekerViewModel
+import com.example.rojgar.viewmodel.PreferenceViewModel
+import kotlinx.coroutines.launch
 
 class JobSeekerJobPreferenceActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,11 +46,10 @@ class JobSeekerJobPreferenceActivity : ComponentActivity() {
     }
 }
 
-// Data classes
-data class JobCategory(val name: String, var isSelected: Boolean = false)
-data class Industry(val name: String, var isSelected: Boolean = false)
-data class JobTitle(val name: String, var isSelected: Boolean = false)
-data class AvailableFor(val name: String, var isSelected: Boolean = false)
+data class PreferenceItem(
+    val name: String,
+    var isSelected: Boolean = false
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,8 +58,19 @@ fun JobSeekerJobPreferenceBody() {
     val context = LocalContext.current
     val activity = context as Activity
 
+    // Initialize ViewModels
+    val preferenceViewModel = remember { PreferenceViewModel() }
+    val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
+    val currentUser = jobSeekerViewModel.getCurrentJobSeeker()
+
+    // Observing ViewModel states
+    val preferenceData by preferenceViewModel.preferenceData.observeAsState()
+    val isLoading by preferenceViewModel.loading.observeAsState(false)
+
+    // UI states
     var showBottomSheet by remember { mutableStateOf(false) }
     var currentSection by remember { mutableStateOf("category") }
+    val scope = rememberCoroutineScope()
 
     // Job preferences state
     var selectedCategories by remember { mutableStateOf(listOf<String>()) }
@@ -63,6 +80,24 @@ fun JobSeekerJobPreferenceBody() {
     var locationInput by remember { mutableStateOf("") }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Fetch existing preferences when activity starts
+    LaunchedEffect(Unit) {
+        currentUser?.uid?.let { userId ->
+            preferenceViewModel.getPreference(userId)
+        }
+    }
+
+    // Update UI when preference data changes
+    LaunchedEffect(preferenceData) {
+        preferenceData?.let { preference ->
+            selectedCategories = preference.categories
+            selectedIndustries = preference.industries
+            selectedJobTitles = preference.titles
+            selectedAvailability = preference.availabilities
+            locationInput = preference.location
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -169,7 +204,7 @@ fun JobSeekerJobPreferenceBody() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Location Input Field (Regular TextField - No Bottom Sheet)
+            // Location
             Column {
                 Text(
                     text = "Job Preference Location",
@@ -236,8 +271,45 @@ fun JobSeekerJobPreferenceBody() {
 
                 Button(
                     onClick = {
-                        // TODO: Save preferences to database/API
-                        activity.finish()
+                        scope.launch {
+                            if (currentUser != null) {
+                                val existingPreference = preferenceData
+
+                                val preference = PreferenceModel(
+                                    preferenceId = existingPreference?.preferenceId ?: "",
+                                    categories = selectedCategories,
+                                    industries = selectedIndustries,
+                                    titles = selectedJobTitles,
+                                    availabilities = selectedAvailability,
+                                    location = locationInput,
+                                    jobSeekerId = currentUser.uid
+                                )
+
+                                if (existingPreference == null) {
+                                    // Save new preference
+                                    preferenceViewModel.savePreference(preference) { success, message ->
+                                        if (success) {
+                                            Toast.makeText(context, "Preferences saved successfully!", Toast.LENGTH_SHORT).show()
+                                            activity.finish()
+                                        } else {
+                                            Toast.makeText(context, "Failed to save: $message", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                } else {
+                                    // Update existing preference
+                                    preferenceViewModel.updatePreference(preference) { success, message ->
+                                        if (success) {
+                                            Toast.makeText(context, "Preferences updated successfully!", Toast.LENGTH_SHORT).show()
+                                            activity.finish()
+                                        } else {
+                                            Toast.makeText(context, "Failed to update: $message", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            } else {
+                                Toast.makeText(context, "No user logged in", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     },
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
@@ -246,13 +318,22 @@ fun JobSeekerJobPreferenceBody() {
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DarkBlue2,
                         contentColor = Color.White
-                    )
+                    ),
+                    enabled = !isLoading
                 ) {
-                    Text(
-                        text = "Save",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        Text(
+                            text = if (preferenceData == null) "Save" else "Update",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
@@ -325,7 +406,8 @@ fun PreferenceField(
                         text = selectedItems.joinToString(", "),
                         color = Color.Black,
                         fontSize = 14.sp,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2
                     )
                 }
                 Icon(
@@ -351,60 +433,232 @@ fun JobPreferenceBottomSheet(
 ) {
     var currentSection by remember { mutableStateOf(initialSection) }
 
-    // Categories list
+    // Job Category list
     val categoryList = remember {
         mutableStateListOf(
-            JobCategory("Creative / Graphics / Designing", initialCategories.contains("Creative / Graphics / Designing")),
-            JobCategory("IT & Telecommunication", initialCategories.contains("IT & Telecommunication")),
-            JobCategory("NGO / INGO / Social work", initialCategories.contains("NGO / INGO / Social work")),
-            JobCategory("Sales / Public Relations", initialCategories.contains("Sales / Public Relations")),
-            JobCategory("Accounting / Finance", initialCategories.contains("Accounting / Finance")),
-            JobCategory("Architecture / Interior Designing", initialCategories.contains("Architecture / Interior Designing")),
-            JobCategory("Banking / Insurance / Financial Services", initialCategories.contains("Banking / Insurance / Financial Services")),
-            JobCategory("Commercial / Logistics / Supply Chain", initialCategories.contains("Commercial / Logistics / Supply Chain")),
-            JobCategory("Construction / Engineering / Architects", initialCategories.contains("Construction / Engineering / Architects")),
-            JobCategory("Fashion / Textile Designing", initialCategories.contains("Fashion / Textile Designing")),
-            JobCategory("General Management", initialCategories.contains("General Management"))
+            PreferenceItem("Creative / Graphics / Designing", initialCategories.contains("Creative / Graphics / Designing")),
+            PreferenceItem("UI / UX Design", initialCategories.contains("UI / UX Design")),
+            PreferenceItem("Animation / VFX", initialCategories.contains("Animation / VFX")),
+            PreferenceItem("Photography / Videography", initialCategories.contains("Photography / Videography")),
+            PreferenceItem("Fashion / Textile Designing", initialCategories.contains("Fashion / Textile Designing")),
+            PreferenceItem("Architecture / Interior Designing", initialCategories.contains("Architecture / Interior Designing")),
+            PreferenceItem("IT & Telecommunication", initialCategories.contains("IT & Telecommunication")),
+            PreferenceItem("Software Development", initialCategories.contains("Software Development")),
+            PreferenceItem("Web Development", initialCategories.contains("Web Development")),
+            PreferenceItem("Mobile App Development", initialCategories.contains("Mobile App Development")),
+            PreferenceItem("Data Science / AI / ML", initialCategories.contains("Data Science / AI / ML")),
+            PreferenceItem("Cyber Security", initialCategories.contains("Cyber Security")),
+            PreferenceItem("Network / System Administration", initialCategories.contains("Network / System Administration")),
+            PreferenceItem("DevOps / Cloud Computing", initialCategories.contains("DevOps / Cloud Computing")),
+            PreferenceItem("QA / Software Testing", initialCategories.contains("QA / Software Testing")),
+            PreferenceItem("General Management", initialCategories.contains("General Management")),
+            PreferenceItem("Project Management", initialCategories.contains("Project Management")),
+            PreferenceItem("Operations Management", initialCategories.contains("Operations Management")),
+            PreferenceItem("Business Development", initialCategories.contains("Business Development")),
+            PreferenceItem("Human Resource / HR", initialCategories.contains("Human Resource / HR")),
+            PreferenceItem("Administration / Office Support", initialCategories.contains("Administration / Office Support")),
+            PreferenceItem("Accounting / Finance", initialCategories.contains("Accounting / Finance")),
+            PreferenceItem("Banking / Insurance / Financial Services", initialCategories.contains("Banking / Insurance / Financial Services")),
+            PreferenceItem("Audit / Tax / Compliance", initialCategories.contains("Audit / Tax / Compliance")),
+            PreferenceItem("Investment / Wealth Management", initialCategories.contains("Investment / Wealth Management")),
+            PreferenceItem("Sales / Public Relations", initialCategories.contains("Sales / Public Relations")),
+            PreferenceItem("Marketing / Advertising", initialCategories.contains("Marketing / Advertising")),
+            PreferenceItem("Digital Marketing", initialCategories.contains("Digital Marketing")),
+            PreferenceItem("Content Writing / Copywriting", initialCategories.contains("Content Writing / Copywriting")),
+            PreferenceItem("Media / Journalism", initialCategories.contains("Media / Journalism")),
+            PreferenceItem("Customer Service / Call Center", initialCategories.contains("Customer Service / Call Center")),
+            PreferenceItem("Construction / Engineering / Architects", initialCategories.contains("Construction / Engineering / Architects")),
+            PreferenceItem("Civil Engineering", initialCategories.contains("Civil Engineering")),
+            PreferenceItem("Mechanical Engineering", initialCategories.contains("Mechanical Engineering")),
+            PreferenceItem("Electrical / Electronics Engineering", initialCategories.contains("Electrical / Electronics Engineering")),
+            PreferenceItem("Manufacturing / Production", initialCategories.contains("Manufacturing / Production")),
+            PreferenceItem("Maintenance / Technician", initialCategories.contains("Maintenance / Technician")),
+            PreferenceItem("Commercial / Logistics / Supply Chain", initialCategories.contains("Commercial / Logistics / Supply Chain")),
+            PreferenceItem("Procurement / Purchasing", initialCategories.contains("Procurement / Purchasing")),
+            PreferenceItem("Warehouse / Distribution", initialCategories.contains("Warehouse / Distribution")),
+            PreferenceItem("Drivers / Delivery", initialCategories.contains("Drivers / Delivery")),
+            PreferenceItem("Healthcare / Medical", initialCategories.contains("Healthcare / Medical")),
+            PreferenceItem("Nursing / Caregiving", initialCategories.contains("Nursing / Caregiving")),
+            PreferenceItem("Pharmacy", initialCategories.contains("Pharmacy")),
+            PreferenceItem("Laboratory / Research", initialCategories.contains("Laboratory / Research")),
+            PreferenceItem("Public Health", initialCategories.contains("Public Health")),
+            PreferenceItem("Teaching / Education", initialCategories.contains("Teaching / Education")),
+            PreferenceItem("Training / Coaching", initialCategories.contains("Training / Coaching")),
+            PreferenceItem("Academic Research", initialCategories.contains("Academic Research")),
+            PreferenceItem("Hotel / Hospitality", initialCategories.contains("Hotel / Hospitality")),
+            PreferenceItem("Travel / Tourism", initialCategories.contains("Travel / Tourism")),
+            PreferenceItem("Food & Beverage", initialCategories.contains("Food & Beverage")),
+            PreferenceItem("Event Management", initialCategories.contains("Event Management")),
+            PreferenceItem("Government Jobs", initialCategories.contains("Government Jobs")),
+            PreferenceItem("Legal / Law / Compliance", initialCategories.contains("Legal / Law / Compliance")),
+            PreferenceItem("NGO / INGO / Social Work", initialCategories.contains("NGO / INGO / Social Work")),
+            PreferenceItem("Public Administration / Policy", initialCategories.contains("Public Administration / Policy")),
+            PreferenceItem("Skilled Labor / Trades", initialCategories.contains("Skilled Labor / Trades")),
+            PreferenceItem("Security Services", initialCategories.contains("Security Services")),
+            PreferenceItem("Cleaning / Housekeeping", initialCategories.contains("Cleaning / Housekeeping")),
+            PreferenceItem("Agriculture / Farming", initialCategories.contains("Agriculture / Farming"))
         )
     }
 
     // Industries list
     val industryList = remember {
         mutableStateListOf(
-            Industry("Software Companies", initialIndustries.contains("Software Companies")),
-            Industry("Information / Computer / Technology", initialIndustries.contains("Information / Computer / Technology")),
-            Industry("NGO / INGO / Development Projects", initialIndustries.contains("NGO / INGO / Development Projects")),
-            Industry("Designing / Printing / Publishing", initialIndustries.contains("Designing / Printing / Publishing")),
-            Industry("Associations", initialIndustries.contains("Associations")),
-            Industry("Audit Firms / Tax Consultant", initialIndustries.contains("Audit Firms / Tax Consultant"))
+            PreferenceItem("Software Companies", initialIndustries.contains("Software Companies")),
+            PreferenceItem("Information / Computer / Technology", initialIndustries.contains("Information / Computer / Technology")),
+            PreferenceItem("IT Services / Consulting", initialIndustries.contains("IT Services / Consulting")),
+            PreferenceItem("Telecommunication", initialIndustries.contains("Telecommunication")),
+            PreferenceItem("AI / Data / Cloud Services", initialIndustries.contains("AI / Data / Cloud Services")),
+            PreferenceItem("Cyber Security Services", initialIndustries.contains("Cyber Security Services")),
+            PreferenceItem("Manufacturing / Production", initialIndustries.contains("Manufacturing / Production")),
+            PreferenceItem("Industrial Production", initialIndustries.contains("Industrial Production")),
+            PreferenceItem("Textile / Garment Industry", initialIndustries.contains("Textile / Garment Industry")),
+            PreferenceItem("Food & Beverage Manufacturing", initialIndustries.contains("Food & Beverage Manufacturing")),
+            PreferenceItem("Pharmaceutical Manufacturing", initialIndustries.contains("Pharmaceutical Manufacturing")),
+            PreferenceItem("Construction / Infrastructure", initialIndustries.contains("Construction / Infrastructure")),
+            PreferenceItem("Civil Engineering Companies", initialIndustries.contains("Civil Engineering Companies")),
+            PreferenceItem("Architecture / Interior Designing", initialIndustries.contains("Architecture / Interior Designing")),
+            PreferenceItem("Mechanical / Electrical Engineering", initialIndustries.contains("Mechanical / Electrical Engineering")),
+            PreferenceItem("Banking / Financial Institutions", initialIndustries.contains("Banking / Financial Institutions")),
+            PreferenceItem("Insurance Companies", initialIndustries.contains("Insurance Companies")),
+            PreferenceItem("Audit Firms / Tax Consultant", initialIndustries.contains("Audit Firms / Tax Consultant")),
+            PreferenceItem("Microfinance / Cooperative", initialIndustries.contains("Microfinance / Cooperative")),
+            PreferenceItem("Investment / Brokerage Firms", initialIndustries.contains("Investment / Brokerage Firms")),
+            PreferenceItem("Trading / Wholesale", initialIndustries.contains("Trading / Wholesale")),
+            PreferenceItem("Retail Industry", initialIndustries.contains("Retail Industry")),
+            PreferenceItem("E-Commerce Companies", initialIndustries.contains("E-Commerce Companies")),
+            PreferenceItem("Import / Export", initialIndustries.contains("Import / Export")),
+            PreferenceItem("Logistics / Supply Chain", initialIndustries.contains("Logistics / Supply Chain")),
+            PreferenceItem("Transportation / Courier Services", initialIndustries.contains("Transportation / Courier Services")),
+            PreferenceItem("Warehouse / Distribution", initialIndustries.contains("Warehouse / Distribution")),
+            PreferenceItem("Hotel / Resort", initialIndustries.contains("Hotel / Resort")),
+            PreferenceItem("Travel / Tourism", initialIndustries.contains("Travel / Tourism")),
+            PreferenceItem("Restaurant / Cafe", initialIndustries.contains("Restaurant / Cafe")),
+            PreferenceItem("Event Management", initialIndustries.contains("Event Management")),
+            PreferenceItem("Marketing / Advertising Agencies", initialIndustries.contains("Marketing / Advertising Agencies")),
+            PreferenceItem("Digital Marketing Agencies", initialIndustries.contains("Digital Marketing Agencies")),
+            PreferenceItem("Designing / Printing / Publishing", initialIndustries.contains("Designing / Printing / Publishing")),
+            PreferenceItem("Media / Broadcasting", initialIndustries.contains("Media / Broadcasting")),
+            PreferenceItem("Content / Creative Studios", initialIndustries.contains("Content / Creative Studios")),
+            PreferenceItem("Hospitals / Clinics", initialIndustries.contains("Hospitals / Clinics")),
+            PreferenceItem("Healthcare Services", initialIndustries.contains("Healthcare Services")),
+            PreferenceItem("Pharmaceutical Companies", initialIndustries.contains("Pharmaceutical Companies")),
+            PreferenceItem("Medical Equipment Suppliers", initialIndustries.contains("Medical Equipment Suppliers")),
+            PreferenceItem("Schools / Colleges", initialIndustries.contains("Schools / Colleges")),
+            PreferenceItem("Universities / Academic Institutions", initialIndustries.contains("Universities / Academic Institutions")),
+            PreferenceItem("Training / Coaching Institutes", initialIndustries.contains("Training / Coaching Institutes")),
+            PreferenceItem("EdTech Companies", initialIndustries.contains("EdTech Companies")),
+            PreferenceItem("Government Organizations", initialIndustries.contains("Government Organizations")),
+            PreferenceItem("NGO / INGO / Development Projects", initialIndustries.contains("NGO / INGO / Development Projects")),
+            PreferenceItem("Legal / Law Firms", initialIndustries.contains("Legal / Law Firms")),
+            PreferenceItem("Public Sector Enterprises", initialIndustries.contains("Public Sector Enterprises")),
+            PreferenceItem("Associations", initialIndustries.contains("Associations")),
+            PreferenceItem("Agriculture / Farming", initialIndustries.contains("Agriculture / Farming")),
+            PreferenceItem("Agro-Based Industries", initialIndustries.contains("Agro-Based Industries")),
+            PreferenceItem("Dairy / Poultry / Livestock", initialIndustries.contains("Dairy / Poultry / Livestock")),
+            PreferenceItem("Renewable Energy / Power", initialIndustries.contains("Renewable Energy / Power")),
+            PreferenceItem("Consulting Firms", initialIndustries.contains("Consulting Firms")),
+            PreferenceItem("Human Resource / Recruitment Agencies", initialIndustries.contains("Human Resource / Recruitment Agencies")),
+            PreferenceItem("Security Services", initialIndustries.contains("Security Services")),
+            PreferenceItem("Facility Management / Cleaning Services", initialIndustries.contains("Facility Management / Cleaning Services")),
+            PreferenceItem("Startup / Private Companies", initialIndustries.contains("Startup / Private Companies"))
         )
     }
+
 
     // Job Titles list
     val jobTitleList = remember {
         mutableStateListOf(
-            JobTitle("Baker", initialTitles.contains("Baker")),
-            JobTitle("Backend Engineer", initialTitles.contains("Backend Engineer")),
-            JobTitle("Backend Developer", initialTitles.contains("Backend Developer")),
-            JobTitle("Associate Database Administrator", initialTitles.contains("Associate Database Administrator")),
-            JobTitle("Banquet and Event Manager", initialTitles.contains("Banquet and Event Manager")),
-            JobTitle("Basketball/Futsal Coach", initialTitles.contains("Basketball/Futsal Coach")),
-            JobTitle("Banquet Sous Chef", initialTitles.contains("Banquet Sous Chef"))
+            PreferenceItem("Baker", initialTitles.contains("Baker")),
+            PreferenceItem("Pastry Chef", initialTitles.contains("Pastry Chef")),
+            PreferenceItem("Sous Chef", initialTitles.contains("Sous Chef")),
+            PreferenceItem("Banquet Sous Chef", initialTitles.contains("Banquet Sous Chef")),
+            PreferenceItem("Executive Chef", initialTitles.contains("Executive Chef")),
+            PreferenceItem("Cook / Line Cook", initialTitles.contains("Cook / Line Cook")),
+            PreferenceItem("Restaurant Manager", initialTitles.contains("Restaurant Manager")),
+            PreferenceItem("Banquet and Event Manager", initialTitles.contains("Banquet and Event Manager")),
+            PreferenceItem("Hotel Manager", initialTitles.contains("Hotel Manager")),
+            PreferenceItem("Food & Beverage Supervisor", initialTitles.contains("Food & Beverage Supervisor")),
+            PreferenceItem("Event Coordinator", initialTitles.contains("Event Coordinator")),
+            PreferenceItem("Event Manager", initialTitles.contains("Event Manager")),
+            PreferenceItem("Basketball Coach", initialTitles.contains("Basketball Coach")),
+            PreferenceItem("Futsal Coach", initialTitles.contains("Futsal Coach")),
+            PreferenceItem("Sports Trainer", initialTitles.contains("Sports Trainer")),
+            PreferenceItem("Fitness Instructor", initialTitles.contains("Fitness Instructor")),
+            PreferenceItem("Backend Developer", initialTitles.contains("Backend Developer")),
+            PreferenceItem("Backend Engineer", initialTitles.contains("Backend Engineer")),
+            PreferenceItem("Frontend Developer", initialTitles.contains("Frontend Developer")),
+            PreferenceItem("Full Stack Developer", initialTitles.contains("Full Stack Developer")),
+            PreferenceItem("Mobile Application Developer", initialTitles.contains("Mobile Application Developer")),
+            PreferenceItem("Software Engineer", initialTitles.contains("Software Engineer")),
+            PreferenceItem("DevOps Engineer", initialTitles.contains("DevOps Engineer")),
+            PreferenceItem("QA Engineer", initialTitles.contains("QA Engineer")),
+            PreferenceItem("Automation Test Engineer", initialTitles.contains("Automation Test Engineer")),
+            PreferenceItem("Associate Database Administrator", initialTitles.contains("Associate Database Administrator")),
+            PreferenceItem("Database Administrator", initialTitles.contains("Database Administrator")),
+            PreferenceItem("Data Analyst", initialTitles.contains("Data Analyst")),
+            PreferenceItem("Data Engineer", initialTitles.contains("Data Engineer")),
+            PreferenceItem("System Administrator", initialTitles.contains("System Administrator")),
+            PreferenceItem("Network Engineer", initialTitles.contains("Network Engineer")),
+            PreferenceItem("Cloud Engineer", initialTitles.contains("Cloud Engineer")),
+            PreferenceItem("UI/UX Designer", initialTitles.contains("UI/UX Designer")),
+            PreferenceItem("Graphic Designer", initialTitles.contains("Graphic Designer")),
+            PreferenceItem("Motion Graphics Designer", initialTitles.contains("Motion Graphics Designer")),
+            PreferenceItem("Video Editor", initialTitles.contains("Video Editor")),
+            PreferenceItem("Content Creator", initialTitles.contains("Content Creator")),
+            PreferenceItem("Sales Executive", initialTitles.contains("Sales Executive")),
+            PreferenceItem("Marketing Officer", initialTitles.contains("Marketing Officer")),
+            PreferenceItem("Digital Marketing Specialist", initialTitles.contains("Digital Marketing Specialist")),
+            PreferenceItem("Business Development Officer", initialTitles.contains("Business Development Officer")),
+            PreferenceItem("Account Manager", initialTitles.contains("Account Manager")),
+            PreferenceItem("Customer Service Representative", initialTitles.contains("Customer Service Representative")),
+            PreferenceItem("Accountant", initialTitles.contains("Accountant")),
+            PreferenceItem("Accounts Officer", initialTitles.contains("Accounts Officer")),
+            PreferenceItem("Finance Manager", initialTitles.contains("Finance Manager")),
+            PreferenceItem("Audit Associate", initialTitles.contains("Audit Associate")),
+            PreferenceItem("Tax Consultant", initialTitles.contains("Tax Consultant")),
+            PreferenceItem("Administrative Officer", initialTitles.contains("Administrative Officer")),
+            PreferenceItem("Office Assistant", initialTitles.contains("Office Assistant")),
+            PreferenceItem("Staff Nurse", initialTitles.contains("Staff Nurse")),
+            PreferenceItem("Medical Officer", initialTitles.contains("Medical Officer")),
+            PreferenceItem("Pharmacist", initialTitles.contains("Pharmacist")),
+            PreferenceItem("Lab Technician", initialTitles.contains("Lab Technician")),
+            PreferenceItem("Healthcare Assistant", initialTitles.contains("Healthcare Assistant")),
+            PreferenceItem("Civil Engineer", initialTitles.contains("Civil Engineer")),
+            PreferenceItem("Site Engineer", initialTitles.contains("Site Engineer")),
+            PreferenceItem("Mechanical Engineer", initialTitles.contains("Mechanical Engineer")),
+            PreferenceItem("Electrical Engineer", initialTitles.contains("Electrical Engineer")),
+            PreferenceItem("Maintenance Technician", initialTitles.contains("Maintenance Technician")),
+            PreferenceItem("Intern", initialTitles.contains("Intern")),
+            PreferenceItem("Trainee", initialTitles.contains("Trainee")),
+            PreferenceItem("Junior Executive", initialTitles.contains("Junior Executive")),
+            PreferenceItem("Assistant Manager", initialTitles.contains("Assistant Manager")),
+            PreferenceItem("Operations Executive", initialTitles.contains("Operations Executive"))
         )
     }
+
 
     // Available For list
     val availabilityList = remember {
         mutableStateListOf(
-            AvailableFor("Full Time", initialAvailability.contains("Full Time")),
-            AvailableFor("Part Time", initialAvailability.contains("Part Time")),
-            AvailableFor("Freelance", initialAvailability.contains("Freelance")),
-            AvailableFor("Temporary", initialAvailability.contains("Temporary")),
-            AvailableFor("Internship", initialAvailability.contains("Internship")),
-            AvailableFor("Traineeship", initialAvailability.contains("Traineeship")),
-            AvailableFor("Volunteer", initialAvailability.contains("Volunteer"))
+            PreferenceItem("Full Time", initialAvailability.contains("Full Time")),
+            PreferenceItem("Part Time", initialAvailability.contains("Part Time")),
+            PreferenceItem("Contract", initialAvailability.contains("Contract")),
+            PreferenceItem("Temporary", initialAvailability.contains("Temporary")),
+            PreferenceItem("Seasonal", initialAvailability.contains("Seasonal")),
+            PreferenceItem("Freelance", initialAvailability.contains("Freelance")),
+            PreferenceItem("Remote", initialAvailability.contains("Remote")),
+            PreferenceItem("Hybrid", initialAvailability.contains("Hybrid")),
+            PreferenceItem("On-site", initialAvailability.contains("On-site")),
+            PreferenceItem("Internship", initialAvailability.contains("Internship")),
+            PreferenceItem("Traineeship", initialAvailability.contains("Traineeship")),
+            PreferenceItem("Apprenticeship", initialAvailability.contains("Apprenticeship")),
+            PreferenceItem("Graduate Program", initialAvailability.contains("Graduate Program")),
+            PreferenceItem("Volunteer", initialAvailability.contains("Volunteer")),
+            PreferenceItem("Shift Based", initialAvailability.contains("Shift Based")),
+            PreferenceItem("Project Based", initialAvailability.contains("Project Based"))
         )
     }
+
 
     var searchQuery by remember { mutableStateOf("") }
 

@@ -1,7 +1,9 @@
 package com.example.rojgar.repository
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.mutableStateListOf
-import com.example.rojgar.model.AppliedJobModel
+import com.cloudinary.Cloudinary
 import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
@@ -21,7 +23,7 @@ class JobSeekerRepoImpl : JobSeekerRepo {
 
     val ref : DatabaseReference = database.getReference("JobSeekers")
 
-    val appliedJobsRef : DatabaseReference = database.getReference("AppliedJobs")
+
 
     override fun register(
         email: String,
@@ -158,8 +160,10 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         }
     }
 
+
+
     // ============================================
-    // FOLLOW FUNCTIONALITY METHODS
+    // NEW FOLLOW FUNCTIONALITY METHODS
     // ============================================
 
     override fun followJobSeeker(
@@ -167,11 +171,13 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         targetJobSeekerId: String,
         callback: (Boolean, String) -> Unit
     ) {
+        // Get the target job seeker's current followers list
         ref.child(targetJobSeekerId).child("followers")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val currentFollowers = mutableListOf<String>()
 
+                    // Get existing followers
                     if (snapshot.exists()) {
                         for (followerSnapshot in snapshot.children) {
                             val followerId = followerSnapshot.getValue(String::class.java)
@@ -181,13 +187,16 @@ class JobSeekerRepoImpl : JobSeekerRepo {
                         }
                     }
 
+                    // Check if already following
                     if (currentFollowers.contains(currentUserId)) {
                         callback(false, "Already following this user")
                         return
                     }
 
+                    // Add current user to followers list
                     currentFollowers.add(currentUserId)
 
+                    // Update in database
                     ref.child(targetJobSeekerId).child("followers").setValue(currentFollowers)
                         .addOnCompleteListener { task ->
                             if (task.isSuccessful) {
@@ -209,11 +218,13 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         targetJobSeekerId: String,
         callback: (Boolean, String) -> Unit
     ) {
+        // Get the target job seeker's current followers list
         ref.child(targetJobSeekerId).child("followers")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val currentFollowers = mutableListOf<String>()
 
+                    // Get existing followers
                     if (snapshot.exists()) {
                         for (followerSnapshot in snapshot.children) {
                             val followerId = followerSnapshot.getValue(String::class.java)
@@ -223,8 +234,10 @@ class JobSeekerRepoImpl : JobSeekerRepo {
                         }
                     }
 
+                    // Remove current user from followers list
                     currentFollowers.remove(currentUserId)
 
+                    // Update in database
                     ref.child(targetJobSeekerId).child("followers").setValue(currentFollowers)
                         .addOnCompleteListener { task ->
                             if (task.isSuccessful) {
@@ -269,205 +282,4 @@ class JobSeekerRepoImpl : JobSeekerRepo {
                 }
             })
     }
-
-    // ============================================
-    // APPLIED JOBS FUNCTIONALITY METHODS
-    // ============================================
-
-    override fun applyForJob(
-        appliedJobModel: AppliedJobModel,
-        callback: (Boolean, String) -> Unit
-    ) {
-        val applicationId = appliedJobsRef.push().key ?: return callback(false, "Failed to generate application ID")
-
-        val applicationWithId = appliedJobModel.copy(applicationId = applicationId)
-
-        // Save application to AppliedJobs node
-        appliedJobsRef.child(applicationId).setValue(applicationWithId)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    // Update JobSeeker's appliedJobs list
-                    ref.child(appliedJobModel.jobSeekerId).child("appliedJobs")
-                        .addListenerForSingleValueEvent(object : ValueEventListener {
-                            override fun onDataChange(snapshot: DataSnapshot) {
-                                val appliedJobsList = mutableListOf<String>()
-
-                                if (snapshot.exists()) {
-                                    for (jobSnapshot in snapshot.children) {
-                                        val jobId = jobSnapshot.getValue(String::class.java)
-                                        if (jobId != null) {
-                                            appliedJobsList.add(jobId)
-                                        }
-                                    }
-                                }
-
-                                appliedJobsList.add(applicationId)
-
-                                ref.child(appliedJobModel.jobSeekerId).child("appliedJobs")
-                                    .setValue(appliedJobsList)
-                                    .addOnCompleteListener { updateTask ->
-                                        if (updateTask.isSuccessful) {
-                                            callback(true, "Application submitted successfully")
-                                        } else {
-                                            callback(false, updateTask.exception?.message ?: "Failed to update profile")
-                                        }
-                                    }
-                            }
-
-                            override fun onCancelled(error: DatabaseError) {
-                                callback(false, error.message)
-                            }
-                        })
-                } else {
-                    callback(false, task.exception?.message ?: "Failed to submit application")
-                }
-            }
-    }
-
-    override fun getAppliedJobsByJobSeeker(
-        jobSeekerId: String,
-        callback: (Boolean, String, List<AppliedJobModel>?) -> Unit
-    ) {
-        appliedJobsRef.orderByChild("jobSeekerId").equalTo(jobSeekerId)
-            .addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        val appliedJobsList = mutableListOf<AppliedJobModel>()
-
-                        for (data in snapshot.children) {
-                            val appliedJob = data.getValue(AppliedJobModel::class.java)
-                            if (appliedJob != null) {
-                                appliedJobsList.add(appliedJob)
-                            }
-                        }
-
-                        // Sort by timestamp (most recent first)
-                        appliedJobsList.sortByDescending { it.appliedTimestamp }
-
-                        callback(true, "Applied jobs fetched successfully", appliedJobsList)
-                    } else {
-                        callback(true, "No applied jobs found", emptyList())
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    callback(false, error.message, null)
-                }
-            })
-    }
-
-    override fun getAppliedJobsByStatus(
-        jobSeekerId: String,
-        status: String,
-        callback: (Boolean, String, List<AppliedJobModel>?) -> Unit
-    ) {
-        appliedJobsRef.orderByChild("jobSeekerId").equalTo(jobSeekerId)
-            .addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        val appliedJobsList = mutableListOf<AppliedJobModel>()
-
-                        for (data in snapshot.children) {
-                            val appliedJob = data.getValue(AppliedJobModel::class.java)
-                            if (appliedJob != null && appliedJob.status == status) {
-                                appliedJobsList.add(appliedJob)
-                            }
-                        }
-
-                        // Sort by timestamp (most recent first)
-                        appliedJobsList.sortByDescending { it.appliedTimestamp }
-
-                        callback(true, "Applied jobs fetched successfully", appliedJobsList)
-                    } else {
-                        callback(true, "No applied jobs found", emptyList())
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    callback(false, error.message, null)
-                }
-            })
-    }
-
-    override fun updateApplicationStatus(
-        applicationId: String,
-        newStatus: String,
-        callback: (Boolean, String) -> Unit
-    ) {
-        appliedJobsRef.child(applicationId).child("status").setValue(newStatus)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    callback(true, "Application status updated to $newStatus")
-                } else {
-                    callback(false, task.exception?.message ?: "Failed to update status")
-                }
-            }
-    }
-
-    override fun withdrawApplication(
-        applicationId: String,
-        jobSeekerId: String,
-        callback: (Boolean, String) -> Unit
-    ) {
-        // Update status to Withdrawn
-        appliedJobsRef.child(applicationId).child("status").setValue("Withdrawn")
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    // Optionally remove from JobSeeker's appliedJobs list
-                    ref.child(jobSeekerId).child("appliedJobs")
-                        .addListenerForSingleValueEvent(object : ValueEventListener {
-                            override fun onDataChange(snapshot: DataSnapshot) {
-                                val appliedJobsList = mutableListOf<String>()
-
-                                if (snapshot.exists()) {
-                                    for (jobSnapshot in snapshot.children) {
-                                        val jobId = jobSnapshot.getValue(String::class.java)
-                                        if (jobId != null && jobId != applicationId) {
-                                            appliedJobsList.add(jobId)
-                                        }
-                                    }
-                                }
-
-                                ref.child(jobSeekerId).child("appliedJobs")
-                                    .setValue(appliedJobsList)
-                                    .addOnCompleteListener {
-                                        callback(true, "Application withdrawn successfully")
-                                    }
-                            }
-
-                            override fun onCancelled(error: DatabaseError) {
-                                callback(false, error.message)
-                            }
-                        })
-                } else {
-                    callback(false, task.exception?.message ?: "Failed to withdraw application")
-                }
-            }
-    }
-
-    override fun getApplicationById(
-        applicationId: String,
-        callback: (Boolean, String, AppliedJobModel?) -> Unit
-    ) {
-        appliedJobsRef.child(applicationId).addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    val appliedJob = snapshot.getValue(AppliedJobModel::class.java)
-                    if (appliedJob != null) {
-                        callback(true, "Application fetched successfully", appliedJob)
-                    } else {
-                        callback(false, "Failed to parse application data", null)
-                    }
-                } else {
-                    callback(false, "Application not found", null)
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                callback(false, error.message, null)
-            }
-        })
-    }
-
-
 }
