@@ -1,6 +1,7 @@
 package com.example.rojgar.view
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -13,6 +14,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,9 +33,23 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.R
+import com.example.rojgar.repository.EducationRepoImpl
+import com.example.rojgar.repository.ExperienceRepoImpl
+import com.example.rojgar.repository.JobSeekerRepoImpl
+import com.example.rojgar.repository.ObjectiveRepoImpl
+import com.example.rojgar.repository.PortfolioRepoImpl
+import com.example.rojgar.repository.SkillRepoImpl
+import com.example.rojgar.repository.TrainingRepoImpl
 import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.White
+import com.example.rojgar.viewmodel.EducationViewModel
+import com.example.rojgar.viewmodel.ExperienceViewModel
+import com.example.rojgar.viewmodel.JobSeekerViewModel
+import com.example.rojgar.viewmodel.ObjectiveViewModel
+import com.example.rojgar.viewmodel.PortfolioViewModel
+import com.example.rojgar.viewmodel.SkillViewModel
+import com.example.rojgar.viewmodel.TrainingViewModel
 
 class CvViewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,6 +64,26 @@ class CvViewActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CvViewBody() {
+
+    val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
+    val objectiveViewModel = remember { ObjectiveViewModel(ObjectiveRepoImpl()) }
+    val educationViewModel = remember { EducationViewModel(EducationRepoImpl()) }
+    val experienceViewModel = remember { ExperienceViewModel(ExperienceRepoImpl()) }
+    val skillViewModel = remember { SkillViewModel(SkillRepoImpl()) }
+    val trainingViewModel = remember { TrainingViewModel(TrainingRepoImpl()) }
+    val portfolioViewModel = remember { PortfolioViewModel(PortfolioRepoImpl()) }
+
+    val jobSeeker = jobSeekerViewModel.jobSeeker.observeAsState(initial = null)
+    val loading = jobSeekerViewModel.loading.observeAsState(initial = false)
+    val objective = objectiveViewModel.objective.observeAsState(initial = null)
+    val allEducations = educationViewModel.allEducations.observeAsState(initial = emptyList())
+    val allExperiences = experienceViewModel.allExperiences.observeAsState(initial = emptyList())
+    val allSkills = skillViewModel.allSkills.observeAsState(initial = emptyList())
+    val allTrainings = trainingViewModel.allTrainings.observeAsState(initial = emptyList())
+    val allPortfolios = portfolioViewModel.allPortfolios.observeAsState(initial = emptyList())
+
+    val currentUser = jobSeekerViewModel.getCurrentJobSeeker()
+
     val gradientBackground = Brush.verticalGradient(
         colors = listOf(
             Color(0xFF1E88E5),
@@ -52,6 +93,20 @@ fun CvViewBody() {
         startY = 0f,
         endY = 1200f
     )
+
+    LaunchedEffect(Unit) {
+        val userId = currentUser?.uid
+        if (userId != null) {
+            Log.d("CvViewBody", "Fetching data for user: $userId")
+            jobSeekerViewModel.fetchCurrentJobSeeker()
+            objectiveViewModel.fetchObjectiveByJobSeekerId(userId)
+            educationViewModel.fetchEducationsByJobSeekerId(userId)
+            experienceViewModel.fetchExperiencesByJobSeekerId(userId)
+        } else {
+            Log.e("CvViewBody", "Current user is null!")
+        }
+    }
+
 
     Scaffold(
         topBar = {
@@ -93,11 +148,33 @@ fun CvViewBody() {
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
             ) {
+                if (loading.value){
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ){
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(32.dp),
+                            color = Color(0xFF1E88E5)
+                        )
+                    }
+                }
                 // Modern Profile Header
-                ModernProfileHeader()
+                ModernProfileHeader(
+                    name = jobSeeker.value?.fullName,
+                )
 
                 // Two Column Layout for Personal Info
-                PersonalInfoGrid()
+                PersonalInfoGrid(
+                    phoneNumber = jobSeeker.value?.phoneNumber,
+                    email = jobSeeker.value?.email,
+                    dob = jobSeeker.value?.dob,
+                    gender = jobSeeker.value?.gender,
+                    religion = jobSeeker.value?.religion,
+                    nationality = jobSeeker.value?.nationality,
+                    maritalStatus = jobSeeker.value?.maritalStatus,
+                    address = jobSeeker.value?.currentAddress,
+                )
 
                 // Objective with Icon
                 StylishSectionCard(
@@ -105,7 +182,7 @@ fun CvViewBody() {
                     icon = "🎯"
                 ) {
                     Text(
-                        text = "Seeking a challenging position in a reputable organization to expand and utilize my learning, skills and knowledge. Passionate about creating innovative solutions and contributing to team success.",
+                        text =  objective.value?.objectiveText?:"Loading...",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF424242),
                         lineHeight = 22.sp,
@@ -118,20 +195,15 @@ fun CvViewBody() {
                     title = "Education",
                     icon = "🎓"
                 ) {
-                    TimelineEducationItem(
-                        degree = "Bachelor of Computer Application",
-                        institution = "Tribhuvan University",
-                        year = "2016 - 2020",
-                        grade = "First Division",
-                        isLast = false
-                    )
-                    TimelineEducationItem(
-                        degree = "Higher Secondary Education (+2)",
-                        institution = "XYZ College, Kathmandu",
-                        year = "2014 - 2016",
-                        grade = "3.5 GPA",
-                        isLast = true
-                    )
+                    allEducations.value!!.forEachIndexed { index, education ->
+                        TimelineEducationItem(
+                            degree = education.educationDegree ?: "Unknown Degree",
+                            institution = education.instituteName ?: "Unknown Institution",
+                            year = "${education.startYear ?: ""} - ${education.endYear ?: ""}",
+                            grade = education.score ?: "N/A",
+                            isLast = index == allEducations.value!!.lastIndex
+                        )
+                    }
                 }
 
                 // Experience with Modern Design
@@ -139,21 +211,16 @@ fun CvViewBody() {
                     title = "Professional Experience",
                     icon = "💼"
                 ) {
-                    ModernExperienceItem(
-                        position = "Android Developer",
-                        company = "Tech Solutions Pvt. Ltd.",
-                        duration = "2020 - Present",
-                        description = "Developing and maintaining Android applications using Kotlin and Jetpack Compose. Leading mobile development projects and mentoring junior developers.",
-                        isActive = true
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    ModernExperienceItem(
-                        position = "Mobile Developer Intern",
-                        company = "Digital Nepal",
-                        duration = "2019 - 2020",
-                        description = "Assisted in developing mobile applications and learned industry best practices under senior developers.",
-                        isActive = false
-                    )
+                    allExperiences.value!!.forEachIndexed { index, experience ->
+                        ModernExperienceItem(
+                            position = experience.title ?: "Unknown Position",
+                            company = experience.companyName ?: "Unknown Company",
+                            duration = "${experience.startDate ?: ""} - ${experience.endDate ?: "Present"}",
+                            description = experience.experienceLetter ?: "No letter available",
+                            isActive = experience.isCurrentlyWorking ?: false
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                 }
 
                 // Skills with Progress Style
@@ -246,7 +313,9 @@ fun CvViewBody() {
 }
 
 @Composable
-fun ModernProfileHeader() {
+fun ModernProfileHeader(
+    name: String? = null,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -311,7 +380,7 @@ fun ModernProfileHeader() {
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "John Doe",
+                        text = name?:"Loading...",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         fontSize = 28.sp,
@@ -343,7 +412,16 @@ fun ModernProfileHeader() {
 }
 
 @Composable
-fun PersonalInfoGrid() {
+fun PersonalInfoGrid(
+    phoneNumber: String? = null,
+    email: String? = null,
+    dob: String? = null,
+    gender: String? = null,
+    religion: String? = null,
+    nationality: String? = null,
+    maritalStatus: String? = null,
+    address: String? = null,
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -374,25 +452,25 @@ fun PersonalInfoGrid() {
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
-                    CompactInfoItem(icon = "📱", label = "Phone", value = "+977 981234")
+                    CompactInfoItem(icon = "📱", label = "Phone", value = phoneNumber?:"loading...")
                     Spacer(modifier = Modifier.height(12.dp))
-                    CompactInfoItem(icon = "📧", label = "Email", value = "john.doe@")
+                    CompactInfoItem(icon = "📧", label = "Email", value = email?:"loading...")
                     Spacer(modifier = Modifier.height(12.dp))
-                    CompactInfoItem(icon = "🎂", label = "DOB", value = "Jan 15, 1995")
+                    CompactInfoItem(icon = "🎂", label = "Date of Birth", value = dob?:"loading...")
                     Spacer(modifier = Modifier.height(12.dp))
-                    CompactInfoItem(icon = "⚧", label = "Gender", value = "Male")
+                    CompactInfoItem(icon = "⚧", label = "Gender", value = gender?:"loading...")
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(20.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    CompactInfoItem(icon = "🕉", label = "Religion", value = "Hindu")
+                    CompactInfoItem(icon = "🕉", label = "Religion", value = religion?:"loading...")
                     Spacer(modifier = Modifier.height(12.dp))
-                    CompactInfoItem(icon = "🇳🇵", label = "Nationality", value = "Nepali")
+                    CompactInfoItem(icon = "🇳🇵", label = "Nationality", value = nationality?:"loading...")
                     Spacer(modifier = Modifier.height(12.dp))
-                    CompactInfoItem(icon = "💑", label = "Status", value = "Single")
+                    CompactInfoItem(icon = "💑", label = "Marital Status", value = maritalStatus?:"loading...")
                     Spacer(modifier = Modifier.height(12.dp))
-                    CompactInfoItem(icon = "📍", label = "Location", value = "Kathmandu")
+                    CompactInfoItem(icon = "📍", label = "Address", value = address?:"loading...")
                 }
             }
         }

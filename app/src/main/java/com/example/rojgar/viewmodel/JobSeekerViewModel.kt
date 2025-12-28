@@ -83,4 +83,23 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
         }
     }
 
+    fun fetchCurrentJobSeeker() {
+        _loading.value = true
+
+        val currentUser = repo.getCurrentJobSeeker()
+        if (currentUser != null) {
+            repo.getJobSeekerById(currentUser.uid) { success, message, jobSeekerModel ->
+                _loading.value = false
+                if (success && jobSeekerModel != null) {
+                    _jobSeeker.value = jobSeekerModel
+                } else {
+                    _jobSeeker.value = null
+                }
+            }
+        } else {
+            _loading.value = false
+            _jobSeeker.value = null
+        }
+    }
+
 }

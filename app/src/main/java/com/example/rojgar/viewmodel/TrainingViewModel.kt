@@ -1,10 +1,18 @@
 package com.example.rojgar.viewmodel
 
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.example.rojgar.model.EducationModel
 import com.example.rojgar.model.TrainingModel
 import com.example.rojgar.repository.TrainingRepo
 
 class TrainingViewModel(private val trainingRepo: TrainingRepo) : ViewModel() {
+    private val _training = MutableLiveData< TrainingModel?>()
+    val training: LiveData<TrainingModel?> = _training
+
+    private val _allTrainings = MutableLiveData<List<TrainingModel>?>()
+    val allTrainings : MutableLiveData<List<TrainingModel>?> get() = _allTrainings
 
     fun addTraining(training: TrainingModel, callback: (Boolean, String) -> Unit) {
         trainingRepo.addTraining(training, callback)
