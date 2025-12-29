@@ -2,8 +2,6 @@ package com.example.rojgar.viewmodel
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.example.rojgar.model.CompanyModel
-import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
 import com.example.rojgar.repository.JobSeekerRepo
 import com.google.firebase.auth.FirebaseUser
@@ -44,7 +42,6 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
         return repo.getCurrentJobSeeker()
     }
 
-
     fun getJobSeekerById(
         jobSeekerId: String,
         callback: (Boolean, String, JobSeekerModel?) -> Unit
@@ -72,15 +69,28 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
         repo.forgetPassword(email, callback)
     }
 
+    fun updateProfilePhoto(
+        jobSeekerId: String,
+        imageUrl: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.updateProfilePhoto(jobSeekerId, imageUrl, callback)
+    }
 
+    fun updateCoverPhoto(
+        jobSeekerId: String,
+        imageUrl: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.updateCoverPhoto(jobSeekerId, imageUrl, callback)
+    }
+
+    // New method to update entire profile
     fun updateProfile(
         model: JobSeekerModel,
         callback: (Boolean, String) -> Unit
     ) {
-        repo.updateProfile(model) { success, msg ->
-            _loading.value = false
-            callback(success, msg)
-        }
+        repo.addJobSeekerToDatabase(model.jobSeekerId, model, callback)
     }
 
     fun fetchCurrentJobSeeker() {
@@ -99,6 +109,17 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
         } else {
             _loading.value = false
             _jobSeeker.value = null
+        }
+    }
+
+    fun updateJobSeekerProfile(
+        model: JobSeekerModel,
+        callback: (Boolean, String) -> Unit
+    ) {
+        _loading.value = true
+        repo.updateJobSeekerProfile(model) { success, message ->
+            _loading.value = false
+            callback(success, message)
         }
     }
 

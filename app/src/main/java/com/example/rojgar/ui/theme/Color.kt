@@ -11,6 +11,7 @@ val NormalBlue = Color(0xFF0028C0)
 val Purple = Color(0xFF7253F8)
 val Blue = Color(0xFFE4EEFC)
 val DarkBlue = Color(0xFFC3D5EE)
+val DarkBlue3 = Color(0xFFACCCFA)
 val DarkBlue2 = Color(0xFF525DF0)
 
 val SkyBlue = Color(0xFF80C9F7)

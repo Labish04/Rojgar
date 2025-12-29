@@ -13,5 +13,7 @@
     <string name="title_activity_company_dashboard">CompanyDashboardActivity</string>
     <string name="title_activity_forget_password">ForgetPasswordActivity</string>
     <string name="title_activity_job_apply">JobApplyActivity</string>
+    <string name="title_activity_message">MessageActivity</string>
+    <string name="title_activity_chat">ChatActivity</string>
     >>>>>>> 11ff9ba53955b48b2637d77df4cf1169dbf7c2a0
 </resources>
