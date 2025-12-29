@@ -64,7 +64,19 @@ interface JobSeekerRepo {
         callback: (Boolean) -> Unit
     )
 
-    fun updateProfile(
+    fun updateProfilePhoto(
+        jobSeekerId: String,
+        imageUrl: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun updateCoverPhoto(
+        jobSeekerId: String,
+        imageUrl: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun updateJobSeekerProfile(
         model: JobSeekerModel,
         callback: (Boolean, String) -> Unit
     )

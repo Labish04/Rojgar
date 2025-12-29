@@ -147,24 +147,36 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         }
     }
 
-    override fun updateProfile(
-        model: JobSeekerModel,
+    override fun updateProfilePhoto(
+        jobSeekerId: String,
+        imageUrl: String,
         callback: (Boolean, String) -> Unit
     ) {
-        ref.child(model.jobSeekerId).updateChildren(model.toMap()).addOnCompleteListener {
-            if(it.isSuccessful){
-                callback(true,"Profile updated successfully")
-            }else{
-                callback(false,"${it.exception?.message}")
+        ref.child(jobSeekerId).child("profilePhoto").setValue(imageUrl)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    callback(true, "Profile photo updated successfully")
+                } else {
+                    callback(false, task.exception?.message ?: "Failed to update profile photo")
+                }
             }
-        }
     }
 
+    override fun updateCoverPhoto(
+        jobSeekerId: String,
+        imageUrl: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(jobSeekerId).child("coverPhoto").setValue(imageUrl)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    callback(true, "Cover photo updated successfully")
+                } else {
+                    callback(false, task.exception?.message ?: "Failed to update cover photo")
+                }
+            }
+    }
 
-
-    // ============================================
-    // NEW FOLLOW FUNCTIONALITY METHODS
-    // ============================================
 
     override fun followJobSeeker(
         currentUserId: String,
@@ -282,4 +294,20 @@ class JobSeekerRepoImpl : JobSeekerRepo {
                 }
             })
     }
+
+    override fun updateJobSeekerProfile(
+        model: JobSeekerModel,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(model.jobSeekerId)
+            .setValue(model)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    callback(true, "Profile updated successfully")
+                } else {
+                    callback(false, task.exception?.message ?: "Profile update failed")
+                }
+            }
+    }
+
 }
