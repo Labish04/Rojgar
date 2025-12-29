@@ -1,6 +1,7 @@
 package com.example.rojgar.repository
 
 import com.example.rojgar.model.JobModel
+import com.example.rojgar.model.PreferenceModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -103,7 +104,11 @@ class JobRepoImpl : JobRepo {
                     val jobPost = snapshot.getValue(JobModel::class.java)
                     if (jobPost != null) {
                         // Ensure postId is set correctly
-                        callback(true, "Job post fetched", jobPost.copy(postId = snapshot.key ?: jobPost.postId))
+                        callback(
+                            true,
+                            "Job post fetched",
+                            jobPost.copy(postId = snapshot.key ?: jobPost.postId)
+                        )
                     } else {
                         callback(false, "Failed to parse job post", null)
                     }
@@ -149,4 +154,106 @@ class JobRepoImpl : JobRepo {
             }
         })
     }
+
+    override fun getRecommendedJobs(
+        preference: PreferenceModel,
+        callback: (Boolean, String, List<JobModel>?) -> Unit
+    ) {
+        ref.addListenerForSingleValueEvent(object : ValueEventListener {
+
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (!snapshot.exists()) {
+                    callback(true, "No jobs found", emptyList())
+                    return
+                }
+
+                val scoredJobs = mutableListOf<Pair<JobModel, Int>>()
+
+                for (postSnapshot in snapshot.children) {
+                    val job = postSnapshot.getValue(JobModel::class.java) ?: continue
+
+                    val jobWithId = job.copy(
+                        postId = postSnapshot.key ?: job.postId
+                    )
+
+                    var score = 0
+
+                    /* ---------------- CATEGORY MATCH ---------------- */
+                    if (job.categories.any { jobCategory ->
+                            preference.categories.any { prefCategory ->
+                                jobCategory.equals(prefCategory, true)
+                            }
+                        }
+                    ) {
+                        score += 3
+                    }
+
+                    /* ---------------- INDUSTRY MATCH ---------------- */
+//                    if (preference.industries.any {
+//                            it.equals(job.industry, true)
+//                        }
+//                    ) {
+//                        score += 2
+//                    }
+
+                    /* ---------------- JOB TYPE / AVAILABILITY ---------------- */
+                    if (preference.availabilities.any {
+                            it.equals(job.jobType, true)
+                        }
+                    ) {
+                        score += 2
+                    }
+
+                    /* ---------------- TITLE / POSITION MATCH ---------------- */
+                    if (preference.titles.any { prefTitle ->
+                            job.title.contains(prefTitle, true) ||
+                                    job.position.contains(prefTitle, true)
+                        }
+                    ) {
+                        score += 3
+                    }
+
+                    /* ---------------- SKILLS MATCH ---------------- */
+                    val jobSkills = job.skills
+                        .split(",")
+                        .map { it.trim().lowercase() }
+
+                    val userSkills = preference.titles
+                        .flatMap { it.split(",") }
+                        .map { it.trim().lowercase() }
+
+                    if (jobSkills.any { it in userSkills }) {
+                        score += 3
+                    }
+
+                    /* ---------------- LOCATION MATCH ---------------- */
+//                    if (
+//                        preference.location.isNotBlank() &&
+//                        job.location.equals(preference.location, true)
+//                    ) {
+//                        score += 1
+//                    }
+
+                    if (score > 0) {
+                        scoredJobs.add(jobWithId to score)
+                    }
+                }
+
+                val recommendedJobs = scoredJobs
+                    .sortedByDescending { it.second }
+                    .map { it.first }
+
+                callback(
+                    true,
+                    "Found ${recommendedJobs.size} recommended jobs",
+                    recommendedJobs
+                )
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                callback(false, error.message, null)
+            }
+        })
+    }
+
 }

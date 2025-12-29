@@ -75,43 +75,43 @@ fun AppliedJobsScreen(
     )
 
     // Load applied jobs based on selected tab
-    LaunchedEffect(selectedTab, currentUser) {
-        if (currentUser != null) {
-            isLoading = true
-            errorMessage = null
-
-            when (selectedTab) {
-                0 -> {
-                    // Load all applied jobs
-                    repository.getAppliedJobsByJobSeeker(currentUser.uid) { success, message, jobs ->
-                        isLoading = false
-                        if (success && jobs != null) {
-                            appliedJobs = jobs
-                        } else {
-                            errorMessage = message
-                            appliedJobs = emptyList()
-                        }
-                    }
-                }
-                else -> {
-                    // Load filtered jobs by status
-                    val status = tabs[selectedTab]
-                    repository.getAppliedJobsByStatus(currentUser.uid, status) { success, message, jobs ->
-                        isLoading = false
-                        if (success && jobs != null) {
-                            appliedJobs = jobs
-                        } else {
-                            errorMessage = message
-                            appliedJobs = emptyList()
-                        }
-                    }
-                }
-            }
-        } else {
-            isLoading = false
-            errorMessage = "Please log in to view applied jobs"
-        }
-    }
+//    LaunchedEffect(selectedTab, currentUser) {
+//        if (currentUser != null) {
+//            isLoading = true
+//            errorMessage = null
+//
+//            when (selectedTab) {
+//                0 -> {
+//                    // Load all applied jobs
+//                    repository.getAppliedJobsByJobSeeker(currentUser.uid) { success, message, jobs ->
+//                        isLoading = false
+//                        if (success && jobs != null) {
+//                            appliedJobs = jobs
+//                        } else {
+//                            errorMessage = message
+//                            appliedJobs = emptyList()
+//                        }
+//                    }
+//                }
+//                else -> {
+//                    // Load filtered jobs by status
+//                    val status = tabs[selectedTab]
+//                    repository.getAppliedJobsByStatus(currentUser.uid, status) { success, message, jobs ->
+//                        isLoading = false
+//                        if (success && jobs != null) {
+//                            appliedJobs = jobs
+//                        } else {
+//                            errorMessage = message
+//                            appliedJobs = emptyList()
+//                        }
+//                    }
+//                }
+//            }
+//        } else {
+//            isLoading = false
+//            errorMessage = "Please log in to view applied jobs"
+//        }
+//    }
 
     Column(
         modifier = modifier
@@ -272,23 +272,23 @@ fun AppliedJobsScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(appliedJobs) { job ->
-                            AppliedJobRow(
-                                appliedJob = job,
-                                onWithdraw = { applicationId ->
-                                    if (currentUser != null) {
-                                        repository.withdrawApplication(
-                                            applicationId,
-                                            currentUser.uid
-                                        ) { success, message ->
-                                            // Handle withdrawal result
-                                            // You can show a toast or snackbar here
-                                        }
-                                    }
-                                }
-                            )
-                            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f))
-                        }
+//                        items(appliedJobs) { job ->
+//                            AppliedJobRow(
+//                                appliedJob = job,
+//                                onWithdraw = { applicationId ->
+//                                    if (currentUser != null) {
+//                                        repository.withdrawApplication(
+//                                            applicationId,
+//                                            currentUser.uid
+//                                        ) { success, message ->
+//                                            // Handle withdrawal result
+//                                            // You can show a toast or snackbar here
+//                                        }
+//                                    }
+//                                }
+//                            )
+//                            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f))
+//                        }
                     }
                 }
             }
@@ -464,11 +464,3 @@ fun AppliedJobsScreenPreview() {
         AppliedJobsScreen()
     }
 }
-
-//@Preview(showBackground = true)
-//@Composable
-//fun GreetingPreview4() {
-//    RojgarTheme {
-//        AppliedJobsScreen()
-//    }
-//}

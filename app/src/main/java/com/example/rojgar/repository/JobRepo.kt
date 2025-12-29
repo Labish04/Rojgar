@@ -1,6 +1,7 @@
 package com.example.rojgar.repository
 
 import com.example.rojgar.model.JobModel
+import com.example.rojgar.model.PreferenceModel
 
 interface JobRepo {
 
@@ -31,5 +32,10 @@ interface JobRepo {
 
     fun getAllJobPosts(
         callback: (Boolean, String, List<JobModel>?) -> Unit)
+
+    fun getRecommendedJobs(
+        preference: PreferenceModel,
+        callback: (Boolean, String, List<JobModel>?) -> Unit
+    )
 
 }

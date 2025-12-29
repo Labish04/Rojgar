@@ -105,7 +105,12 @@ fun JobSeekerPersonalInformationBody() {
     var currentAddress by remember { mutableStateOf("") }
     var permanentAddress by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var religion by remember { mutableStateOf("") }
+    var nationality by remember { mutableStateOf("") }
+    var maritalStatus by remember { mutableStateOf("") }
+    var expandedStatus by remember { mutableStateOf(false) }
     var bio by remember { mutableStateOf("") }
+    var profession by remember { mutableStateOf("") }
 
     // Dropdown
     var gender by remember { mutableStateOf("") }
@@ -184,7 +189,11 @@ fun JobSeekerPersonalInformationBody() {
                     currentAddress = jobSeeker.currentAddress
                     permanentAddress = jobSeeker.permanentAddress
                     email = jobSeeker.email
+                    religion = jobSeeker.religion
+                    nationality = jobSeeker.nationality
+                    maritalStatus = jobSeeker.maritalStatus
                     bio = jobSeeker.bio
+                    profession = jobSeeker.profession
 
                     // Cover Photo
                     if (jobSeeker.coverPhoto.isNotEmpty()) {
@@ -755,6 +764,163 @@ fun JobSeekerPersonalInformationBody() {
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                OutlinedTextField(
+                    value = religion,
+                    onValueChange = {religion = it},
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.religionicon),
+                            contentDescription = "Religion",
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = { Text("Enter Your Religion") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Transparent,
+                        disabledContainerColor = Blue,
+                        focusedContainerColor = Blue,
+                        unfocusedContainerColor = Blue,
+                        focusedIndicatorColor = Purple,
+                        unfocusedIndicatorColor = Color.Black
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                OutlinedTextField(
+                    value = nationality,
+                    onValueChange = {nationality = it},
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.nationalityicon),
+                            contentDescription = "Nationality",
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = { Text("Enter Your Nationality") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Transparent,
+                        disabledContainerColor = Blue,
+                        focusedContainerColor = Blue,
+                        unfocusedContainerColor = Blue,
+                        focusedIndicatorColor = Purple,
+                        unfocusedIndicatorColor = Color.Black
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = maritalStatus,
+                        onValueChange = {maritalStatus = it},
+                        readOnly = true,
+                        enabled = false,
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.maritalstatusicon),
+                                contentDescription = "Marital Status",
+                                tint = Color.Black,
+                                modifier = Modifier.size(27.dp)
+                            )
+                        },
+                        label = { Text("Select Your Marital Status") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                            .clickable { expandedStatus = true },
+                        shape = RoundedCornerShape(15.dp),
+                        trailingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
+                                contentDescription = "Dropdown",
+                                tint = Color.Black,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clickable { expandedStatus = true }
+                            )
+                        },
+                        singleLine = true,
+                        colors = TextFieldDefaults.colors(
+                            disabledIndicatorColor = Color.Black,
+                            disabledContainerColor = Blue,
+                            focusedContainerColor = Blue,
+                            unfocusedContainerColor = Blue,
+                            focusedIndicatorColor = Purple,
+                            unfocusedIndicatorColor = Color.Black,
+                            disabledTextColor = Color.Black,
+                        )
+                    )
+
+                    DropdownMenu(
+                        expanded = expandedStatus,
+                        onDismissRequest = { expandedStatus = false },
+                        modifier = Modifier
+                            .background(White)
+                            .fillMaxWidth()
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Single") },
+                            onClick = {
+                                maritalStatus = "Single"
+                                expandedStatus = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Married") },
+                            onClick = {
+                                maritalStatus = "Married"
+                                expandedStatus = false
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                OutlinedTextField(
+                    value = profession,
+                    onValueChange = {profession = it},
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.professionicon),
+                            contentDescription = "profession",
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = { Text("Enter Your Profession") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        disabledIndicatorColor = Color.Transparent,
+                        disabledContainerColor = Blue,
+                        focusedContainerColor = Blue,
+                        unfocusedContainerColor = Blue,
+                        focusedIndicatorColor = Purple,
+                        unfocusedIndicatorColor = Color.Black
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
                 // BIO
                 OutlinedTextField(
                     value = bio,
@@ -802,9 +968,12 @@ fun JobSeekerPersonalInformationBody() {
                                     currentAddress = currentAddress,
                                     permanentAddress = permanentAddress,
                                     bio = bio,
+                                    profession = profession,
                                     profilePhoto = existingJobSeeker?.profilePhoto ?: "",
                                     coverPhoto = existingJobSeeker?.coverPhoto ?: "",
-//                                    objective = existingJobSeeker?.objective ?: "",
+                                    religion = religion,
+                                    nationality = nationality,
+                                    maritalStatus = maritalStatus,
                                     video = existingJobSeeker?.video ?: ""
                                 )
 

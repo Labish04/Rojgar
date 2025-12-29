@@ -166,7 +166,7 @@ fun JobSeekerExperienceBody() {
         jobLevel = experience.level
         startDate = experience.startDate
         endDate = experience.endDate
-        currentlyWorking = experience.currentlyWorkingStatus == "Yes"
+        currentlyWorking = experience.isCurrentlyWorking
         experienceLetterUrl = experience.experienceLetter
         currentExperienceId = experience.experienceId
         isEditing = true
@@ -188,7 +188,7 @@ fun JobSeekerExperienceBody() {
             level = jobLevel,
             startDate = startDate,
             endDate = if (currentlyWorking) "" else endDate,
-            currentlyWorkingStatus = if (currentlyWorking) "Yes" else "No",
+            isCurrentlyWorking = currentlyWorking,
             experienceLetter = experienceLetterUrl,
             jobSeekerId = jobSeekerId
         )
@@ -522,10 +522,21 @@ fun JobSeekerExperienceBody() {
                         DetailItem(title = "Job Category", value = exp.jobCategory)
                         DetailItem(title = "Job Level", value = exp.level)
                         DetailItem(title = "Start Date", value = exp.startDate)
-                        DetailItem(title = "End Date",
-                            value = if (exp.currentlyWorkingStatus == "Yes") "Present" else exp.endDate)
-                        DetailItem(title = "Currently Working", value = exp.currentlyWorkingStatus)
-                        DetailItem(title = "Duration", value = exp.calculateYearsOfExperience())
+
+                        DetailItem(
+                            title = "End Date",
+                            value = if (exp.isCurrentlyWorking) "Present" else exp.endDate
+                        )
+
+                        DetailItem(
+                            title = "Currently Working",
+                            value = if (exp.isCurrentlyWorking) "Yes" else "No"
+                        )
+
+                        DetailItem(
+                            title = "Duration",
+                            value = exp.calculateYearsOfExperience()
+                        )
 
                         if (exp.experienceLetter.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
