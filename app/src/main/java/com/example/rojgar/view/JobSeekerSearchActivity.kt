@@ -148,7 +148,6 @@ fun JobSeekerSearchScreen(
         }
     }
 
-    // Filter jobs based on search query and filter state
     val filteredJobs = remember(allJobs, searchQuery, filterState, companyDetailsMap) {
         allJobs.filter { job ->
             val companyName = companyDetailsMap[job.companyId]?.companyName ?: ""
