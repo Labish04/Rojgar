@@ -38,4 +38,5 @@ interface JobRepo {
         callback: (Boolean, String, List<JobModel>?) -> Unit
     )
 
+
 }

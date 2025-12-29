@@ -43,7 +43,7 @@ import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
 
 @Composable
-fun CompanyHomeScreenBody(){
+fun CompanyHomeScreenBody(onReviewsClick: () -> Unit = {}){
 
     var search by remember { mutableStateOf("") }
 
@@ -124,7 +124,7 @@ fun CompanyHomeScreenBody(){
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = {}
+                        onClick = { onReviewsClick() }
                     ),
                 colors = CardDefaults.cardColors(
                     containerColor = Color.White

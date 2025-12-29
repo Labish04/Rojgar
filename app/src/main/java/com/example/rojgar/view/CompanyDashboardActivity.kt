@@ -1,11 +1,13 @@
 package com.example.rojgar.view
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -90,11 +92,9 @@ fun CompanyDashboardBody() {
         )
     )
 
-
     Scaffold(
         topBar = {
             val showTopBar = selectedIndex in listOf(0, 1)
-
             if (showTopBar) {
                 CenterAlignedTopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -103,9 +103,7 @@ fun CompanyDashboardBody() {
                         containerColor = Blue,
                         navigationIconContentColor = Black
                     ),
-                    title = {
-                        Text("")
-                    },
+                    title = { Text("") },
                     navigationIcon = {
                         Row(
                             modifier = Modifier
@@ -155,11 +153,9 @@ fun CompanyDashboardBody() {
                     }
                 )
             }
-
         },
-
         bottomBar = {
-            Surface (
+            Surface(
                 modifier = Modifier
                     .clip(RoundedCornerShape(24.dp))
                     .fillMaxWidth(),
@@ -174,7 +170,8 @@ fun CompanyDashboardBody() {
                             icon = {
                                 Icon(
                                     painter = painterResource(
-                                        if (selectedIndex == index) item.selectedIcon else item.unselectedIcon
+                                        if (selectedIndex == index) item.selectedIcon
+                                        else item.unselectedIcon
                                     ),
                                     contentDescription = item.label,
                                     modifier = Modifier.size(25.dp)
@@ -187,7 +184,6 @@ fun CompanyDashboardBody() {
                 }
             }
         }
-
     ) { padding ->
         Column(
             modifier = Modifier
@@ -195,7 +191,12 @@ fun CompanyDashboardBody() {
                 .padding(padding)
         ) {
             when (selectedIndex) {
-                0 -> CompanyHomeScreenBody()
+                0 -> CompanyHomeScreenBody(
+                    onReviewsClick = {
+                        val intent = Intent(context, CompanyReviewActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                )
                 1 -> Text("Analysis Screen")
                 2 -> CompanyUploadPostScreen()
                 3 -> Text("Profile Screen")

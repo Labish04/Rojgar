@@ -15,7 +15,9 @@ data class JobModel(
     val responsibilities: String = "",
     val jobDescription: String = "",
     val imageUrl: String = "",
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val company: String = "",
+    val location: String = ""
 ){
     fun toMap(): Map<String, Any?> {
         return mapOf(

@@ -12,7 +12,15 @@ data class ApplicationModel(
     val appliedDate: Long = System.currentTimeMillis(),
     val status: String = "Pending",
     val coverLetter: String = "",
-    val resumeUrl: String = ""
+    val resumeUrl: String = "",
+    // Job Details (stored at application time)
+    val jobTitle: String = "",
+    val jobPosition: String = "",
+    val jobType: String = "",
+    val jobLocation: String = "",
+    val jobExperience: String = "",
+    val jobCompany: String = "",
+    val jobSalary: String = ""
 ) {
     fun toMap(): Map<String, Any?> {
         return mapOf(
@@ -27,7 +35,14 @@ data class ApplicationModel(
             "appliedDate" to appliedDate,
             "status" to status,
             "coverLetter" to coverLetter,
-            "resumeUrl" to resumeUrl
+            "resumeUrl" to resumeUrl,
+            "jobTitle" to jobTitle,
+            "jobPosition" to jobPosition,
+            "jobType" to jobType,
+            "jobLocation" to jobLocation,
+            "jobExperience" to jobExperience,
+            "jobCompany" to jobCompany,
+            "jobSalary" to jobSalary
         )
     }
 }
