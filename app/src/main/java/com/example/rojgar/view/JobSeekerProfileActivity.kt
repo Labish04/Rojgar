@@ -49,13 +49,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import coil.compose.AsyncImage
 import com.example.rojgar.R
+import com.example.rojgar.model.JobSeekerModel
 import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.Purple
+import com.example.rojgar.viewmodel.JobSeekerViewModel
+
 
 
 class JobSeekerProfileActivity : ComponentActivity() {
@@ -74,11 +79,12 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
     val context = LocalContext.current
     val activity = context as Activity
 
-    // Repository instance
     val repository = remember { JobSeekerRepoImpl() }
 
-    // Get current user ID
+    val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
+    val jobSeekerState by jobSeekerViewModel.jobSeeker.observeAsState(initial = null)
     val currentUserId = repository.getCurrentJobSeeker()?.uid ?: ""
+
 
     var selectedVideoUri by remember { mutableStateOf<Uri?>(null) }
     var videoThumbnail by remember { mutableStateOf<Bitmap?>(null) }
@@ -86,8 +92,17 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
     var showMoreDialog by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(false) }
 
-    // Check if currently following when screen loads
     LaunchedEffect(targetJobSeekerId) {
+        if (targetJobSeekerId.isNotEmpty() && currentUserId.isNotEmpty()) {
+            repository.isFollowing(currentUserId, targetJobSeekerId) { following ->
+                isFollowing = following
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        jobSeekerViewModel.fetchCurrentJobSeeker()
+
         if (targetJobSeekerId.isNotEmpty() && currentUserId.isNotEmpty()) {
             repository.isFollowing(currentUserId, targetJobSeekerId) { following ->
                 isFollowing = following
@@ -111,6 +126,8 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
         }
     }
 
+
+
     Scaffold { padding ->
         Column(
             modifier = Modifier
@@ -123,16 +140,10 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                    contentDescription = "Back",
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clickable { activity.finish() }
-                )
+
 
                 Icon(
                     painter = painterResource(R.drawable.outline_more_vert_24),
@@ -156,18 +167,23 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                 ) {
                     Spacer(modifier = Modifier.height(110.dp))
                     Text(
-                        text = "Sarah Johnson",
+                        text = jobSeekerState?.fullName ?: "User Name",
                         style = TextStyle(
                             fontSize = 30.sp,
-                            fontWeight = FontWeight.Normal
+                            fontWeight = FontWeight.Normal,
+                            color = Color.Black
+
                         )
                     )
 
                     Spacer(modifier = Modifier.height(40.dp))
 
                     Text(
-                        text = "I am a dedicated IT student eager to learn new skills, gain experience, and grow in the field of technology.",
-                        style = TextStyle(fontSize = 13.sp)
+                        text = jobSeekerState?.bio ?: "Bio not available",
+                        style = TextStyle(fontSize = 13.sp,
+                            color = Color.Black
+                        )
+
                     )
                 }
 
@@ -177,11 +193,11 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                         .height(340.dp)
                         .background(DarkBlue)
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.profilepicture),
-                        contentDescription = "Profile Image",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                    AsyncImage(
+                        model = jobSeekerState?.coverPhoto,
+                        contentDescription = "cover Image",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
                 }
             }
