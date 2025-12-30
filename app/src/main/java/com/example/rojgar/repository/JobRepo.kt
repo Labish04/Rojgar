@@ -1,5 +1,7 @@
 package com.example.rojgar.repository
 
+import android.content.Context
+import android.net.Uri
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.PreferenceModel
 
@@ -37,5 +39,14 @@ interface JobRepo {
         preference: PreferenceModel,
         callback: (Boolean, String, List<JobModel>?) -> Unit
     )
+
+    fun uploadBannerImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    )
+
+    fun getFileNameFromUri(context: Context, imageUri: Uri): String?
+
 
 }

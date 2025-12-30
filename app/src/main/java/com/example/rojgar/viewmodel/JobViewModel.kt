@@ -1,5 +1,7 @@
 package com.example.rojgar.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -90,5 +92,13 @@ class JobViewModel(private val repo: JobRepo) : ViewModel() {
             }
             _message.value = msg
         }
+    }
+
+    fun uploadBannerImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    ){
+        repo.uploadBannerImage(context, imageUri, callback)
     }
 }
