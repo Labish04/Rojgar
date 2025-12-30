@@ -82,6 +82,25 @@ class CompanyViewModel(val repo: CompanyRepo) {
         }
     }
 
+    fun fetchCurrentCompany() {
+        _loading.value = true
+
+        val currentUser = repo.getCurrentCompany()
+        if (currentUser != null) {
+            repo.getCompanyById(currentUser.uid) { success, message, jobSeekerModel ->
+                _loading.value = false
+                if (success && jobSeekerModel != null) {
+                    _companyDetails.value = jobSeekerModel
+                } else {
+                    _companyDetails.value = null
+                }
+            }
+        } else {
+            _loading.value = false
+            _companyDetails.value = null
+        }
+    }
+
 
 //    fun uploadImage(
 //        imageUri: Uri,

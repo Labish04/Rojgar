@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +37,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
+import com.example.rojgar.repository.CompanyRepoImpl
+import com.example.rojgar.repository.JobSeekerRepoImpl
+import com.example.rojgar.viewmodel.CompanyViewModel
+import com.example.rojgar.viewmodel.JobSeekerViewModel
 
 class CompanyProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,6 +55,11 @@ class CompanyProfileActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompanyProfileBody() {
+
+    val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
+
+    val company = companyViewModel.companyDetails.observeAsState(initial = null)
+
     var backgroundImageUri by remember { mutableStateOf<Uri?>(null) }
     var profileImageUri by remember { mutableStateOf<Uri?>(null) }
     var isFollowing by remember { mutableStateOf(false) }
@@ -64,6 +74,10 @@ fun CompanyProfileBody() {
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         profileImageUri = uri
+    }
+
+    LaunchedEffect(Unit) {
+        companyViewModel.fetchCurrentCompany()
     }
 
     Scaffold(
@@ -303,7 +317,7 @@ fun CompanyProfileBody() {
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Labish",
+                        text = company.value?.companyName ?: "Loading...",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color(0xFF111827),
@@ -476,19 +490,19 @@ fun CompanyProfileBody() {
                         EnhancedDetailRow(
                             icon = Icons.Default.LocationOn,
                             label = "Headquarters",
-                            value = "Kathmandu, Nepal",
+                            value = company.value?.companyLocation ?:"",
                             gradient = listOf(Color(0xFFEC4899), Color(0xFFF43F5E))
                         )
                         EnhancedDetailRow(
                             icon = Icons.Default.Phone,
                             label = "Phone",
-                            value = "+977 1-234567",
+                            value = company.value?.companyContactNumber ?:"",
                             gradient = listOf(Color(0xFF10B981), Color(0xFF059669))
                         )
                         EnhancedDetailRow(
                             icon = Icons.Default.Email,
                             label = "Email",
-                            value = "info@labish.com",
+                            value = company.value?.companyEmail ?:"",
                             gradient = listOf(Color(0xFFF59E0B), Color(0xFFEAB308))
                         )
                         EnhancedDetailRow(
