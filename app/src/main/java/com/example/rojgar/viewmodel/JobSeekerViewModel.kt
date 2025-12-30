@@ -1,5 +1,7 @@
 package com.example.rojgar.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.example.rojgar.model.JobSeekerModel
@@ -69,23 +71,6 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
         repo.forgetPassword(email, callback)
     }
 
-    fun updateProfilePhoto(
-        jobSeekerId: String,
-        imageUrl: String,
-        callback: (Boolean, String) -> Unit
-    ) {
-        repo.updateProfilePhoto(jobSeekerId, imageUrl, callback)
-    }
-
-    fun updateCoverPhoto(
-        jobSeekerId: String,
-        imageUrl: String,
-        callback: (Boolean, String) -> Unit
-    ) {
-        repo.updateCoverPhoto(jobSeekerId, imageUrl, callback)
-    }
-
-    // New method to update entire profile
     fun updateProfile(
         model: JobSeekerModel,
         callback: (Boolean, String) -> Unit
@@ -122,5 +107,22 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
             callback(success, message)
         }
     }
+
+    fun uploadProfileImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    ){
+        repo.uploadProfileImage(context, imageUri, callback)
+    }
+
+    fun updateCoverPhoto(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    ){
+        repo.updateCoverPhoto(context, imageUri, callback)
+    }
+
 
 }

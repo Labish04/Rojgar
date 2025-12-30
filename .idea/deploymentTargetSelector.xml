@@ -2,20 +2,36 @@
 <project version="4">
   <component name="deploymentTargetSelector">
     <selectionStates>
-      <SelectionState runConfigName="CompanyUploadPost">
+      <SelectionState runConfigName="LoginActivity (1)">
+        <option name="selectionMode" value="DROPDOWN" />
+        <DropdownSelection timestamp="2025-12-30T07:24:47.813360700Z">
+          <Target type="DEFAULT_BOOT">
+            <handle>
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Acer\.android\avd\Pixel_8_Pro.avd" />
+            </handle>
+          </Target>
+        </DropdownSelection>
+        <DialogSelection />
+      </SelectionState>
+      <SelectionState runConfigName="MessageActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="CompanyUploadPost (1)">
+      <SelectionState runConfigName="MessageActivity (1)">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="CompanyProfileActivity (2)">
+      <SelectionState runConfigName="JobSeekerPersonalInformationActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="CompanyProfileActivity (3)">
+      <SelectionState runConfigName="JobSeekerPersonalInformationActivity (1)">
         <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
-      <SelectionState runConfigName="LoginActivity">
-        <option name="selectionMode" value="DROPDOWN" />
+        <DropdownSelection timestamp="2025-12-30T07:24:33.469308500Z">
+          <Target type="DEFAULT_BOOT">
+            <handle>
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Acer\.android\avd\Pixel_8_Pro.avd" />
+            </handle>
+          </Target>
+        </DropdownSelection>
+        <DialogSelection />
       </SelectionState>
     </selectionStates>
   </component>

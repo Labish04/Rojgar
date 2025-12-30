@@ -1,4 +1,5 @@
 package com.example.rojgar.view
+
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -14,8 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,26 +29,49 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.rojgar.R
+import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
+import com.example.rojgar.viewmodel.JobSeekerViewModel
 
 class JobSeekerProfileDetailsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            JobSeekerProfileDetailsBody()
+            val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
+            JobSeekerProfileDetailsBody(
+                jobSeekerViewModel = jobSeekerViewModel
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun JobSeekerProfileDetailsBody() {
-
+fun JobSeekerProfileDetailsBody(
+    jobSeekerViewModel: JobSeekerViewModel
+) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    var currentJobSeeker by remember { mutableStateOf<com.example.rojgar.model.JobSeekerModel?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val currentUser = jobSeekerViewModel.getCurrentJobSeeker()
+        if (currentUser != null) {
+            isLoading = true
+            jobSeekerViewModel.getJobSeekerById(currentUser.uid) { success, message, jobSeeker ->
+                isLoading = false
+                if (success && jobSeeker != null) {
+                    currentJobSeeker = jobSeeker
+                }
+            }
+        }
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -57,64 +80,108 @@ fun JobSeekerProfileDetailsBody() {
                 title = {
                     val collapsed = scrollBehavior.state.collapsedFraction > 0.35f
                     if (!collapsed) {
-                        Column(modifier = Modifier.fillMaxWidth()
-                            .height(900.dp)) {
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier.size(80.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-
+                                if (currentJobSeeker?.profilePhoto?.isNotEmpty() == true) {
+                                    AsyncImage(
+                                        model = currentJobSeeker!!.profilePhoto,
+                                        contentDescription = "Profile Photo",
+                                        modifier = Modifier
+                                            .size(80.dp)
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop,
+                                        placeholder = painterResource(R.drawable.picture)
+                                    )
+                                } else {
                                     Image(
-                                        painter = painterResource(R.drawable.picture),
-                                        contentDescription = null,
+                                        painter = painterResource(R.drawable.profileemptypic),
+                                        contentDescription = "Default Profile",
                                         modifier = Modifier
                                             .size(80.dp)
                                             .clip(CircleShape),
                                         contentScale = ContentScale.Crop
                                     )
-
-                                Text(
-                                    "I am a dedicated IT student eager to learn \n new skills, gain experience, and grow in the \n field of technology.",
-                                    fontSize = 13.sp,
-                                    lineHeight = 14.sp,
-                                    color = Color.White,
-                                    modifier = Modifier.padding(end = 5.dp)
-                                )
-
-
+                                }
                             }
 
-                            Spacer(modifier = Modifier.height(20.dp))
+                            // Name and Bio in expanded state
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                // Name
+                                Text(
+                                    text = currentJobSeeker?.fullName?.ifEmpty { "Your Name" }
+                                        ?: "Your Name",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
 
-
+                                // Bio
+                                Text(
+                                    text = currentJobSeeker?.bio?.ifEmpty {
+                                        "Add your bio in Personal Information"
+                                    } ?: "Add your bio in Personal Information",
+                                    fontSize = 14.sp,
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    maxLines = 2,
+                                    lineHeight = 16.sp
+                                )
+                            }
                         }
                     } else {
+                        // Collapsed state - show only profile image and name
                         Row(
+                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Image(
-                                painter = painterResource(R.drawable.picture),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
+                            // Profile Photo - 40dp in collapsed state
+                            Box(
+                                modifier = Modifier.size(40.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (currentJobSeeker?.profilePhoto?.isNotEmpty() == true) {
+                                    AsyncImage(
+                                        model = currentJobSeeker!!.profilePhoto,
+                                        contentDescription = "Profile Photo",
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop,
+                                        placeholder = painterResource(R.drawable.picture)
+                                    )
+                                } else {
+                                    Image(
+                                        painter = painterResource(R.drawable.picture),
+                                        contentDescription = "Default Profile",
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
 
+                            // Name only in collapsed state
                             Text(
-                                "Sarah Johnson",
+                                text = currentJobSeeker?.fullName?.ifEmpty { "Your Name" }
+                                    ?: "Your Name",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color.White
                             )
-
                         }
                     }
                 },
-
                 navigationIcon = {
                     IconButton(
                         onClick = {
@@ -130,7 +197,6 @@ fun JobSeekerProfileDetailsBody() {
                         )
                     }
                 },
-
                 actions = {
                     IconButton(onClick = { /* TODO */ }) {
                         Icon(
@@ -141,7 +207,6 @@ fun JobSeekerProfileDetailsBody() {
                         )
                     }
                 },
-
                 colors = TopAppBarDefaults.largeTopAppBarColors(
                     containerColor = DarkBlue2,
                     scrolledContainerColor = DarkBlue2
@@ -150,186 +215,194 @@ fun JobSeekerProfileDetailsBody() {
             )
         }
     ) { padding ->
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(Blue)
-                .verticalScroll(rememberScrollState())
-        ) {
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+        if (isLoading) {
+            // Loading state
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Blue)
+                    .padding(padding),
+                contentAlignment = Alignment.Center
             ) {
-                OptionPanel(
-                    text = "Personal Information",
-                    leadingIcon = R.drawable.user
+                CircularProgressIndicator(color = Color.White)
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .background(Blue)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    context.startActivity(
-                        Intent(context, JobSeekerPersonalInformationActivity::class.java)
-                    )
+                    OptionPanel(
+                        text = "Personal Information",
+                        leadingIcon = R.drawable.user
+                    ) {
+                        context.startActivity(
+                            Intent(context, JobSeekerPersonalInformationActivity::class.java)
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                OptionPanel(
-                    text = "Objective",
-                    leadingIcon = R.drawable.objectiveicon
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    context.startActivity(
-                        Intent(context, JobSeekerObjectiveActivity::class.java)
-                    )
+                    OptionPanel(
+                        text = "Objective",
+                        leadingIcon = R.drawable.objectiveicon
+                    ) {
+                        context.startActivity(
+                            Intent(context, JobSeekerObjectiveActivity::class.java)
+                        )
+                    }
                 }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                OptionPanel(
-                    text = "Experience",
-                    leadingIcon = R.drawable.experienceicon
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    context.startActivity(
-                        Intent(context, JobSeekerExperienceActivity::class.java)
-                    )
+                    OptionPanel(
+                        text = "Experience",
+                        leadingIcon = R.drawable.experienceicon
+                    ) {
+                        context.startActivity(
+                            Intent(context, JobSeekerExperienceActivity::class.java)
+                        )
+                    }
                 }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                OptionPanel(
-                    text = "Skill",
-                    leadingIcon = R.drawable.skillicon
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    context.startActivity(
-                        Intent(context, JobSeekerSkillActivity::class.java)
-                    )
+                    OptionPanel(
+                        text = "Skill",
+                        leadingIcon = R.drawable.skillicon
+                    ) {
+                        context.startActivity(
+                            Intent(context, JobSeekerSkillActivity::class.java)
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                OptionPanel(
-                    text = "Education",
-                    leadingIcon = R.drawable.educationicon,
-
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    context.startActivity(
-                        Intent(context, JobSeekerEducationActivity::class.java)
-                    )
+                    OptionPanel(
+                        text = "Education",
+                        leadingIcon = R.drawable.educationicon,
 
-                }
-            }
+                        ) {
+                        context.startActivity(
+                            Intent(context, JobSeekerEducationActivity::class.java)
+                        )
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                OptionPanel(
-                    text = "Training",
-                    leadingIcon = R.drawable.trainingicon,
-                ){
-                    context.startActivity(
-                        Intent(context, JobSeekerTrainingActivity::class.java)
-                    )
-
+                    }
                 }
 
-            }
+                Spacer(modifier = Modifier.height(20.dp))
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                OptionPanel(
-                    text = "Job Preference",
-                    leadingIcon = R.drawable.jobpreferenceicon,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    context.startActivity(
-                        Intent(context, JobSeekerJobPreferenceActivity::class.java)
-                    )
+                    OptionPanel(
+                        text = "Training",
+                        leadingIcon = R.drawable.trainingicon,
+                    ) {
+                        context.startActivity(
+                            Intent(context, JobSeekerTrainingActivity::class.java)
+                        )
+
+                    }
 
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                OptionPanel(
-                    text = "Portfolio Accounts",
-                    leadingIcon = R.drawable.linkicon,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    context.startActivity(
-                        Intent(context, JobSeekerPortfolioAccountsActivity::class.java)
-                    )
+                    OptionPanel(
+                        text = "Job Preference",
+                        leadingIcon = R.drawable.jobpreferenceicon,
+                    ) {
+                        context.startActivity(
+                            Intent(context, JobSeekerJobPreferenceActivity::class.java)
+                        )
+
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                OptionPanel(
-                    text = "Language",
-                    leadingIcon = R.drawable.languageicon,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    context.startActivity(
-                        Intent(context, JobSeekerLanguageActivity::class.java)
-                    )
-
+                    OptionPanel(
+                        text = "Portfolio Accounts",
+                        leadingIcon = R.drawable.linkicon,
+                    ) {
+                        context.startActivity(
+                            Intent(context, JobSeekerPortfolioAccountsActivity::class.java)
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                OptionPanel(
-                    text = "Reference",
-                    leadingIcon = R.drawable.bioicon,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    context.startActivity(
-                        Intent(context, JobSeekerReferenceActivity::class.java)
-                    )
+                    OptionPanel(
+                        text = "Language",
+                        leadingIcon = R.drawable.languageicon,
+                    ) {
+                        context.startActivity(
+                            Intent(context, JobSeekerLanguageActivity::class.java)
+                        )
 
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    OptionPanel(
+                        text = "Reference",
+                        leadingIcon = R.drawable.bioicon,
+                    ) {
+                        context.startActivity(
+                            Intent(context, JobSeekerReferenceActivity::class.java)
+                        )
+
+                    }
+                }
+                Spacer(modifier = Modifier.height(30.dp))
             }
-            Spacer(modifier = Modifier.height(30.dp))
-
-
-
-
         }
     }
 }
+
 @Composable
 fun OptionPanel(
     text: String,
@@ -390,5 +463,7 @@ fun OptionPanel(
 @Preview
 @Composable
 fun JobSeekerProfileDetailsBodyPreview() {
-    JobSeekerProfileDetailsBody()
+    JobSeekerProfileDetailsBody(
+        jobSeekerViewModel = JobSeekerViewModel(JobSeekerRepoImpl())
+    )
 }
