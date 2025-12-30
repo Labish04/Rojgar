@@ -427,6 +427,26 @@ fun JobSeekerPostCard(
     }
 }
 
+@Composable
+fun JobSeekerPostCard(
+    jobPostWithCompany: JobPostWithCompany,
+    onClick: () -> Unit,
+    onSaveClick: (String) -> Unit = {},
+    onShareClick: (JobModel) -> Unit = {},
+    isSaved: Boolean = false
+) {
+    JobSeekerPostCard(
+        job = jobPostWithCompany.jobPost,
+        companyName = jobPostWithCompany.companyName,
+        companyProfile = jobPostWithCompany.companyProfile,
+        isLoadingCompany = jobPostWithCompany.isLoading,
+        onClick = onClick,
+        onSaveClick = onSaveClick,
+        onShareClick = onShareClick,
+        isSaved = isSaved
+    )
+}
+
 fun isDeadlineExpired(deadline: String): Boolean {
     if (deadline.isEmpty()) return false
 
