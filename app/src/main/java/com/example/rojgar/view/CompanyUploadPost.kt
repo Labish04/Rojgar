@@ -2,6 +2,7 @@ package com.example.rojgar.view
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -267,8 +268,18 @@ fun JobPostCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
+            .clickable {
+                val intent = Intent(context, ApplicationActivity::class.java).apply {
+                    putExtra("JOB_POST_ID", jobPost.postId)
+                    putExtra("JOB_TITLE", jobPost.title)
+                    putExtra("COMPANY_ID", jobPost.companyId)
+                }
+                context.startActivity(intent)
+            },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
