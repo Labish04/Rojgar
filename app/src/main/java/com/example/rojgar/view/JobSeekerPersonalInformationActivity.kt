@@ -1029,8 +1029,8 @@ fun JobSeekerPersonalInformationBody(
                                         nationality = nationality,
                                         maritalStatus = maritalStatus,
                                         video = existingJobSeeker?.video ?: "",
-                                        followers = existingJobSeeker?.followers ?: emptyList(),
-                                        appliedJobs = existingJobSeeker?.appliedJobs ?: emptyList()
+//                                        followers = existingJobSeeker?.followers ?: emptyList(),
+//                                        appliedJobs = existingJobSeeker?.appliedJobs ?: emptyList()
                                     )
 
                                     jobSeekerViewModel.updateProfile(updatedModel) { success, message ->
