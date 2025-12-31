@@ -1,5 +1,6 @@
 package com.example.rojgar.view
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -124,7 +125,7 @@ fun CompanyHomeScreenBody(){
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = {}
+                        onClick = { }
                     ),
                 colors = CardDefaults.cardColors(
                     containerColor = Color.White
@@ -150,7 +151,7 @@ fun CompanyHomeScreenBody(){
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = {}
+                        onClick = { }
                     ),
                 colors = CardDefaults.cardColors(
                     containerColor = Color.White

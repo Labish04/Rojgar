@@ -12,7 +12,29 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Rojgar">
         <activity
+            android:name=".view.RatingandReviewActivity"
+            android:exported="true"
+            android:label="@string/title_activity_ratingand_review"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".view.NotificationActivity"
+            android:exported="false"
+            android:label="@string/title_activity_notification"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".view.ui.theme.NotificationActivity"
             android:exported="true"
             android:label="@string/title_activity_notification"
             android:theme="@style/Theme.Rojgar">

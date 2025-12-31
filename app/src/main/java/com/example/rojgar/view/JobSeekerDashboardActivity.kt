@@ -1,6 +1,7 @@
 package com.example.rojgar.view
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -148,7 +149,15 @@ fun JobSeekerDashboardBody() {
                                 )
                             }
                             Spacer(modifier = Modifier.width(20.dp))
-                            IconButton(onClick = {}) {
+                            IconButton(onClick = {context.startActivity(
+                                Intent(
+                                    context,
+                                    NotificationActivity::class.java
+                                )
+                            )
+
+
+                            }) {
                                 Icon(
                                     painter = painterResource(R.drawable.notification),
                                     contentDescription = null,
