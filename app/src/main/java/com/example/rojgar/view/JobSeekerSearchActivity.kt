@@ -1,5 +1,6 @@
 package com.example.rojgar.view
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -395,7 +396,17 @@ fun JobSeekerSearchScreen(
                         items(filteredJobsWithCompany, key = { it.jobPost.postId }) { jobWithCompany ->
                             JobSeekerPostCard(
                                 jobPostWithCompany = jobWithCompany,
-                                onClick = { },
+                                onClick = {
+                                    if (jobWithCompany.jobPost.postId.isNotEmpty()) {
+                                        val intent = Intent(context, JobApplyActivity::class.java).apply {
+                                            putExtra("POST_ID", jobWithCompany.jobPost.postId)
+                                            putExtra("COMPANY_ID", jobWithCompany.jobPost.companyId)
+                                        }
+                                        context.startActivity(intent)
+                                    } else {
+                                        Toast.makeText(context, "Job ID is empty", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
                                 isSaved = false,
                                 onSaveClick = { postId ->
                                     Toast.makeText(context, "Job saved", Toast.LENGTH_SHORT).show()
