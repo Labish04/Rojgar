@@ -178,7 +178,7 @@ fun SavedJobsBody(savedJobViewModel: SavedJobViewModel,
     }
 }
 
-private fun formatDate(timestamp: Long): String {
+private fun formatsDate(timestamp: Long): String {
     return try {
         val date = java.util.Date(timestamp)
         val formatter = java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault())
