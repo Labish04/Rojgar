@@ -59,15 +59,22 @@ class CvViewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val jobSeekerId = intent.getStringExtra("JOB_SEEKER_ID")
         setContent {
-            CvViewBody()
+            CvViewBody(
+                jobSeekerId = jobSeekerId,
+                onBack = { finish() }
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CvViewBody() {
+fun CvViewBody(
+    jobSeekerId: String? = null,
+    onBack: () -> Unit = {}
+) {
 
     val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
     val objectiveViewModel = remember { ObjectiveViewModel(ObjectiveRepoImpl()) }
@@ -103,10 +110,13 @@ fun CvViewBody() {
     )
 
     LaunchedEffect(Unit) {
-        val userId = currentUser?.uid
+        val userId = jobSeekerId ?: jobSeekerViewModel.getCurrentJobSeeker()?.uid
         if (userId != null) {
-            Log.d("CvViewBody", "Fetching data for user: $userId")
-            jobSeekerViewModel.fetchCurrentJobSeeker()
+            if (jobSeekerId != null) {
+                jobSeekerViewModel.fetchJobSeekerById(userId)
+            } else {
+                jobSeekerViewModel.fetchCurrentJobSeeker()
+            }
             objectiveViewModel.fetchObjectiveByJobSeekerId(userId)
             educationViewModel.fetchEducationsByJobSeekerId(userId)
             experienceViewModel.fetchExperiencesByJobSeekerId(userId)
@@ -115,8 +125,6 @@ fun CvViewBody() {
             languageViewModel.fetchLanguagesByJobSeekerId(userId)
             portfolioViewModel.fetchPortfoliosByJobSeekerId(userId)
             referenceViewModel.fetchReferencesByJobSeekerId(userId)
-        } else {
-            Log.e("CvViewBody", "Current user is null!")
         }
     }
 
