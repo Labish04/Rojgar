@@ -60,7 +60,6 @@ fun CreateGroupBody() {
             Contact(5, "Eve Wilson", "+1 234 567 8905", "Sleeping 😴"),
             Contact(6, "Frank Miller", "+1 234 567 8906", "In a meeting"),
             Contact(7, "Grace Lee", "+1 234 567 8907", "Coding..."),
-            Contact(8, "Henry Ford", "+1 234 567 8908", "Available")
         )
     }
 
