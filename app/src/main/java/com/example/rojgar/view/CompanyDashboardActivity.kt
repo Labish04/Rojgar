@@ -198,7 +198,7 @@ fun CompanyDashboardBody() {
                 0 -> CompanyHomeScreenBody()
                 1 -> Text("Analysis Screen")
                 2 -> CompanyUploadPostScreen()
-                3 -> Text("Profile Screen")
+                3 -> CompanyProfileBody()
             }
         }
     }

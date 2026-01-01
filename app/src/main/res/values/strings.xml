@@ -16,5 +16,6 @@
     <string name="title_activity_message">MessageActivity</string>
     <string name="title_activity_chat">ChatActivity</string>
     <string name="title_activity_application">ApplicationActivity</string>
+    <string name="title_activity_create_group">CreateGroupActivity</string>
     >>>>>>> 11ff9ba53955b48b2637d77df4cf1169dbf7c2a0
 </resources>
