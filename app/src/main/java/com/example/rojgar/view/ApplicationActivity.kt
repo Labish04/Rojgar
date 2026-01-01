@@ -1,5 +1,6 @@
 package com.example.rojgar.view
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -7,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -60,6 +62,7 @@ class ApplicationActivity : ComponentActivity() {
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ApplicationBody(
@@ -76,11 +79,13 @@ fun ApplicationBody(
     val filteredApplications = remember(applications, jobPostId) {
         applications.filter { it.postId == jobPostId }
     }
+
     LaunchedEffect(Unit) {
         if (companyId.isNotEmpty()) {
             applicationViewModel.getApplicationsByCompany(companyId)
         }
     }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -180,6 +185,13 @@ fun ApplicationBody(
                                         Toast.LENGTH_SHORT
                                     ).show()
                                     applicationViewModel.getApplicationsByCompany(companyId)
+                                },
+                                onCardClick = { jobSeekerId ->
+                                    // Navigate to CvViewActivity with jobSeekerId
+                                    val intent = Intent(context, CvViewActivity::class.java).apply {
+                                        putExtra("JOB_SEEKER_ID", jobSeekerId)
+                                    }
+                                    context.startActivity(intent)
                                 }
                             )
                         }
@@ -199,7 +211,8 @@ fun ApplicationBody(
 fun ApplicationCard(
     application: ApplicationModel,
     jobSeekerViewModel: JobSeekerViewModel,
-    onStatusChanged: (String, String) -> Unit
+    onStatusChanged: (String, String) -> Unit,
+    onCardClick: (String) -> Unit
 ) {
     var jobSeeker by remember { mutableStateOf<JobSeekerModel?>(null) }
     var isLoadingJobSeeker by remember { mutableStateOf(true) }
@@ -216,7 +229,9 @@ fun ApplicationCard(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCardClick(application.jobSeekerId) },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -248,39 +263,38 @@ fun ApplicationCard(
                     Box(
                         modifier = Modifier.size(95.dp)
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .size(90.dp)
+                                .clip(CircleShape)
+                                .background(Color.White),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .size(90.dp)
+                                    .size(86.dp)
                                     .clip(CircleShape)
-                                    .background(Color.White),
+                                    .background(Color(0xFFF5F5F5)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(86.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFFF5F5F5)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (!jobSeeker?.profilePhoto.isNullOrEmpty()) {
-                                        Image(
-                                            painter = rememberAsyncImagePainter(jobSeeker?.profilePhoto),
-                                            contentDescription = "Profile",
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                    } else {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.profileemptypic),
-                                            contentDescription = "No Profile",
-                                            tint = Color(0xFF9E9E9E),
-                                            modifier = Modifier.size(45.dp)
-                                        )
-                                    }
+                                if (!jobSeeker?.profilePhoto.isNullOrEmpty()) {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(jobSeeker?.profilePhoto),
+                                        contentDescription = "Profile",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.profileemptypic),
+                                        contentDescription = "No Profile",
+                                        tint = Color(0xFF9E9E9E),
+                                        modifier = Modifier.size(45.dp)
+                                    )
                                 }
                             }
                         }
-//                    }
+                    }
 
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(
@@ -477,6 +491,7 @@ fun getStatusColor(status: String): Color {
         else -> Color.LightGray
     }
 }
+
 fun getStatusTextColor(status: String): Color {
     return when (status) {
         "Pending" -> Color(0xFFF57F17)

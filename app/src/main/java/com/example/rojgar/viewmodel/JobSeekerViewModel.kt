@@ -97,6 +97,18 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
         }
     }
 
+    fun fetchJobSeekerById(jobSeekerId: String) {
+        _loading.value = true
+        repo.getJobSeekerById(jobSeekerId) { success, message, jobSeekerModel ->
+            _loading.value = false
+            if (success && jobSeekerModel != null) {
+                _jobSeeker.value = jobSeekerModel
+            } else {
+                _jobSeeker.value = null
+            }
+        }
+    }
+
     fun updateJobSeekerProfile(
         model: JobSeekerModel,
         callback: (Boolean, String) -> Unit
