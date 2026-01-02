@@ -15,9 +15,12 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        maven { url = uri("https://maven.zego.im") } // ✅ Zego repo
         google()
         mavenCentral()
+
+        // ✅ Correct Kotlin DSL syntax
+        maven { url = uri("https://storage.zego.im/maven") }
+        maven { url = uri("https://www.jitpack.io") }
     }
 }
 
