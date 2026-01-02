@@ -43,6 +43,10 @@ android {
 }
 
 dependencies {
+    implementation("com.github.ZEGOCLOUD:zego_inapp_chat_uikit_android:+")
+    implementation("com.github.ZEGOCLOUD:zego_uikit_prebuilt_call_android:+")
+    implementation("im.zego:zim:2.14.0")
+
     implementation("com.cloudinary:cloudinary-android:2.1.0")
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
 
