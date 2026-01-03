@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.rojgar"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -43,6 +43,18 @@ android {
 }
 
 dependencies {
+    implementation("com.github.ZEGOCLOUD:zego_inapp_chat_uikit_android:+") {
+        exclude(group = "com.android.support", module = "support-compat")
+    }
+    implementation("com.github.ZEGOCLOUD:zego_uikit_prebuilt_call_android:+") {
+        exclude(group = "com.android.support", module = "support-compat")
+    }
+
+    // It's a good practice to also ensure zim is clean, though it's less likely the cause
+    implementation("im.zego:zim:2.14.0") {
+        exclude(group = "com.android.support", module = "support-compat")
+    }
+
     implementation("com.cloudinary:cloudinary-android:2.1.0")
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
 

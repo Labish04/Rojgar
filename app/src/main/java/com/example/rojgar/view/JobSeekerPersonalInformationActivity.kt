@@ -8,10 +8,8 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -68,10 +66,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
 import com.example.rojgar.model.JobSeekerModel
-import com.example.rojgar.repository.CommonRepoImpl
 import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
@@ -80,34 +76,58 @@ import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
 import com.example.rojgar.utils.ImageUtils
 import com.example.rojgar.viewmodel.JobSeekerViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.Calendar
 
-
 class JobSeekerPersonalInformationActivity : ComponentActivity() {
+    // Single ImageUtils instance
     lateinit var imageUtils: ImageUtils
-    var selectedImageUri by mutableStateOf<Uri?>(null)
-    var selectedProfileUri by mutableStateOf<Uri?>(null)
 
+    var isPickingCover by mutableStateOf(false)
+    var isPickingProfile by mutableStateOf(false)
+
+    var selectedCoverUri by mutableStateOf<Uri?>(null)
+    var selectedProfileUri by mutableStateOf<Uri?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         imageUtils = ImageUtils(this, this)
         imageUtils.registerLaunchers { uri ->
-            selectedImageUri = uri
-            selectedProfileUri = uri
+            if (uri != null) {
+                if (isPickingCover) {
+                    selectedCoverUri = uri
+                    Log.d("ImageSelection", "Cover photo selected: $uri")
+                } else if (isPickingProfile) {
+                    selectedProfileUri = uri
+                    Log.d("ImageSelection", "Profile photo selected: $uri")
+                }
+
+                isPickingCover = false
+                isPickingProfile = false
+            }
         }
+
         setContent {
+            val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
             JobSeekerPersonalInformationBody(
-                selectedImageUri = selectedImageUri,
+                jobSeekerViewModel = jobSeekerViewModel,
+                selectedCoverUri = selectedCoverUri,
                 selectedProfileUri = selectedProfileUri,
-                onPickImage = { imageUtils.launchImagePicker() },
-                onClearSelectedImage = { selectedImageUri = null }
+                onPickCoverImage = {
+                    isPickingCover = true
+                    isPickingProfile = false
+                    imageUtils.launchImagePicker()
+                },
+                onPickProfileImage = {
+                    isPickingProfile = true
+                    isPickingCover = false
+                    imageUtils.launchImagePicker()
+                },
+                onClearSelectedImages = {
+                    selectedCoverUri = null
+                    selectedProfileUri = null
+                }
             )
         }
     }
@@ -115,26 +135,22 @@ class JobSeekerPersonalInformationActivity : ComponentActivity() {
 
 @Composable
 fun JobSeekerPersonalInformationBody(
-    selectedImageUri: Uri?,
+    jobSeekerViewModel: JobSeekerViewModel,
+    selectedCoverUri: Uri?,
     selectedProfileUri: Uri?,
-    onPickImage: () -> Unit,
-    onClearSelectedImage: () -> Unit
+    onPickCoverImage: () -> Unit,
+    onPickProfileImage: () -> Unit,
+    onClearSelectedImages: () -> Unit
 ) {
     val context = LocalContext.current
     val activity = context as Activity
 
-    val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
-    val commonRepo = remember { CommonRepoImpl() }
-
-    // State for existing user
     val currentUser = jobSeekerViewModel.getCurrentJobSeeker()
 
-    // Cover Photo states
     var showSampleDialog by remember { mutableStateOf(false) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
-    // Form fields
     var name by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var currentAddress by remember { mutableStateOf("") }
@@ -147,19 +163,16 @@ fun JobSeekerPersonalInformationBody(
     var bio by remember { mutableStateOf("") }
     var profession by remember { mutableStateOf("") }
 
-    // Dropdown
     var gender by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
     var selectedDate by remember { mutableStateOf("") }
 
-    // Calendar
     val calendar = Calendar.getInstance()
     val year = calendar.get(Calendar.YEAR)
     val month = calendar.get(Calendar.MONTH)
     val day = calendar.get(Calendar.DAY_OF_MONTH)
 
-    // DatePickerDialog
     val datePickerDialog = DatePickerDialog(
         context,
         { _, y, m, d ->
@@ -170,23 +183,11 @@ fun JobSeekerPersonalInformationBody(
         day
     )
 
-    // Store existing job seeker model
     var existingJobSeeker by remember { mutableStateOf<JobSeekerModel?>(null) }
-
-    // Profile photo
-//    var selectedProfileUri by remember { mutableStateOf<Uri?>(null) }
-//    val profileLauncher = rememberLauncherForActivityResult(
-//        contract = ActivityResultContracts.GetContent()
-//    ) { uri ->
-//        selectedProfileUri = uri
-//    }
-
-    // Upload states
     var isUploading by remember { mutableStateOf(false) }
     var uploadedCoverPhotoUrl by remember { mutableStateOf("") }
     var uploadedProfilePhotoUrl by remember { mutableStateOf("") }
 
-    // Fetch jobSeeker Data
     LaunchedEffect(Unit) {
         currentUser?.uid?.let { userId ->
             jobSeekerViewModel.getJobSeekerById(userId) { success, message, jobSeeker ->
@@ -203,10 +204,8 @@ fun JobSeekerPersonalInformationBody(
                     maritalStatus = jobSeeker.maritalStatus
                     bio = jobSeeker.bio
                     profession = jobSeeker.profession
-
                     uploadedCoverPhotoUrl = jobSeeker.coverPhoto
                     uploadedProfilePhotoUrl = jobSeeker.profilePhoto
-
                     existingJobSeeker = jobSeeker
                 } else {
                     Toast.makeText(context, "Failed to load profile: $message", Toast.LENGTH_SHORT).show()
@@ -217,7 +216,6 @@ fun JobSeekerPersonalInformationBody(
         }
     }
 
-    // Sample Photo Dialog
     if (showSampleDialog) {
         Dialog(onDismissRequest = { showSampleDialog = false }) {
             Card(
@@ -312,7 +310,7 @@ fun JobSeekerPersonalInformationBody(
                         Button(
                             onClick = {
                                 showSampleDialog = false
-                                onPickImage()
+                                onPickCoverImage()
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = DarkBlue2
@@ -326,7 +324,6 @@ fun JobSeekerPersonalInformationBody(
         }
     }
 
-    // Error Dialog
     if (showErrorDialog) {
         AlertDialog(
             onDismissRequest = { showErrorDialog = false },
@@ -423,7 +420,6 @@ fun JobSeekerPersonalInformationBody(
             ) {
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Cover Photo Section
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -438,15 +434,15 @@ fun JobSeekerPersonalInformationBody(
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() }
                             ) {
-                                onPickImage()
-                            },
-                        contentAlignment = Alignment.Center
+                                onPickCoverImage()
+                            }
+                            .padding(10.dp)
                     ) {
                         when {
-                            selectedImageUri != null -> {
+                            selectedCoverUri != null -> {
                                 AsyncImage(
-                                    model = selectedImageUri,
-                                    contentDescription = "Selected Cover Photo",
+                                    model = selectedCoverUri,
+                                    contentDescription = "cover Image",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )
@@ -454,7 +450,7 @@ fun JobSeekerPersonalInformationBody(
                             uploadedCoverPhotoUrl.isNotEmpty() -> {
                                 AsyncImage(
                                     model = uploadedCoverPhotoUrl,
-                                    contentDescription = "Cover Photo",
+                                    contentDescription = "cover Image",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )
@@ -483,7 +479,7 @@ fun JobSeekerPersonalInformationBody(
                                     indication = null,
                                     interactionSource = remember { MutableInteractionSource() }
                                 ) {
-                                    onPickImage()
+                                    onPickProfileImage()
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -500,7 +496,6 @@ fun JobSeekerPersonalInformationBody(
                                             contentDescription = "Selected Profile Photo",
                                             modifier = Modifier.fillMaxSize()
                                                 .clip(CircleShape),
-
                                             contentScale = ContentScale.Crop
                                         )
                                     }
@@ -532,7 +527,7 @@ fun JobSeekerPersonalInformationBody(
                 // NAME TEXTFIELD
                 OutlinedTextField(
                     value = name,
-                    onValueChange = {name = it},
+                    onValueChange = { name = it },
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.usericon),
@@ -562,7 +557,7 @@ fun JobSeekerPersonalInformationBody(
                 // PHONE NUMBER TEXTFIELD
                 OutlinedTextField(
                     value = phoneNumber,
-                    onValueChange = {phoneNumber = it},
+                    onValueChange = { phoneNumber = it },
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.call),
@@ -595,7 +590,7 @@ fun JobSeekerPersonalInformationBody(
                 ) {
                     OutlinedTextField(
                         value = gender,
-                        onValueChange = {gender = it},
+                        onValueChange = { gender = it },
                         readOnly = true,
                         enabled = false,
                         leadingIcon = {
@@ -670,7 +665,7 @@ fun JobSeekerPersonalInformationBody(
                 // DATE OF BIRTH
                 OutlinedTextField(
                     value = selectedDate,
-                    onValueChange = {selectedDate = it},
+                    onValueChange = { selectedDate = it },
                     placeholder = { Text("dd/mm/yyyy") },
                     enabled = false,
                     leadingIcon = {
@@ -710,7 +705,7 @@ fun JobSeekerPersonalInformationBody(
                 // CURRENT ADDRESS
                 OutlinedTextField(
                     value = currentAddress,
-                    onValueChange = {currentAddress = it},
+                    onValueChange = { currentAddress = it },
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.locationicon),
@@ -740,7 +735,7 @@ fun JobSeekerPersonalInformationBody(
                 // PERMANENT ADDRESS
                 OutlinedTextField(
                     value = permanentAddress,
-                    onValueChange = {permanentAddress =it},
+                    onValueChange = { permanentAddress = it },
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.locationicon),
@@ -770,7 +765,7 @@ fun JobSeekerPersonalInformationBody(
                 // EMAIL
                 OutlinedTextField(
                     value = email,
-                    onValueChange = {email = it},
+                    onValueChange = { email = it },
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.emailicon),
@@ -799,7 +794,7 @@ fun JobSeekerPersonalInformationBody(
 
                 OutlinedTextField(
                     value = religion,
-                    onValueChange = {religion = it},
+                    onValueChange = { religion = it },
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.religionicon),
@@ -828,7 +823,7 @@ fun JobSeekerPersonalInformationBody(
 
                 OutlinedTextField(
                     value = nationality,
-                    onValueChange = {nationality = it},
+                    onValueChange = { nationality = it },
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.nationalityicon),
@@ -860,7 +855,7 @@ fun JobSeekerPersonalInformationBody(
                 ) {
                     OutlinedTextField(
                         value = maritalStatus,
-                        onValueChange = {maritalStatus = it},
+                        onValueChange = { maritalStatus = it },
                         readOnly = true,
                         enabled = false,
                         leadingIcon = {
@@ -941,7 +936,7 @@ fun JobSeekerPersonalInformationBody(
 
                 OutlinedTextField(
                     value = profession,
-                    onValueChange = {profession = it},
+                    onValueChange = { profession = it },
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.professionicon),
@@ -971,7 +966,7 @@ fun JobSeekerPersonalInformationBody(
                 // BIO
                 OutlinedTextField(
                     value = bio,
-                    onValueChange = {bio = it},
+                    onValueChange = { bio = it },
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.bioicon),
@@ -1009,39 +1004,14 @@ fun JobSeekerPersonalInformationBody(
                             if (isUploading) return@Button
 
                             currentUser?.uid?.let { userId ->
-                                Log.d("checkpoint 1", userId)
-                                CoroutineScope(Dispatchers.Main).launch {
-                                    isUploading = true
+                                Log.d("Save", "Starting save process for user: $userId")
 
-                                    // Upload cover photo if selected
-                                    selectedImageUri?.let { uri ->
-                                        withContext(Dispatchers.IO) {
-                                            commonRepo.updateCoverPhoto(context, uri) { url ->
-                                                Log.d("checkpoint 2", url.toString())
-                                                if (url != null) {
-                                                Log.d("checkpoint 3", url)
-                                                    uploadedCoverPhotoUrl = url
-                                                }
-                                            }
-                                        }
-                                    }
+                                isUploading = true
 
-                                    // Upload profile photo if selected
-                                    selectedProfileUri?.let { uri ->
-                                        withContext(Dispatchers.IO) {
-                                            commonRepo.updateProfilePhoto(context, uri) { url ->
-                                                Log.d("checkpoint 3", url.toString())
-                                                if (url != null) {
+                                fun saveProfile(coverUrl: String?, profileUrl: String?) {
+                                    val finalCoverPhotoUrl = coverUrl ?: uploadedCoverPhotoUrl
+                                    val finalProfilePhotoUrl = profileUrl ?: uploadedProfilePhotoUrl
 
-                                                    uploadedProfilePhotoUrl = url
-                                                }
-                                            }
-                                        }
-                                    }
-
-
-
-                                    // Create updated model
                                     val updatedModel = JobSeekerModel(
                                         jobSeekerId = userId,
                                         fullName = name,
@@ -1053,37 +1023,56 @@ fun JobSeekerPersonalInformationBody(
                                         permanentAddress = permanentAddress,
                                         bio = bio,
                                         profession = profession,
-                                        profilePhoto = uploadedProfilePhotoUrl,
-                                        coverPhoto = uploadedCoverPhotoUrl,
+                                        profilePhoto = finalProfilePhotoUrl,
+                                        coverPhoto = finalCoverPhotoUrl,
                                         religion = religion,
                                         nationality = nationality,
                                         maritalStatus = maritalStatus,
                                         video = existingJobSeeker?.video ?: "",
-                                        followers = existingJobSeeker?.followers ?: emptyList(),
-                                        appliedJobs = existingJobSeeker?.appliedJobs ?: emptyList()
+//                                        followers = existingJobSeeker?.followers ?: emptyList(),
+//                                        appliedJobs = existingJobSeeker?.appliedJobs ?: emptyList()
                                     )
 
-                                    // Update profile in database
                                     jobSeekerViewModel.updateProfile(updatedModel) { success, message ->
                                         isUploading = false
                                         if (success) {
                                             Toast.makeText(context, "Personal Information Updated Successfully!", Toast.LENGTH_SHORT).show()
                                             existingJobSeeker = updatedModel
+                                            onClearSelectedImages()
 
-                                            // Clear selected URIs
-                                            onClearSelectedImage()
-//                                            selectedProfileUri = null
-
-                                            // Update uploaded URLs
-//                                            uploadedCoverPhotoUrl = finalCoverPhotoUrl
-//                                            uploadedProfilePhotoUrl = finalProfilePhotoUrl
+                                            uploadedCoverPhotoUrl = finalCoverPhotoUrl
+                                            uploadedProfilePhotoUrl = finalProfilePhotoUrl
                                         } else {
                                             Toast.makeText(context, "Update Failed: $message", Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 }
+
+                                if (selectedCoverUri != null) {
+                                    jobSeekerViewModel.updateCoverPhoto(context, selectedCoverUri) { coverUrl ->
+                                        Log.d("Upload", "Cover photo upload result: $coverUrl")
+
+                                        if (selectedProfileUri != null) {
+                                            jobSeekerViewModel.uploadProfileImage(context, selectedProfileUri) { profileUrl ->
+                                                Log.d("Upload", "Profile photo upload result: $profileUrl")
+                                                saveProfile(coverUrl, profileUrl)
+                                            }
+                                        } else {
+                                            saveProfile(coverUrl, null)
+                                        }
+                                    }
+                                } else {
+                                    if (selectedProfileUri != null) {
+                                        jobSeekerViewModel.uploadProfileImage(context, selectedProfileUri) { profileUrl ->
+                                            saveProfile(null, profileUrl)
+                                        }
+                                    } else {
+                                        saveProfile(null, null)
+                                    }
+                                }
                             } ?: run {
                                 Toast.makeText(context, "No user logged in", Toast.LENGTH_SHORT).show()
+                                isUploading = false
                             }
                         },
                         shape = RoundedCornerShape(25.dp),
@@ -1146,14 +1135,15 @@ fun JobSeekerPersonalInformationBody(
     }
 }
 
-
-@Preview(showBackground = true)
+@Preview
 @Composable
 fun JobSeekerPersonalInformationPreview() {
     JobSeekerPersonalInformationBody(
-        selectedImageUri = null,
+        jobSeekerViewModel = JobSeekerViewModel(JobSeekerRepoImpl()),
+        selectedCoverUri = null,
         selectedProfileUri = null,
-        onPickImage = {},
-        onClearSelectedImage = {}
+        onPickCoverImage = {},
+        onPickProfileImage = {},
+        onClearSelectedImages = {}
     )
 }

@@ -21,9 +21,6 @@ data class JobSeekerModel(
     val coverPhoto : String = "",
     val video : String = "",
 
-    val followers : List<String> = emptyList(),
-    val appliedJobs : List<String> = emptyList() // List of application IDs
-
 ){
     fun toMap() : Map<String,Any?>{
         return mapOf(
@@ -43,8 +40,6 @@ data class JobSeekerModel(
             "profilePhoto" to profilePhoto,
             "coverPhoto" to coverPhoto,
             "video" to video,
-            "followers" to followers,
-            "appliedJobs" to appliedJobs
         )
     }
 }
