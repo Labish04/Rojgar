@@ -43,6 +43,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
     implementation("com.github.ZEGOCLOUD:zego_inapp_chat_uikit_android:+") {
         exclude(group = "com.android.support", module = "support-compat")
     }
