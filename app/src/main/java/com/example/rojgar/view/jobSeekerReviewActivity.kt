@@ -1,6 +1,7 @@
 package com.example.rojgar.view
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -46,6 +47,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -60,6 +62,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,45 +76,77 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-
-data class Review(
-    val id: String,
-    val userName: String,
-    val userImage: Int,
-    val rating: Int,
-    val timeAgo: String,
-    val reviewText: String,
-    val isMyReview: Boolean = false
-)
+import androidx.lifecycle.ViewModelProvider
+import coil.compose.AsyncImage
+import com.example.rojgar.model.ReviewModel
+import com.example.rojgar.repository.ReviewRepoImpl
+import com.example.rojgar.viewmodel.ReviewViewModel
+import com.example.rojgar.viewmodel.ReviewViewModelFactory
+import com.google.firebase.auth.FirebaseAuth
 
 class JobSeekerReviewActivity : ComponentActivity() {
+    private lateinit var viewModel: ReviewViewModel
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Initialize ViewModel
+        val repo = ReviewRepoImpl()
+        val factory = ReviewViewModelFactory(repo)
+        viewModel = ViewModelProvider(this, factory)[ReviewViewModel::class.java]
+
+        // Get company ID from intent (you'll need to pass this when starting the activity)
+        val companyId = intent.getStringExtra("COMPANY_ID") ?: ""
+
         setContent {
-            JobSeekerReviewBody()
+            JobSeekerReviewBody(viewModel, companyId)
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun JobSeekerReviewBody() {
-    var reviews by remember { mutableStateOf(getSampleReviews()) }
+fun JobSeekerReviewBody(viewModel: ReviewViewModel, companyId: String) {
+    val context = LocalContext.current
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val currentUserId = currentUser?.uid ?: ""
+
+    // Observe LiveData
+    val reviews by viewModel.reviews.observeAsState(emptyList())
+    val averageRating by viewModel.averageRating.observeAsState(0.0)
+    val userReview by viewModel.userReview.observeAsState()
+    val loading by viewModel.loading.observeAsState(false)
+    val toastMessage by viewModel.toastMessage.observeAsState()
+
+    // Local state for UI
     var showWriteReviewDialog by remember { mutableStateOf(false) }
-    var editingReview by remember { mutableStateOf<Review?>(null) }
+    var editingReview by remember { mutableStateOf<ReviewModel?>(null) }
 
-    val myReview = reviews.find { it.isMyReview }
-    val hasReview = myReview != null
+    val hasReview = userReview != null
 
-    val averageRating = if (reviews.isNotEmpty()) {
-        reviews.map { it.rating }.average()
-    } else 0.0
+    // Setup real-time updates when component is first composed
+    DisposableEffect(companyId, currentUserId) {
+        viewModel.setupRealTimeUpdates(companyId, currentUserId)
+        viewModel.loadReviews(companyId)
+        viewModel.checkUserReview(currentUserId, companyId)
+
+        onDispose {
+            // Cleanup is handled by ViewModel.onCleared()
+        }
+    }
+
+    // Show toast messages
+    toastMessage?.let { message ->
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        viewModel.clearToastMessage()
+    }
 
     Scaffold(
         topBar = {
@@ -225,29 +260,43 @@ fun JobSeekerReviewBody() {
                     )
                 )
         ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                itemsIndexed(reviews) { index, review ->
-                    UltraCoolReviewItem(
-                        review = review,
-                        index = index,
-                        onEditClick = {
-                            editingReview = review
-                            showWriteReviewDialog = true
-                        },
-                        onDeleteClick = {
-                            reviews = reviews.filter { it.id != review.id }
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+            if (loading && reviews.isEmpty()) {
+                // Show loading indicator when first loading
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Color(0xFF6366F1))
                 }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    itemsIndexed(reviews) { index, review ->
+                        UltraCoolReviewItem(
+                            review = review,
+                            viewModel = viewModel,
+                            currentUserId = currentUserId,
+                            index = index,
+                            onEditClick = {
+                                editingReview = review
+                                showWriteReviewDialog = true
+                            },
+                            onDeleteClick = {
+                                viewModel.deleteReview(review.reviewId, companyId)
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
 
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
                 }
             }
         }
@@ -256,29 +305,38 @@ fun JobSeekerReviewBody() {
     if (showWriteReviewDialog) {
         UltraCoolWriteReviewDialog(
             existingReview = editingReview,
+            loading = loading,
             onDismiss = {
                 showWriteReviewDialog = false
                 editingReview = null
             },
             onSubmit = { rating, text ->
-                if (editingReview != null) {
-                    reviews = reviews.map { review ->
-                        if (review.id == editingReview!!.id) {
-                            review.copy(rating = rating, reviewText = text, timeAgo = "Just now")
-                        } else review
-                    }
-                } else {
-                    val newReview = Review(
-                        id = "review_${System.currentTimeMillis()}",
-                        userName = "You",
-                        userImage = android.R.drawable.ic_menu_myplaces,
-                        rating = rating,
-                        timeAgo = "Just now",
-                        reviewText = text,
-                        isMyReview = true
-                    )
-                    reviews = listOf(newReview) + reviews
+                if (currentUser == null) {
+                    Toast.makeText(context, "Please login to add a review", Toast.LENGTH_SHORT).show()
+                    return@UltraCoolWriteReviewDialog
                 }
+
+                val review = if (editingReview != null) {
+                    // Update existing review
+                    editingReview!!.copy(rating = rating, reviewText = text)
+                } else {
+                    // Create new review
+                    ReviewModel(
+                        userId = currentUserId,
+                        companyId = companyId,
+                        userName = currentUser.displayName ?: "Anonymous",
+                        userImageUrl = currentUser.photoUrl?.toString() ?: "",
+                        rating = rating,
+                        reviewText = text
+                    )
+                }
+
+                if (editingReview != null) {
+                    viewModel.updateReview(review)
+                } else {
+                    viewModel.addReview(review)
+                }
+
                 showWriteReviewDialog = false
                 editingReview = null
             }
@@ -288,11 +346,21 @@ fun JobSeekerReviewBody() {
 
 @Composable
 fun UltraCoolReviewItem(
-    review: Review,
+    review: ReviewModel,
+    viewModel: ReviewViewModel,
+    currentUserId: String,
     index: Int,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
+    val isMyReview = review.userId == currentUserId
+    val timeAgo = viewModel.formatTimeAgo(review.timestamp)
+    val editedLabel = viewModel.getEditedLabel(review)
+    
+    // Observe job seeker usernames from ViewModel
+    val jobSeekerUsernames by viewModel.jobSeekerUsernames.observeAsState(emptyMap())
+    val displayName = jobSeekerUsernames[review.userId] ?: review.userName
+
     var showMenu by remember { mutableStateOf(false) }
     var isExpanded by remember { mutableStateOf(false) }
     val rotationState by animateFloatAsState(
@@ -304,9 +372,9 @@ fun UltraCoolReviewItem(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
-                elevation = if (review.isMyReview) 8.dp else 4.dp,
+                elevation = if (isMyReview) 8.dp else 4.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = if (review.isMyReview) Color(0x406366F1) else Color(0x1A000000)
+                spotColor = if (isMyReview) Color(0x406366F1) else Color(0x1A000000)
             )
             .animateContentSize(
                 animationSpec = spring(
@@ -319,7 +387,7 @@ fun UltraCoolReviewItem(
         ),
         shape = RoundedCornerShape(20.dp)
     ) {
-        if (review.isMyReview) {
+        if (isMyReview) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -340,7 +408,7 @@ fun UltraCoolReviewItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    if (review.isMyReview) {
+                    if (isMyReview) {
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color(0xFFF5F5FF),
@@ -372,7 +440,7 @@ fun UltraCoolReviewItem(
                             modifier = Modifier
                                 .size(56.dp)
                                 .background(
-                                    brush = if (review.isMyReview) {
+                                    brush = if (isMyReview) {
                                         Brush.linearGradient(
                                             colors = listOf(
                                                 Color(0xFF6366F1),
@@ -391,15 +459,32 @@ fun UltraCoolReviewItem(
                                 )
                                 .padding(3.dp)
                         ) {
-                            Image(
-                                painter = painterResource(id = review.userImage),
-                                contentDescription = "User avatar",
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                                    .background(Color.White),
-                                contentScale = ContentScale.Crop
-                            )
+                            if (review.userImageUrl.isNotEmpty()) {
+                                AsyncImage(
+                                    model = review.userImageUrl,
+                                    contentDescription = "User avatar",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .background(Color.White),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                // Default avatar when no image URL
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color(0xFFE0E0E0), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = displayName.firstOrNull()?.uppercase() ?: "?",
+                                        color = Color(0xFF757575),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -408,12 +493,12 @@ fun UltraCoolReviewItem(
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = review.userName,
+                                text = displayName,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 17.sp,
                                 color = Color(0xFF212121)
                             )
-                            if (review.isMyReview) {
+                            if (isMyReview) {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Box(
                                     modifier = Modifier
@@ -458,17 +543,27 @@ fun UltraCoolReviewItem(
                                     .background(Color(0xFF9E9E9E), CircleShape)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = review.timeAgo,
-                                fontSize = 13.sp,
-                                color = Color(0xFF757575),
-                                fontWeight = FontWeight.Medium
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = timeAgo,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF757575),
+                                    fontWeight = FontWeight.Medium
+                                )
+                                if (review.isEdited) {
+                                    Text(
+                                        text = " (edited ${review.editedTimestamp?.let { viewModel.formatTimeAgo(it) } ?: "just now"})",
+                                        fontSize = 12.sp,
+                                        color = Color(0xFFFF6B35),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
                         }
                     }
                 }
 
-                if (review.isMyReview) {
+                if (isMyReview) {
                     Box {
                         IconButton(
                             onClick = { showMenu = true },
@@ -562,7 +657,8 @@ fun UltraCoolReviewItem(
 
 @Composable
 fun UltraCoolWriteReviewDialog(
-    existingReview: Review?,
+    existingReview: ReviewModel?,
+    loading: Boolean,
     onDismiss: () -> Unit,
     onSubmit: (rating: Int, text: String) -> Unit
 ) {
@@ -603,8 +699,7 @@ fun UltraCoolWriteReviewDialog(
                             )
                         )
                         .padding(24.dp)
-                ) {
-                    Column {
+                ) { Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Filled.Edit,
@@ -728,7 +823,7 @@ fun UltraCoolWriteReviewDialog(
 
                         Button(
                             onClick = { onSubmit(rating, reviewText) },
-                            enabled = reviewText.isNotBlank(),
+                            enabled = reviewText.isNotBlank() && !loading,
                             modifier = Modifier
                                 .weight(1f)
                                 .height(54.dp),
@@ -742,11 +837,18 @@ fun UltraCoolWriteReviewDialog(
                                 pressedElevation = 8.dp
                             )
                         ) {
-                            Text(
-                                if (existingReview != null) "Update" else "Submit",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
+                            if (loading) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            } else {
+                                Text(
+                                    if (existingReview != null) "Update" else "Submit",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                            }
                         }
                     }
                 }
@@ -777,45 +879,4 @@ fun OutlinedButton(
             content()
         }
     }
-}
-
-fun getSampleReviews(): List<Review> {
-    return listOf(
-        Review(
-            id = "1",
-            userName = "Hero ho la ",
-            userImage = android.R.drawable.ic_menu_myplaces,
-            rating = 4,
-            timeAgo = "2 mins ago",
-            reviewText = "You'll miss the best things if you keep your eyes shut",
-            isMyReview = false
-        ),
-        Review(
-            id = "2",
-            userName = "Labish ",
-            userImage = android.R.drawable.ic_menu_myplaces,
-            rating = 5,
-            timeAgo = "2 mins ago",
-            reviewText = "Do not take life too seriously. You will never get out of it alive.",
-            isMyReview = false
-        ),
-        Review(
-            id = "3",
-            userName = "Anup",
-            userImage = android.R.drawable.ic_menu_myplaces,
-            rating = 4,
-            timeAgo = "2 mins ago",
-            reviewText = "Timi kina yesto",
-            isMyReview = true
-        ),
-        Review(
-            id = "4",
-            userName = "Labish ",
-            userImage = android.R.drawable.ic_menu_myplaces,
-            rating = 3,
-            timeAgo = "2 mins ago",
-            reviewText = "Ma Kasto xu ",
-            isMyReview = false
-        )
-    )
 }

@@ -116,10 +116,14 @@ class CompanyRepoImpl : CompanyRepo {
                     for (data in snapshot.children) {
                         var company = data.getValue(CompanyModel::class.java)
                         if (company != null) {
-                            allCompanys.add(company)
+                            // Set the companyId to the key of the Firebase node
+                            val companyWithId = company.copy(companyId = data.key ?: "")
+                            allCompanys.add(companyWithId)
                         }
                     }
                     callback(true, "Company Fetched", allCompanys)
+                } else {
+                    callback(false, "No companies found", emptyList())
                 }
             }
 

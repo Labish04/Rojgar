@@ -246,6 +246,8 @@ fun CompanyDashboardBody(
                     onPickProfileImage = onPickProfileImage
                 )
                 3 -> CompanyProfileBody(
+                    companyId = "",
+                    isOwnProfile = true,
                     selectedCoverUri = selectedCoverUri,
                     selectedProfileUri = selectedProfileUri,
                     onPickCoverImage = onPickCoverImage,
