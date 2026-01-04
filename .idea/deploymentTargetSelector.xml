@@ -2,19 +2,19 @@
 <project version="4">
   <component name="deploymentTargetSelector">
     <selectionStates>
-      <SelectionState runConfigName="MessageActivity">
+      <SelectionState runConfigName="JobSeekerSearchActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="MessageActivity (1)">
+      <SelectionState runConfigName="CompanyDashboardActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="LoginActivity">
+      <SelectionState runConfigName="JobSeekerViewPost">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="JobSeekerReviewActivity">
+      <SelectionState runConfigName="JobSeekerDashboardActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="CalendarActivity">
+      <SelectionState runConfigName="CompanyUploadPost">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>

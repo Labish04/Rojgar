@@ -122,10 +122,14 @@ class JobSeekerRepoImpl : JobSeekerRepo {
                     for (data in snapshot.children){
                         var jobSeeker = data.getValue(JobSeekerModel::class.java)
                         if (jobSeeker != null){
-                            allJobSeekers.add(jobSeeker)
+                            // Set the jobSeekerId to the key of the Firebase node
+                            val jobSeekerWithId = jobSeeker.copy(jobSeekerId = data.key ?: "")
+                            allJobSeekers.add(jobSeekerWithId)
                         }
                     }
                     callback(true, "JobSeeker Fetched", allJobSeekers)
+                } else {
+                    callback(false, "No job seekers found", emptyList())
                 }
             }
 

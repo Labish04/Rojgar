@@ -243,6 +243,8 @@ fun CompanyDashboardBody(
                 1 -> Text("Analysis Screen")
                 2 -> CompanyUploadPostScreen()
                 3 -> CompanyProfileBody(
+                    companyId = "",
+                    isOwnProfile = true,
                     selectedCoverUri = selectedCoverUri,
                     selectedProfileUri = selectedProfileUri,
                     onPickCoverImage = onPickCoverImage,

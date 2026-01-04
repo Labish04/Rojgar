@@ -69,8 +69,14 @@ class CompanyProfileActivity : ComponentActivity() {
             }
         }
 
+        // Get the company ID from intent
+        val companyId = intent.getStringExtra("COMPANY_ID") ?: ""
+        val isOwnProfile = companyId.isEmpty() || companyId == getCurrentUserId()
+
         setContent {
             CompanyProfileBody(
+                companyId = companyId,
+                isOwnProfile = isOwnProfile,
                 selectedCoverUri = selectedCoverUri,
                 selectedProfileUri = selectedProfileUri,
                 onPickCoverImage = {
@@ -86,11 +92,17 @@ class CompanyProfileActivity : ComponentActivity() {
             )
         }
     }
+
+    private fun getCurrentUserId(): String {
+        return CompanyRepoImpl().getCurrentCompany()?.uid ?: ""
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompanyProfileBody(
+    companyId: String,
+    isOwnProfile: Boolean,
     selectedCoverUri: Uri?,
     selectedProfileUri: Uri?,
     onPickCoverImage: () -> Unit,
@@ -109,8 +121,18 @@ fun CompanyProfileBody(
     var displayedCoverUrl by remember { mutableStateOf("") }
     var displayedProfileUrl by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        companyViewModel.fetchCurrentCompany()
+    // Fetch company profile based on whether it's own profile or viewing another company
+    LaunchedEffect(companyId) {
+        if (companyId.isNotEmpty()) {
+            if (isOwnProfile) {
+                companyViewModel.fetchCurrentCompany()
+            } else {
+                // Fetch specific company profile for viewing
+                companyViewModel.getCompanyDetails(companyId)
+            }
+        } else {
+            companyViewModel.fetchCurrentCompany()
+        }
     }
 
     // Update displayed URLs when company data loads
@@ -202,7 +224,7 @@ fun CompanyProfileBody(
                         contentDescription = "Background Image",
                         modifier = Modifier
                             .fillMaxSize()
-                            .clickable { onPickCoverImage() },
+                            .then(if (isOwnProfile) Modifier.clickable { onPickCoverImage() } else Modifier),
                         contentScale = ContentScale.Crop
                     )
                     Box(
@@ -235,7 +257,7 @@ fun CompanyProfileBody(
                                     )
                                 )
                             )
-                            .clickable { onPickCoverImage() }
+                            .then(if (isOwnProfile) Modifier.clickable { onPickCoverImage() } else Modifier)
                     ) {
                         Box(
                             modifier = Modifier
@@ -304,18 +326,21 @@ fun CompanyProfileBody(
                             )
                         }
 
-                        IconButton(
-                            onClick = { /* More options */ },
-                            modifier = Modifier
-                                .shadow(8.dp, CircleShape)
-                                .background(Color.White.copy(alpha = 0.95f), CircleShape)
-                                .size(44.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.outline_more_vert_24),
-                                contentDescription = "More",
-                                tint = Color(0xFF1F2937)
-                            )
+                        // Show edit options only for own profile
+                        if (isOwnProfile) {
+                            IconButton(
+                                onClick = { /* More options */ },
+                                modifier = Modifier
+                                    .shadow(8.dp, CircleShape)
+                                    .background(Color.White.copy(alpha = 0.95f), CircleShape)
+                                    .size(44.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.outline_more_vert_24),
+                                    contentDescription = "More",
+                                    tint = Color(0xFF1F2937)
+                                )
+                            }
                         }
                     }
                 }
@@ -353,7 +378,7 @@ fun CompanyProfileBody(
                                 .clip(CircleShape)
                                 .background(Color.White)
                                 .padding(5.dp)
-                                .clickable { onPickProfileImage() },
+                                .then(if (isOwnProfile) Modifier.clickable { onPickProfileImage() } else Modifier),
                             contentAlignment = Alignment.Center
                         ) {
                             if (selectedProfileUri != null || displayedProfileUrl.isNotEmpty()) {
@@ -423,7 +448,7 @@ fun CompanyProfileBody(
                             )
                             .border(4.dp, Color.White, CircleShape)
                             .align(Alignment.BottomEnd)
-                            .clickable { onPickProfileImage() },
+                            .then(if (isOwnProfile) Modifier.clickable { onPickProfileImage() } else Modifier),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -533,59 +558,121 @@ fun CompanyProfileBody(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Premium Action Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = { isFollowing = !isFollowing },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(52.dp)
-                            .shadow(8.dp, RoundedCornerShape(16.dp)),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isFollowing) Color(0xFF10B981) else Color(0xFF6366F1)
-                        ),
-                        shape = RoundedCornerShape(16.dp)
+                // Action Buttons (different for own profile vs viewing others)
+                if (isOwnProfile) {
+                    // Own profile - show edit options
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(
-                            imageVector = if (isFollowing) Icons.Default.Check else Icons.Default.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isFollowing) "Following" else "Follow",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                    }
+                        Button(
+                            onClick = { /* Edit Profile */ },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp)
+                                .shadow(8.dp, RoundedCornerShape(16.dp)),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF6366F1)
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Edit Profile",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
 
-                    OutlinedButton(
-                        onClick = { /* Message */ },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(52.dp)
-                            .shadow(4.dp, RoundedCornerShape(16.dp)),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFF6366F1),
-                            containerColor = Color.White
-                        ),
-                        border = ButtonDefaults.outlinedButtonBorder.copy(width = 2.dp)
+                        OutlinedButton(
+                            onClick = { /* Settings */ },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp)
+                                .shadow(4.dp, RoundedCornerShape(16.dp)),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFF6366F1),
+                                containerColor = Color.White
+                            ),
+                            border = ButtonDefaults.outlinedButtonBorder.copy(width = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Settings",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
+                    }
+                } else {
+                    // Viewing other company's profile - show follow and message
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Send,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Message",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
+                        Button(
+                            onClick = { isFollowing = !isFollowing },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp)
+                                .shadow(8.dp, RoundedCornerShape(16.dp)),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isFollowing) Color(0xFF10B981) else Color(0xFF6366F1)
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isFollowing) Icons.Default.Check else Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isFollowing) "Following" else "Follow",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                // Navigate to chat/message screen
+                                Toast.makeText(context, "Message feature coming soon!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp)
+                                .shadow(4.dp, RoundedCornerShape(16.dp)),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFF6366F1),
+                                containerColor = Color.White
+                            ),
+                            border = ButtonDefaults.outlinedButtonBorder.copy(width = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Message",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
                     }
                 }
 
