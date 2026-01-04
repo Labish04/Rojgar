@@ -12,6 +12,7 @@ import com.cloudinary.utils.ObjectUtils
 import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.DataSnapshot
@@ -174,6 +175,35 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         }
     }
 
+    override fun changePassword(
+        currentPassword: String,
+        newPassword: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        val user = auth.currentUser
+
+        if (user == null) {
+            callback(false, "User not authenticated")
+            return
+        }
+
+        val credential = EmailAuthProvider.getCredential(user.email!!, currentPassword)
+
+        user.reauthenticate(credential)
+            .addOnSuccessListener {
+                // Current password is correct, now update to new password
+                user.updatePassword(newPassword)
+                    .addOnSuccessListener {
+                        callback(true, "Password changed successfully!")
+                    }
+                    .addOnFailureListener { e ->
+                        callback(false, "Failed to update password: ${e.message}")
+                    }
+            }
+            .addOnFailureListener { e ->
+                callback(false, "Current password is incorrect")
+            }
+    }
 
 
     override fun followJobSeeker(
