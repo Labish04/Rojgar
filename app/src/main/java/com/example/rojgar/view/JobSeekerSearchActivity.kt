@@ -1053,6 +1053,7 @@ fun JobSeekersTabContent(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit
 ) {
+    val context = LocalContext.current
     val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
     var allJobSeekers by remember { mutableStateOf<List<JobSeekerModel>>(emptyList()) }
     var isJobSeekersLoading by remember { mutableStateOf(true) }
@@ -1061,22 +1062,29 @@ fun JobSeekersTabContent(
     LaunchedEffect(Unit) {
         jobSeekerViewModel.getAllJobSeeker { success, message, jobSeekers ->
             if (success && jobSeekers != null) {
-                allJobSeekers = jobSeekers
+                // Filter out invalid job seekers and ensure all have valid IDs
+                val validJobSeekers = jobSeekers.filter { jobSeeker ->
+                    jobSeeker.jobSeekerId.isNotEmpty() &&
+                    jobSeeker.fullName.isNotEmpty()
+                }
+                allJobSeekers = validJobSeekers
                 isJobSeekersLoading = false
             } else {
+                allJobSeekers = emptyList()
                 isJobSeekersLoading = false
             }
         }
     }
 
-    // Filter job seekers based on search query
+    // Filter job seekers based on search query with null-safety
     val filteredJobSeekers = remember(allJobSeekers, searchQuery) {
         allJobSeekers.filter { jobSeeker ->
-            searchQuery.isEmpty() ||
-            jobSeeker.fullName.contains(searchQuery, ignoreCase = true) ||
-            jobSeeker.email.contains(searchQuery, ignoreCase = true) ||
-            jobSeeker.profession.contains(searchQuery, ignoreCase = true) ||
-            jobSeeker.bio.contains(searchQuery, ignoreCase = true)
+            val safeSearchQuery = searchQuery.trim()
+            safeSearchQuery.isEmpty() ||
+            (jobSeeker.fullName.orEmpty().contains(safeSearchQuery, ignoreCase = true)) ||
+            (jobSeeker.email.orEmpty().contains(safeSearchQuery, ignoreCase = true)) ||
+            (jobSeeker.profession.orEmpty().contains(safeSearchQuery, ignoreCase = true)) ||
+            (jobSeeker.bio.orEmpty().contains(safeSearchQuery, ignoreCase = true))
         }
     }
 
@@ -1195,12 +1203,33 @@ fun JobSeekersTabContent(
                         }
                     }
                 } else {
-                    items(filteredJobSeekers, key = { it.jobSeekerId }) { jobSeeker ->
+                    items(
+                        filteredJobSeekers,
+                        key = { jobSeeker ->
+                            // Safe fallback ordering: jobSeekerId → firebase key → email → hash
+                            jobSeeker.jobSeekerId.ifEmpty {
+                                jobSeeker.email.ifEmpty {
+                                    jobSeeker.hashCode().toString()
+                                }
+                            }
+                        }
+                    ) { jobSeeker ->
                         JobSeekerProfileCard(
                             jobSeeker = jobSeeker,
                             onClick = {
-                                // Navigate to job seeker profile
-                                // You can add navigation to JobSeekerProfileActivity here
+                                // Safe navigation with valid ID check
+                                val validId = jobSeeker.jobSeekerId.ifEmpty {
+                                    jobSeeker.email.ifEmpty {
+                                        null
+                                    }
+                                }
+                                if (validId != null) {
+                                    // Navigate to job seeker profile
+                                    // You can add navigation to JobSeekerProfileActivity here
+                                } else {
+                                    // Handle invalid ID case
+                                    Toast.makeText(context, "Unable to open profile", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         )
                     }
@@ -1222,12 +1251,17 @@ fun JobSeekerProfileCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(12.dp),
+                spotColor = Color(0xFF6366F1).copy(alpha = 0.3f)
+            ),
         colors = CardDefaults.cardColors(
-            containerColor = White
+            containerColor = Color.White
         ),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -1235,126 +1269,152 @@ fun JobSeekerProfileCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Job Seeker Avatar
+            // Job Seeker Avatar - Enhanced Circular Profile Image
             Box(
                 modifier = Modifier
-                    .size(60.dp)
-                    .background(Color.LightGray, RoundedCornerShape(8.dp)),
+                    .size(75.dp),
                 contentAlignment = Alignment.Center
             ) {
-                if (jobSeeker.profilePhoto.isNotEmpty()) {
-                    // Load job seeker profile image from URL using Coil
-                    SubcomposeAsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(jobSeeker.profilePhoto)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "Job Seeker Profile Image",
+                // Outer ring with gradient border effect
+                Box(
+                    modifier = Modifier
+                        .size(75.dp)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(Color(0xFFEC4899), Color(0xFFF43F5E))
+                            ),
+                            shape = CircleShape
+                        )
+                        .padding(2.dp), // Creates the border effect
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Inner circle for the actual profile image
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .size(71.dp)
+                            .background(
+                                color = Color.White,
+                                shape = CircleShape
+                            )
                             .clip(CircleShape),
-                        contentScale = ContentScale.Crop,
-                        loading = {
-                            // Show loading indicator while image loads
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val profilePhotoUrl = jobSeeker.profilePhoto.orEmpty()
+                        if (profilePhotoUrl.isNotEmpty()) {
+                            // Load job seeker profile image from URL using Coil
+                            SubcomposeAsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(profilePhotoUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Job Seeker Profile Image",
+                                modifier = Modifier
+                                    .size(71.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop, // Ensures the image fills the entire circular area and crops any excess
+                                loading = {
+                                    // Show loading indicator while image loads
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            color = Color(0xFF6366F1)
+                                        )
+                                    }
+                                },
+                                error = {
+                                    // Show fallback with gradient background
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                brush = Brush.linearGradient(
+                                                    colors = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
+                                                ),
+                                                shape = CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = jobSeeker.fullName.orEmpty().firstOrNull()?.toString()?.uppercase() ?: "?",
+                                            style = TextStyle(
+                                                fontSize = 26.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                        )
+                                    }
+                                },
+                                success = {
+                                    SubcomposeAsyncImageContent()
+                                }
+                            )
+                        } else {
+                            // Show first letter with gradient background if no image available
                             Box(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
+                                        ),
+                                        shape = CircleShape
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = Color.White
+                                Text(
+                                    text = jobSeeker.fullName.orEmpty().firstOrNull()?.toString()?.uppercase() ?: "?",
+                                    style = TextStyle(
+                                        fontSize = 26.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        letterSpacing = 1.sp
+                                    )
                                 )
                             }
-                        },
-                        error = {
-                            // Show fallback (first letter) if image fails to load
-                            Text(
-                                text = try {
-                                    if (jobSeeker.fullName.isNotEmpty()) jobSeeker.fullName.first().toString() else "?"
-                                } catch (e: Exception) {
-                                    "?"
-                                },
-                                style = TextStyle(
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            )
-                        },
-                        success = {
-                            SubcomposeAsyncImageContent()
                         }
-                    )
-                } else {
-                    // Show first letter if no image available
-                    Text(
-                        text = try {
-                            if (jobSeeker.fullName.isNotEmpty()) jobSeeker.fullName.first().toString() else "?"
-                        } catch (e: Exception) {
-                            "?"
-                        },
-                        style = TextStyle(
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Job Seeker Details
+            // Job Seeker Details - Enhanced Typography
             Column(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = jobSeeker.fullName,
+                    text = jobSeeker.fullName.orEmpty().ifEmpty { "Unknown User" },
                     style = TextStyle(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = Color(0xFF1F2937),
+                        letterSpacing = 0.3.sp
                     )
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = jobSeeker.email,
-                    style = TextStyle(
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
-                )
-                if (jobSeeker.profession.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = jobSeeker.profession,
-                        style = TextStyle(
-                            fontSize = 12.sp,
-                            color = Color.Gray
-                        )
-                    )
-                }
-                if (jobSeeker.bio.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Bio: ${jobSeeker.bio.take(50)}${if (jobSeeker.bio.length > 50) "..." else ""}",
-                        style = TextStyle(
-                            fontSize = 12.sp,
-                            color = Color.Gray
-                        )
-                    )
-                }
             }
 
-            // Arrow Icon
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "View Profile",
+            // Enhanced Arrow Icon
+            Box(
                 modifier = Modifier
-                    .size(24.dp)
-                    .graphicsLayer(rotationZ = 180f), // Rotate to point right
-                tint = Color.Gray
-            )
+                    .size(32.dp)
+                    .background(
+                        color = Color(0xFF6366F1).copy(alpha = 0.1f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "View Profile",
+                    modifier = Modifier
+                        .size(16.dp)
+                        .graphicsLayer(rotationZ = 180f), // Rotate to point right
+                    tint = Color(0xFF6366F1)
+                )
+            }
         }
     }
 }

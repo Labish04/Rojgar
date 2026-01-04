@@ -120,11 +120,20 @@ class JobSeekerRepoImpl : JobSeekerRepo {
                 if (snapshot.exists()){
                     var allJobSeekers = mutableStateListOf<JobSeekerModel>()
                     for (data in snapshot.children){
-                        var jobSeeker = data.getValue(JobSeekerModel::class.java)
-                        if (jobSeeker != null){
-                            // Set the jobSeekerId to the key of the Firebase node
-                            val jobSeekerWithId = jobSeeker.copy(jobSeekerId = data.key ?: "")
-                            allJobSeekers.add(jobSeekerWithId)
+                        try {
+                            var jobSeeker = data.getValue(JobSeekerModel::class.java)
+                            if (jobSeeker != null){
+                                // Set the jobSeekerId to the key of the Firebase node
+                                val firebaseKey = data.key
+                                if (firebaseKey != null && firebaseKey.isNotEmpty()) {
+                                    val jobSeekerWithId = jobSeeker.copy(jobSeekerId = firebaseKey)
+                                    allJobSeekers.add(jobSeekerWithId)
+                                }
+                                // Skip job seekers with null or empty Firebase keys
+                            }
+                        } catch (e: Exception) {
+                            // Skip malformed data
+                            continue
                         }
                     }
                     callback(true, "JobSeeker Fetched", allJobSeekers)
