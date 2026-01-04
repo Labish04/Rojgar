@@ -2,11 +2,10 @@ package com.example.rojgar.view
 
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -31,53 +30,155 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
+import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.repository.CompanyRepoImpl
-import com.example.rojgar.repository.JobSeekerRepoImpl
+import com.example.rojgar.utils.ImageUtils
 import com.example.rojgar.viewmodel.CompanyViewModel
-import com.example.rojgar.viewmodel.JobSeekerViewModel
 
 class CompanyProfileActivity : ComponentActivity() {
+    lateinit var imageUtils: ImageUtils
+
+    var isPickingCover by mutableStateOf(false)
+    var isPickingProfile by mutableStateOf(false)
+
+    var selectedCoverUri by mutableStateOf<Uri?>(null)
+    var selectedProfileUri by mutableStateOf<Uri?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        imageUtils = ImageUtils(this, this)
+        imageUtils.registerLaunchers { uri ->
+            if (uri != null) {
+                if (isPickingCover) {
+                    selectedCoverUri = uri
+                } else if (isPickingProfile) {
+                    selectedProfileUri = uri
+                }
+
+                isPickingCover = false
+                isPickingProfile = false
+            }
+        }
+
         setContent {
-            CompanyProfileBody()
+            CompanyProfileBody(
+                selectedCoverUri = selectedCoverUri,
+                selectedProfileUri = selectedProfileUri,
+                onPickCoverImage = {
+                    isPickingCover = true
+                    isPickingProfile = false
+                    imageUtils.launchImagePicker()
+                },
+                onPickProfileImage = {
+                    isPickingProfile = true
+                    isPickingCover = false
+                    imageUtils.launchImagePicker()
+                }
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompanyProfileBody() {
-
+fun CompanyProfileBody(
+    selectedCoverUri: Uri?,
+    selectedProfileUri: Uri?,
+    onPickCoverImage: () -> Unit,
+    onPickProfileImage: () -> Unit
+) {
+    val context = LocalContext.current
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
 
     val company = companyViewModel.companyDetails.observeAsState(initial = null)
 
-    var backgroundImageUri by remember { mutableStateOf<Uri?>(null) }
-    var profileImageUri by remember { mutableStateOf<Uri?>(null) }
     var isFollowing by remember { mutableStateOf(false) }
+    var isUploadingCover by remember { mutableStateOf(false) }
+    var isUploadingProfile by remember { mutableStateOf(false) }
 
-    val backgroundImagePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        backgroundImageUri = uri
-    }
-
-    val profileImagePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        profileImageUri = uri
-    }
+    // Track displayed URLs
+    var displayedCoverUrl by remember { mutableStateOf("") }
+    var displayedProfileUrl by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         companyViewModel.fetchCurrentCompany()
+    }
+
+    // Update displayed URLs when company data loads
+    LaunchedEffect(company.value) {
+        company.value?.let {
+            displayedCoverUrl = it.companyCoverPhoto
+            displayedProfileUrl = it.companyProfileImage
+        }
+    }
+
+    // Auto-upload cover photo when selected
+    LaunchedEffect(selectedCoverUri) {
+        if (selectedCoverUri != null && !isUploadingCover) {
+            isUploadingCover = true
+            companyViewModel.uploadCompanyCoverPhoto(context, selectedCoverUri) { uploadedUrl ->
+                isUploadingCover = false
+                if (uploadedUrl != null) {
+                    displayedCoverUrl = uploadedUrl
+
+                    // Update in database
+                    company.value?.let { currentCompany ->
+                        val updatedCompany = currentCompany.copy(companyCoverPhoto = uploadedUrl)
+                        companyViewModel.addCompanyToDatabase(
+                            currentCompany.companyId,
+                            updatedCompany
+                        ) { success, message ->
+                            if (success) {
+                                Toast.makeText(context, "Cover photo updated!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Failed to save: $message", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                } else {
+                    Toast.makeText(context, "Failed to upload cover photo", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    // Auto-upload profile photo when selected
+    LaunchedEffect(selectedProfileUri) {
+        if (selectedProfileUri != null && !isUploadingProfile) {
+            isUploadingProfile = true
+            companyViewModel.uploadCompanyProfileImage(context, selectedProfileUri) { uploadedUrl ->
+                isUploadingProfile = false
+                if (uploadedUrl != null) {
+                    displayedProfileUrl = uploadedUrl
+
+                    // Update in database
+                    company.value?.let { currentCompany ->
+                        val updatedCompany = currentCompany.copy(companyProfileImage = uploadedUrl)
+                        companyViewModel.addCompanyToDatabase(
+                            currentCompany.companyId,
+                            updatedCompany
+                        ) { success, message ->
+                            if (success) {
+                                Toast.makeText(context, "Profile photo updated!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Failed to save: $message", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                } else {
+                    Toast.makeText(context, "Failed to upload profile photo", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -89,27 +190,38 @@ fun CompanyProfileBody() {
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Enhanced Background with Overlay
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(240.dp)
             ) {
-                if (backgroundImageUri != null) {
+                // Display cover photo
+                if (selectedCoverUri != null || displayedCoverUrl.isNotEmpty()) {
                     Image(
-                        painter = rememberAsyncImagePainter(backgroundImageUri),
+                        painter = rememberAsyncImagePainter(selectedCoverUri ?: displayedCoverUrl),
                         contentDescription = "Background Image",
                         modifier = Modifier
                             .fillMaxSize()
-                            .clickable { backgroundImagePicker.launch("image/*") },
+                            .clickable { onPickCoverImage() },
                         contentScale = ContentScale.Crop
                     )
-                    // Darker overlay for better contrast
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.2f))
                     )
+
+                    // Show loading indicator for cover
+                    if (isUploadingCover) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.4f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Color.White)
+                        }
+                    }
                 } else {
                     Box(
                         modifier = Modifier
@@ -123,9 +235,8 @@ fun CompanyProfileBody() {
                                     )
                                 )
                             )
-                            .clickable { backgroundImagePicker.launch("image/*") }
+                            .clickable { onPickCoverImage() }
                     ) {
-                        // Animated floating circles for visual interest
                         Box(
                             modifier = Modifier
                                 .size(120.dp)
@@ -221,7 +332,6 @@ fun CompanyProfileBody() {
                 Box(
                     modifier = Modifier.align(Alignment.Start)
                 ) {
-                    // Outer glow ring
                     Box(
                         modifier = Modifier
                             .size(140.dp)
@@ -243,12 +353,12 @@ fun CompanyProfileBody() {
                                 .clip(CircleShape)
                                 .background(Color.White)
                                 .padding(5.dp)
-                                .clickable { profileImagePicker.launch("image/*") },
+                                .clickable { onPickProfileImage() },
                             contentAlignment = Alignment.Center
                         ) {
-                            if (profileImageUri != null) {
+                            if (selectedProfileUri != null || displayedProfileUrl.isNotEmpty()) {
                                 Image(
-                                    painter = rememberAsyncImagePainter(profileImageUri),
+                                    painter = rememberAsyncImagePainter(selectedProfileUri ?: displayedProfileUrl),
                                     contentDescription = "Profile Image",
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -271,10 +381,26 @@ fun CompanyProfileBody() {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "L",
+                                        text = company.value?.companyName?.firstOrNull()?.toString() ?: "L",
                                         fontSize = 52.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White
+                                    )
+                                }
+                            }
+
+                            // Show loading indicator for profile
+                            if (isUploadingProfile) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black.copy(alpha = 0.4f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = Color.White,
+                                        strokeWidth = 3.dp,
+                                        modifier = Modifier.size(30.dp)
                                     )
                                 }
                             }
@@ -297,7 +423,7 @@ fun CompanyProfileBody() {
                             )
                             .border(4.dp, Color.White, CircleShape)
                             .align(Alignment.BottomEnd)
-                            .clickable { profileImagePicker.launch("image/*") },
+                            .clickable { onPickProfileImage() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -399,7 +525,7 @@ fun CompanyProfileBody() {
                     )
                     EnhancedStatCard(
                         label = "Founded",
-                        value = "2015",
+                        value = company.value?.companyEstablishedDate?.take(4) ?: "2015",
                         icon = Icons.Default.DateRange,
                         modifier = Modifier.weight(1f)
                     )
@@ -490,19 +616,19 @@ fun CompanyProfileBody() {
                         EnhancedDetailRow(
                             icon = Icons.Default.LocationOn,
                             label = "Headquarters",
-                            value = company.value?.companyLocation ?:"",
+                            value = company.value?.companyLocation ?: "",
                             gradient = listOf(Color(0xFFEC4899), Color(0xFFF43F5E))
                         )
                         EnhancedDetailRow(
                             icon = Icons.Default.Phone,
                             label = "Phone",
-                            value = company.value?.companyContactNumber ?:"",
+                            value = company.value?.companyContactNumber ?: "",
                             gradient = listOf(Color(0xFF10B981), Color(0xFF059669))
                         )
                         EnhancedDetailRow(
                             icon = Icons.Default.Email,
                             label = "Email",
-                            value = company.value?.companyEmail ?:"",
+                            value = company.value?.companyEmail ?: "",
                             gradient = listOf(Color(0xFFF59E0B), Color(0xFFEAB308))
                         )
                         EnhancedDetailRow(

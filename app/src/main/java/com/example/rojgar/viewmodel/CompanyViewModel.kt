@@ -1,5 +1,7 @@
 package com.example.rojgar.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.MutableLiveData
 import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.JobModel
@@ -101,11 +103,20 @@ class CompanyViewModel(val repo: CompanyRepo) {
         }
     }
 
+    fun uploadCompanyProfileImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    ){
+        repo.uploadCompanyProfileImage(context, imageUri, callback)
 
-//    fun uploadImage(
-//        imageUri: Uri,
-//        callback: (Boolean, String, String) -> Unit
-//    ) {
-//        repo.uploadImage(imageUri, callback)
-//    }
+    }
+
+    fun uploadCompanyCoverPhoto(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    ){
+        repo.uploadCompanyCoverPhoto(context, imageUri, callback)
+    }
 }

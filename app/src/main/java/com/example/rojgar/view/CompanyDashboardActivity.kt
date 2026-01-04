@@ -1,6 +1,7 @@
 package com.example.rojgar.view
 
 import android.app.Activity
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -42,20 +43,63 @@ import androidx.compose.ui.unit.dp
 import com.example.rojgar.R
 import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
+import com.example.rojgar.utils.ImageUtils
 
 class CompanyDashboardActivity : ComponentActivity() {
+    lateinit var imageUtils: ImageUtils
+
+    var isPickingCover by mutableStateOf(false)
+    var isPickingProfile by mutableStateOf(false)
+
+    var selectedCoverUri by mutableStateOf<Uri?>(null)
+    var selectedProfileUri by mutableStateOf<Uri?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Initialize ImageUtils
+        imageUtils = ImageUtils(this, this)
+        imageUtils.registerLaunchers { uri ->
+            if (uri != null) {
+                if (isPickingCover) {
+                    selectedCoverUri = uri
+                } else if (isPickingProfile) {
+                    selectedProfileUri = uri
+                }
+
+                isPickingCover = false
+                isPickingProfile = false
+            }
+        }
+
         setContent {
-            CompanyDashboardBody()
+            CompanyDashboardBody(
+                selectedCoverUri = selectedCoverUri,
+                selectedProfileUri = selectedProfileUri,
+                onPickCoverImage = {
+                    isPickingCover = true
+                    isPickingProfile = false
+                    imageUtils.launchImagePicker()
+                },
+                onPickProfileImage = {
+                    isPickingProfile = true
+                    isPickingCover = false
+                    imageUtils.launchImagePicker()
+                }
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompanyDashboardBody() {
+fun CompanyDashboardBody(
+    selectedCoverUri: Uri? = null,
+    selectedProfileUri: Uri? = null,
+    onPickCoverImage: () -> Unit = {},
+    onPickProfileImage: () -> Unit = {}
+) {
     val context = LocalContext.current
     val activity = context as Activity
 
@@ -159,7 +203,7 @@ fun CompanyDashboardBody() {
         },
 
         bottomBar = {
-            Surface (
+            Surface(
                 modifier = Modifier
                     .clip(RoundedCornerShape(24.dp))
                     .fillMaxWidth(),
@@ -198,7 +242,12 @@ fun CompanyDashboardBody() {
                 0 -> CompanyHomeScreenBody()
                 1 -> Text("Analysis Screen")
                 2 -> CompanyUploadPostScreen()
-                3 -> CompanyProfileBody()
+                3 -> CompanyProfileBody(
+                    selectedCoverUri = selectedCoverUri,
+                    selectedProfileUri = selectedProfileUri,
+                    onPickCoverImage = onPickCoverImage,
+                    onPickProfileImage = onPickProfileImage
+                )
             }
         }
     }
