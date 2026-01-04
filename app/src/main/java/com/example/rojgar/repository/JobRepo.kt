@@ -40,7 +40,7 @@ interface JobRepo {
         callback: (Boolean, String, List<JobModel>?) -> Unit
     )
 
-    fun uploadBannerImage(
+    fun uploadHiringBanner(
         context: Context,
         imageUri: Uri,
         callback: (String?) -> Unit

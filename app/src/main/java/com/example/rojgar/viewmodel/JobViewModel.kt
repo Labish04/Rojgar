@@ -99,6 +99,6 @@ class JobViewModel(private val repo: JobRepo) : ViewModel() {
         imageUri: Uri,
         callback: (String?) -> Unit
     ){
-        repo.uploadBannerImage(context, imageUri, callback)
+        repo.uploadHiringBanner(context, imageUri, callback)
     }
 }

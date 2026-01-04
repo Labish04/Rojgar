@@ -274,7 +274,7 @@ class JobRepoImpl : JobRepo {
         })
     }
 
-    override fun uploadBannerImage(
+    override fun uploadHiringBanner(
         context: Context,
         imageUri: Uri,
         callback: (String?) -> Unit
