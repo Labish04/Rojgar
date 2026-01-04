@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import com.cloudinary.Cloudinary
 import com.cloudinary.utils.ObjectUtils
 import com.google.firebase.auth.FirebaseAuth
@@ -25,53 +26,104 @@ class CommonRepoImpl : CommonRepo {
         )
     )
 
-    override fun updateProfilePhoto(
+    override fun uploadImage(
         context: Context,
         imageUri: Uri,
-        callback: (String?) -> Unit
-    ) {
-        uploadImage(context, imageUri, "profile_", callback)
-    }
-
-    override fun updateCoverPhoto(
-        context: Context,
-        imageUri: Uri,
-        callback: (String?) -> Unit
-    ) {
-        uploadImage(context, imageUri, "cover_", callback)
-    }
-
-    private fun uploadImage(
-        context: Context,
-        imageUri: Uri,
-        prefix: String,
         callback: (String?) -> Unit
     ) {
         val executor = Executors.newSingleThreadExecutor()
         executor.execute {
             try {
                 val inputStream: InputStream? = context.contentResolver.openInputStream(imageUri)
-                // Generate unique filename with prefix and UUID
-                val fileName = "${prefix}${UUID.randomUUID()}"
+                var fileName = getFileNameFromUri(context, imageUri)
+                fileName = fileName?.substringBeforeLast(".") ?: "uploaded_image"
 
                 val response = cloudinary.uploader().upload(
                     inputStream, ObjectUtils.asMap(
                         "public_id" to fileName,
                         "resource_type" to "image",
-                        "folder" to "jobseeker_photos"
                     )
                 )
 
                 var imageUrl = response["secure_url"] as String? ?: (response["url"] as String?)
-
-                // Ensure HTTPS URL
                 imageUrl = imageUrl?.replace("http://", "https://")
 
                 Handler(Looper.getMainLooper()).post {
                     callback(imageUrl)
                 }
-
             } catch (e: Exception) {
+                e.printStackTrace()
+                Handler(Looper.getMainLooper()).post {
+                    callback(null)
+                }
+            }
+        }
+    }
+
+    // New method for profile photo upload
+    fun updateProfilePhoto(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    ) {
+        val executor = Executors.newSingleThreadExecutor()
+        executor.execute {
+            try {
+                val inputStream: InputStream? = context.contentResolver.openInputStream(imageUri)
+                var fileName = getFileNameFromUri(context, imageUri)
+                fileName = "profile_${fileName?.substringBeforeLast(".") ?: "photo"}"
+
+                val response = cloudinary.uploader().upload(
+                    inputStream, ObjectUtils.asMap(
+                        "public_id" to fileName,
+                        "resource_type" to "image",
+                    )
+                )
+
+                var imageUrl = response["secure_url"] as String? ?: (response["url"] as String?)
+                imageUrl = imageUrl?.replace("http://", "https://")
+
+                Handler(Looper.getMainLooper()).post {
+                    callback(imageUrl)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Handler(Looper.getMainLooper()).post {
+                    callback(null)
+                }
+            }
+        }
+    }
+
+    // New method for cover photo upload
+    fun updateCoverPhoto(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    ) {
+        val executor = Executors.newSingleThreadExecutor()
+        executor.execute {
+            try {
+                val inputStream: InputStream? = context.contentResolver.openInputStream(imageUri)
+                var fileName = getFileNameFromUri(context, imageUri)
+                fileName = "cover_${fileName?.substringBeforeLast(".") ?: "photo"}"
+
+                val response = cloudinary.uploader().upload(
+                    inputStream, ObjectUtils.asMap(
+                        "public_id" to fileName,
+                        "resource_type" to "image",
+                    )
+                )
+
+                var imageUrl = response["secure_url"] as String? ?: (response["url"] as String?)
+                imageUrl = imageUrl?.replace("http://", "https://")
+
+                Log.d("checkpoint 5",imageUrl.toString())
+                Handler(Looper.getMainLooper()).post {
+                    callback(imageUrl)
+                }
+            } catch (e: Exception) {
+                Log.d("checkpoint 5",e.printStackTrace().toString())
                 e.printStackTrace()
                 Handler(Looper.getMainLooper()).post {
                     callback(null)

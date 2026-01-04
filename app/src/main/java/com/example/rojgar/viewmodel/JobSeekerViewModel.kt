@@ -1,9 +1,9 @@
 package com.example.rojgar.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.example.rojgar.model.CompanyModel
-import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
 import com.example.rojgar.repository.JobSeekerRepo
 import com.google.firebase.auth.FirebaseUser
@@ -44,7 +44,6 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
         return repo.getCurrentJobSeeker()
     }
 
-
     fun getJobSeekerById(
         jobSeekerId: String,
         callback: (Boolean, String, JobSeekerModel?) -> Unit
@@ -71,16 +70,20 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
     ) {
         repo.forgetPassword(email, callback)
     }
+    fun changePassword(
+        currentPassword: String,
+        newPassword: String,
+        callback: (Boolean, String) -> Unit
+    ){
+        repo.changePassword(currentPassword, newPassword, callback)
 
+    }
 
     fun updateProfile(
         model: JobSeekerModel,
         callback: (Boolean, String) -> Unit
     ) {
-        repo.updateProfile(model) { success, msg ->
-            _loading.value = false
-            callback(success, msg)
-        }
+        repo.addJobSeekerToDatabase(model.jobSeekerId, model, callback)
     }
 
     fun fetchCurrentJobSeeker() {
@@ -101,5 +104,38 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
             _jobSeeker.value = null
         }
     }
+
+    fun fetchJobSeekerById(jobSeekerId: String) {
+        _loading.value = true
+        repo.getJobSeekerById(jobSeekerId) { success, message, jobSeekerModel ->
+            _loading.value = false
+            if (success && jobSeekerModel != null) {
+                _jobSeeker.value = jobSeekerModel
+            } else {
+                _jobSeeker.value = null
+            }
+        }
+    }
+
+    fun updateJobSeekerProfile(
+        model: JobSeekerModel,
+        callback: (Boolean, String) -> Unit
+    ) {
+        _loading.value = true
+        repo.updateJobSeekerProfile(model) { success, message ->
+            _loading.value = false
+            callback(success, message)
+        }
+    }
+
+    fun uploadProfileImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    ){
+        repo.uploadProfileImage(context, imageUri, callback)
+    }
+
+
 
 }

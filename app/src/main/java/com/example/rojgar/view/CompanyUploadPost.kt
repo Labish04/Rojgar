@@ -2,6 +2,7 @@ package com.example.rojgar.view
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -45,22 +46,45 @@ import com.example.rojgar.model.JobModel
 import com.example.rojgar.repository.CompanyRepoImpl
 import com.example.rojgar.repository.JobRepoImpl
 import com.example.rojgar.ui.theme.*
+import com.example.rojgar.utils.ImageUtils
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobViewModel
 import java.util.*
 
 class CompanyUploadPost : ComponentActivity() {
+    lateinit var imageUtils: ImageUtils
+    var isPickingProfile by mutableStateOf(false)
+    var selectedProfileUri by mutableStateOf<Uri?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        imageUtils = ImageUtils(this, this)
+        imageUtils.registerLaunchers { uri ->
+            if (uri != null) {
+                if(isPickingProfile) {
+                    selectedProfileUri = uri
+                }
+                isPickingProfile = false
+            }
+        }
         setContent {
-            CompanyUploadPostScreen()
+            CompanyUploadPostScreen(
+                selectedProfileUri = selectedProfileUri,
+                onPickProfileImage = {
+                    isPickingProfile = true
+                    imageUtils.launchImagePicker()
+                }
+            )
         }
     }
 }
 
 @Composable
-fun CompanyUploadPostScreen() {
+fun CompanyUploadPostScreen(
+    selectedProfileUri: Uri?,
+    onPickProfileImage: () -> Unit
+) {
     // Create ViewModels at the top level and remember them
     val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
@@ -95,6 +119,8 @@ fun CompanyUploadPostScreen() {
             jobViewModel = jobViewModel,
             companyId = companyId,
             existingPost = editingPost,
+            selectedBannerUri = selectedProfileUri,
+            onPickBannerImage = onPickProfileImage,
             onPostCreated = {
                 showCreate = false
                 editingPost = null
@@ -267,8 +293,19 @@ fun JobPostCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
+    val displayImageUrl = jobPost.hiringBanner.ifEmpty { jobPost.imageUrl }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
+            .clickable {
+                val intent = Intent(context, ApplicationActivity::class.java).apply {
+                    putExtra("JOB_POST_ID", jobPost.postId)
+                    putExtra("JOB_TITLE", jobPost.title)
+                    putExtra("COMPANY_ID", jobPost.companyId)
+                }
+                context.startActivity(intent)
+            },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -286,9 +323,9 @@ fun JobPostCard(
                     .background(Color.LightGray),
                 contentAlignment = Alignment.Center
             ) {
-                if (jobPost.imageUrl.isNotEmpty()) {
+                if (displayImageUrl.isNotEmpty()) {
                     Image(
-                        painter = rememberAsyncImagePainter(jobPost.imageUrl),
+                        painter = rememberAsyncImagePainter(displayImageUrl),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -398,6 +435,8 @@ fun CompanyUploadPostBody(
     jobViewModel: JobViewModel,
     companyId: String,
     existingPost: JobModel? = null,
+    selectedBannerUri: Uri?,
+    onPickBannerImage: () -> Unit,
     onPostCreated: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -414,17 +453,27 @@ fun CompanyUploadPostBody(
     var deadline by remember { mutableStateOf(existingPost?.deadline ?: "") }
     var responsibilities by remember { mutableStateOf(existingPost?.responsibilities ?: "") }
     var jobDescription by remember { mutableStateOf(existingPost?.jobDescription ?: "") }
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-    var imageString by remember { mutableStateOf(existingPost?.imageUrl ?: "") }
+
+    var isUploadingBanner by remember { mutableStateOf(false) }
+    var displayedBannerUrl by remember { mutableStateOf(existingPost?.hiringBanner ?: existingPost?.imageUrl ?: "") }
 
     var showCategoryBottomSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        selectedImageUri = uri
-        uri?.let { imageString = it.toString() }
+    // Auto-upload banner when selected
+    LaunchedEffect(selectedBannerUri) {
+        if (selectedBannerUri != null && !isUploadingBanner) {
+            isUploadingBanner = true
+            jobViewModel.uploadBannerImage(context, selectedBannerUri) { uploadedUrl ->
+                isUploadingBanner = false
+                if (uploadedUrl != null) {
+                    displayedBannerUrl = uploadedUrl
+                    Toast.makeText(context, "Banner uploaded successfully!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Failed to upload banner", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     val calendar = Calendar.getInstance()
@@ -465,7 +514,7 @@ fun CompanyUploadPostBody(
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
-        // Cover Photo
+        // Hiring Banner
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
@@ -475,21 +524,21 @@ fun CompanyUploadPostBody(
                     .fillMaxWidth()
                     .height(200.dp)
                     .background(Color.LightGray)
-                    .clickable { launcher.launch("image/*") },
+                    .clickable { onPickBannerImage() },
                 contentAlignment = Alignment.Center
             ) {
                 when {
-                    selectedImageUri != null -> {
+                    selectedBannerUri != null -> {
                         Image(
-                            painter = rememberAsyncImagePainter(selectedImageUri),
+                            painter = rememberAsyncImagePainter(selectedBannerUri),
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
                     }
-                    existingPost?.imageUrl?.isNotEmpty() == true -> {
+                    displayedBannerUrl.isNotEmpty() -> {
                         Image(
-                            painter = rememberAsyncImagePainter(existingPost.imageUrl),
+                            painter = rememberAsyncImagePainter(displayedBannerUrl),
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -504,8 +553,20 @@ fun CompanyUploadPostBody(
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Upload Cover Photo", color = Color.Gray, fontSize = 16.sp)
+                            Text("Upload Hiring Banner", color = Color.Gray, fontSize = 16.sp)
                         }
+                    }
+                }
+
+                // Show loading indicator while uploading
+                if (isUploadingBanner) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.4f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Color.White)
                     }
                 }
             }
@@ -662,6 +723,11 @@ fun CompanyUploadPostBody(
                         return@Button
                     }
 
+                    if (isUploadingBanner) {
+                        Toast.makeText(context, "Please wait for banner upload to complete", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+
                     val jobPost = JobModel(
                         postId = existingPost?.postId ?: "",
                         companyId = companyId,
@@ -676,7 +742,8 @@ fun CompanyUploadPostBody(
                         deadline = deadline,
                         responsibilities = responsibilities,
                         jobDescription = jobDescription,
-                        imageUrl = imageString,
+                        hiringBanner = displayedBannerUrl,
+                        imageUrl = displayedBannerUrl, // For backward compatibility
                         timestamp = existingPost?.timestamp ?: System.currentTimeMillis()
                     )
 
@@ -696,7 +763,8 @@ fun CompanyUploadPostBody(
                 modifier = Modifier
                     .weight(1f)
                     .height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = DarkBlue2)
+                colors = ButtonDefaults.buttonColors(containerColor = DarkBlue2),
+                enabled = !isUploadingBanner
             ) {
                 Text(
                     text = if (existingPost != null) "Update" else "Post Job",

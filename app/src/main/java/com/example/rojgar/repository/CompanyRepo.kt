@@ -1,5 +1,6 @@
 package com.example.rojgar.repository
 
+import android.content.Context
 import android.net.Uri
 import com.example.rojgar.model.CompanyModel
 import com.google.firebase.auth.FirebaseUser
@@ -54,4 +55,21 @@ interface CompanyRepo {
         imageUri: Uri,
         callback: (Boolean, String) -> Unit
     )
+
+    fun uploadCompanyProfileImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    )
+
+    fun uploadCompanyCoverPhoto(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    )
+    fun getFileNameFromUri(context: Context, imageUri: Uri): String?
+
+
+
+
 }

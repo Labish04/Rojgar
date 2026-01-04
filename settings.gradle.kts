@@ -11,14 +11,18 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
+
+        // ✅ Correct Kotlin DSL syntax
+        maven { url = uri("https://storage.zego.im/maven") }
+        maven { url = uri("https://www.jitpack.io") }
     }
 }
 
 rootProject.name = "Rojgar"
 include(":app")
- 

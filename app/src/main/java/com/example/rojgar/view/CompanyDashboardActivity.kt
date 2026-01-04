@@ -1,13 +1,12 @@
 package com.example.rojgar.view
 
 import android.app.Activity
-import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,20 +43,63 @@ import androidx.compose.ui.unit.dp
 import com.example.rojgar.R
 import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
+import com.example.rojgar.utils.ImageUtils
 
 class CompanyDashboardActivity : ComponentActivity() {
+    lateinit var imageUtils: ImageUtils
+
+    var isPickingCover by mutableStateOf(false)
+    var isPickingProfile by mutableStateOf(false)
+
+    var selectedCoverUri by mutableStateOf<Uri?>(null)
+    var selectedProfileUri by mutableStateOf<Uri?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Initialize ImageUtils
+        imageUtils = ImageUtils(this, this)
+        imageUtils.registerLaunchers { uri ->
+            if (uri != null) {
+                if (isPickingCover) {
+                    selectedCoverUri = uri
+                } else if (isPickingProfile) {
+                    selectedProfileUri = uri
+                }
+
+                isPickingCover = false
+                isPickingProfile = false
+            }
+        }
+
         setContent {
-            CompanyDashboardBody()
+            CompanyDashboardBody(
+                selectedCoverUri = selectedCoverUri,
+                selectedProfileUri = selectedProfileUri,
+                onPickCoverImage = {
+                    isPickingCover = true
+                    isPickingProfile = false
+                    imageUtils.launchImagePicker()
+                },
+                onPickProfileImage = {
+                    isPickingProfile = true
+                    isPickingCover = false
+                    imageUtils.launchImagePicker()
+                }
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompanyDashboardBody() {
+fun CompanyDashboardBody(
+    selectedCoverUri: Uri? = null,
+    selectedProfileUri: Uri? = null,
+    onPickCoverImage: () -> Unit = {},
+    onPickProfileImage: () -> Unit = {}
+) {
     val context = LocalContext.current
     val activity = context as Activity
 
@@ -92,9 +134,11 @@ fun CompanyDashboardBody() {
         )
     )
 
+
     Scaffold(
         topBar = {
             val showTopBar = selectedIndex in listOf(0, 1)
+
             if (showTopBar) {
                 CenterAlignedTopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -103,7 +147,9 @@ fun CompanyDashboardBody() {
                         containerColor = Blue,
                         navigationIconContentColor = Black
                     ),
-                    title = { Text("") },
+                    title = {
+                        Text("")
+                    },
                     navigationIcon = {
                         Row(
                             modifier = Modifier
@@ -153,7 +199,9 @@ fun CompanyDashboardBody() {
                     }
                 )
             }
+
         },
+
         bottomBar = {
             Surface(
                 modifier = Modifier
@@ -170,8 +218,7 @@ fun CompanyDashboardBody() {
                             icon = {
                                 Icon(
                                     painter = painterResource(
-                                        if (selectedIndex == index) item.selectedIcon
-                                        else item.unselectedIcon
+                                        if (selectedIndex == index) item.selectedIcon else item.unselectedIcon
                                     ),
                                     contentDescription = item.label,
                                     modifier = Modifier.size(25.dp)
@@ -184,6 +231,7 @@ fun CompanyDashboardBody() {
                 }
             }
         }
+
     ) { padding ->
         Column(
             modifier = Modifier
@@ -191,15 +239,20 @@ fun CompanyDashboardBody() {
                 .padding(padding)
         ) {
             when (selectedIndex) {
-                0 -> CompanyHomeScreenBody(
-                    onReviewsClick = {
-                        val intent = Intent(context, CompanyReviewActivity::class.java)
-                        context.startActivity(intent)
-                    }
-                )
+                0 -> CompanyHomeScreenBody()
                 1 -> Text("Analysis Screen")
-                2 -> CompanyUploadPostScreen()
-                3 -> Text("Profile Screen")
+                2 -> CompanyUploadPostScreen(
+                    selectedProfileUri = selectedProfileUri,
+                    onPickProfileImage = onPickProfileImage
+                )
+                3 -> CompanyProfileBody(
+                    companyId = "",
+                    isOwnProfile = true,
+                    selectedCoverUri = selectedCoverUri,
+                    selectedProfileUri = selectedProfileUri,
+                    onPickCoverImage = onPickCoverImage,
+                    onPickProfileImage = onPickProfileImage
+                )
             }
         }
     }

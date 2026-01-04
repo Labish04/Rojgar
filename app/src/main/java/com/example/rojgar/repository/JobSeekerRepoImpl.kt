@@ -1,12 +1,18 @@
 package com.example.rojgar.repository
 
 import android.content.Context
+import android.database.Cursor
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.provider.OpenableColumns
 import androidx.compose.runtime.mutableStateListOf
 import com.cloudinary.Cloudinary
+import com.cloudinary.utils.ObjectUtils
 import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.DataSnapshot
@@ -14,6 +20,8 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import java.io.InputStream
+import java.util.concurrent.Executors
 
 class JobSeekerRepoImpl : JobSeekerRepo {
 
@@ -23,6 +31,13 @@ class JobSeekerRepoImpl : JobSeekerRepo {
 
     val ref : DatabaseReference = database.getReference("JobSeekers")
 
+    private val cloudinary = Cloudinary(
+        mapOf(
+            "cloud_name" to "dtmprduic",
+            "api_key" to "883843915169633",
+            "api_secret" to "DhiLcks25VLVZCBhWgGvObdGGyE"
+        )
+    )
 
 
     override fun register(
@@ -106,12 +121,25 @@ class JobSeekerRepoImpl : JobSeekerRepo {
                 if (snapshot.exists()){
                     var allJobSeekers = mutableStateListOf<JobSeekerModel>()
                     for (data in snapshot.children){
-                        var jobSeeker = data.getValue(JobSeekerModel::class.java)
-                        if (jobSeeker != null){
-                            allJobSeekers.add(jobSeeker)
+                        try {
+                            var jobSeeker = data.getValue(JobSeekerModel::class.java)
+                            if (jobSeeker != null){
+                                // Set the jobSeekerId to the key of the Firebase node
+                                val firebaseKey = data.key
+                                if (firebaseKey != null && firebaseKey.isNotEmpty()) {
+                                    val jobSeekerWithId = jobSeeker.copy(jobSeekerId = firebaseKey)
+                                    allJobSeekers.add(jobSeekerWithId)
+                                }
+                                // Skip job seekers with null or empty Firebase keys
+                            }
+                        } catch (e: Exception) {
+                            // Skip malformed data
+                            continue
                         }
                     }
                     callback(true, "JobSeeker Fetched", allJobSeekers)
+                } else {
+                    callback(false, "No job seekers found", emptyList())
                 }
             }
 
@@ -147,24 +175,36 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         }
     }
 
-    override fun updateProfile(
-        model: JobSeekerModel,
+    override fun changePassword(
+        currentPassword: String,
+        newPassword: String,
         callback: (Boolean, String) -> Unit
     ) {
-        ref.child(model.jobSeekerId).updateChildren(model.toMap()).addOnCompleteListener {
-            if(it.isSuccessful){
-                callback(true,"Profile updated successfully")
-            }else{
-                callback(false,"${it.exception?.message}")
-            }
+        val user = auth.currentUser
+
+        if (user == null) {
+            callback(false, "User not authenticated")
+            return
         }
+
+        val credential = EmailAuthProvider.getCredential(user.email!!, currentPassword)
+
+        user.reauthenticate(credential)
+            .addOnSuccessListener {
+                // Current password is correct, now update to new password
+                user.updatePassword(newPassword)
+                    .addOnSuccessListener {
+                        callback(true, "Password changed successfully!")
+                    }
+                    .addOnFailureListener { e ->
+                        callback(false, "Failed to update password: ${e.message}")
+                    }
+            }
+            .addOnFailureListener { e ->
+                callback(false, "Current password is incorrect")
+            }
     }
 
-
-
-    // ============================================
-    // NEW FOLLOW FUNCTIONALITY METHODS
-    // ============================================
 
     override fun followJobSeeker(
         currentUserId: String,
@@ -282,4 +322,73 @@ class JobSeekerRepoImpl : JobSeekerRepo {
                 }
             })
     }
+
+    override fun updateJobSeekerProfile(
+        model: JobSeekerModel,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(model.jobSeekerId)
+            .setValue(model)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    callback(true, "Profile updated successfully")
+                } else {
+                    callback(false, task.exception?.message ?: "Profile update failed")
+                }
+            }
+    }
+
+    override fun uploadProfileImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    ) {
+        val executor = Executors.newSingleThreadExecutor()
+        executor.execute {
+            try {
+                val inputStream: InputStream? = context.contentResolver.openInputStream(imageUri)
+                var fileName = getFileNameFromUri(context, imageUri)
+
+                fileName = fileName?.substringBeforeLast(".") ?: "uploaded_image"
+
+                val response = cloudinary.uploader().upload(
+                    inputStream, ObjectUtils.asMap(
+                        "public_id", fileName,
+                        "resource_type", "image"
+                    )
+                )
+
+                var imageUrl = response["url"] as String?
+
+                imageUrl = imageUrl?.replace("http://", "https://")
+
+                Handler(Looper.getMainLooper()).post {
+                    callback(imageUrl)
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Handler(Looper.getMainLooper()).post {
+                    callback(null)
+                }
+            }
+        }
+    }
+
+    override fun getFileNameFromUri(
+        context: Context,
+        imageUri: Uri
+    ): String? {
+        var fileName: String? = null
+        val cursor: Cursor? = context.contentResolver.query(imageUri, null, null, null, null)
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex != -1) {
+                    fileName = it.getString(nameIndex)
+                }
+            }
+        }
+        return fileName    }
+
 }

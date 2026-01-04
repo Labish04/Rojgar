@@ -46,6 +46,12 @@ interface JobSeekerRepo {
         callback : (Boolean, String) ->Unit
     )
 
+    fun changePassword(
+        currentPassword: String,
+        newPassword: String,
+        callback: (Boolean, String) -> Unit
+    )
+
     fun followJobSeeker(
         currentUserId: String,
         targetJobSeekerId: String,
@@ -64,7 +70,15 @@ interface JobSeekerRepo {
         callback: (Boolean) -> Unit
     )
 
-    fun updateProfile(
+    fun uploadProfileImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    )
+
+    fun getFileNameFromUri(context: Context, imageUri: Uri): String?
+
+    fun updateJobSeekerProfile(
         model: JobSeekerModel,
         callback: (Boolean, String) -> Unit
     )
