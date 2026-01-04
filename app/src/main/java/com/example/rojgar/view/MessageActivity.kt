@@ -5,6 +5,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rojgar.viewmodel.ChatViewModel
+import com.example.rojgar.viewmodel.ChatViewModelFactory
+import com.example.rojgar.repository.ChatRepositoryImpl
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,44 +29,45 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.R
+import com.example.rojgar.model.ChatRoom
 import com.example.rojgar.ui.theme.Blue
-import com.example.rojgar.ui.theme.RojgarTheme
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MessageActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MessageBody()
+            MessageBody(
+                currentUserId = "1",
+                currentUserName = "User"
+            )
         }
     }
 }
 
-data class ChatUser(
-    val id: String,
-    val name: String,
-    val subtitle: String,
-    val profileImage: Int
-)
-
 @Composable
-fun MessageBody() {
+fun MessageBody(
+    currentUserId: String,
+    currentUserName: String,
+    chatViewModel: ChatViewModel = viewModel(factory = ChatViewModelFactory(ChatRepositoryImpl()))
+) {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
 
-    val chatUsers = remember {
-        listOf(
-            ChatUser(
-                id = "1",
-                name = "David Bhatta",
-                subtitle = "Started new chat",
-                profileImage = R.drawable.picture
-            )
-        )
+    val chatRooms by chatViewModel.chatRooms.observeAsState(emptyList())
+    val loading by chatViewModel.loading.observeAsState(false)
+
+    // Load chat rooms on start
+    LaunchedEffect(currentUserId) {
+        chatViewModel.loadChatRooms(currentUserId)
     }
 
     Scaffold { padding ->
@@ -156,20 +162,71 @@ fun MessageBody() {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Chat List
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp)
-            ) {
-                items(chatUsers) { user ->
-                    ChatUserItem(
-                        user = user,
-                        onClick = {
-                            val intent = Intent(context, ChatActivity::class.java)
-                            context.startActivity(intent)
-                        }
+            if (loading && chatRooms.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (chatRooms.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No messages yet",
+                        color = Color.Gray
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            } else {
+                val filteredChatRooms = if (searchQuery.isNotEmpty()) {
+                    chatRooms.filter { chatRoom ->
+                        val otherParticipantName = if (chatRoom.participant1Id == currentUserId) {
+                            chatRoom.participant2Name
+                        } else {
+                            chatRoom.participant1Name
+                        }
+                        otherParticipantName.contains(searchQuery, ignoreCase = true) ||
+                                chatRoom.lastMessage.contains(searchQuery, ignoreCase = true)
+                    }
+                } else {
+                    chatRooms
+                }
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    items(filteredChatRooms) { chatRoom ->
+                        val otherParticipantId = if (chatRoom.participant1Id == currentUserId) {
+                            chatRoom.participant2Id
+                        } else {
+                            chatRoom.participant1Id
+                        }
+
+                        val otherParticipantName = if (chatRoom.participant1Id == currentUserId) {
+                            chatRoom.participant2Name
+                        } else {
+                            chatRoom.participant1Name
+                        }
+
+                        ChatUserItem(
+                            chatRoom = chatRoom,
+                            currentUserId = currentUserId,
+                            onClick = {
+                                val intent = Intent(context, ChatActivity::class.java).apply {
+                                    putExtra("receiverId", otherParticipantId)
+                                    putExtra("receiverName", otherParticipantName)
+                                    putExtra("currentUserId", currentUserId)
+                                    putExtra("currentUserName", currentUserName)
+                                }
+                                context.startActivity(intent)
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                 }
             }
         }
@@ -178,9 +235,18 @@ fun MessageBody() {
 
 @Composable
 fun ChatUserItem(
-    user: ChatUser,
+    chatRoom: ChatRoom,
+    currentUserId: String,
     onClick: () -> Unit
 ) {
+    val otherParticipantName = if (chatRoom.participant1Id == currentUserId) {
+        chatRoom.participant2Name
+    } else {
+        chatRoom.participant1Name
+    }
+
+    val lastMessageTime = formatRelativeTime(chatRoom.lastMessageTime)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -216,25 +282,84 @@ fun ChatUserItem(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = user.name,
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.Black
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = otherParticipantName,
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Black
+                        )
                     )
-                )
+
+                    Text(
+                        text = lastMessageTime,
+                        style = TextStyle(
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Text(
-                    text = user.subtitle,
-                    style = TextStyle(
-                        fontSize = 14.sp,
-                        color = Color.Gray
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = chatRoom.lastMessage,
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
-                )
+
+                    if (chatRoom.unreadCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(Color.Red),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (chatRoom.unreadCount > 99) "99+"
+                                else chatRoom.unreadCount.toString(),
+                                style = TextStyle(
+                                    fontSize = 10.sp,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+fun formatRelativeTime(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+
+    return when {
+        diff < 60000 -> "Just now"
+        diff < 3600000 -> "${diff / 60000}m ago"
+        diff < 86400000 -> "${diff / 3600000}h ago"
+        diff < 604800000 -> "${diff / 86400000}d ago"
+        else -> {
+            val date = Date(timestamp)
+            val format = SimpleDateFormat("MM/dd/yy", Locale.getDefault())
+            format.format(date)
         }
     }
 }
@@ -242,5 +367,8 @@ fun ChatUserItem(
 @Preview
 @Composable
 fun MessagePreview() {
-        MessageBody()
+        MessageBody(
+            currentUserId = "1",
+            currentUserName = "User"
+        )
 }
