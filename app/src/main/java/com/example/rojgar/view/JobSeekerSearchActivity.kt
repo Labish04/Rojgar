@@ -1225,7 +1225,10 @@ fun JobSeekersTabContent(
                                 }
                                 if (validId != null) {
                                     // Navigate to job seeker profile
-                                    // You can add navigation to JobSeekerProfileActivity here
+                                    val intent = Intent(context, JobSeekerProfileActivity::class.java).apply {
+                                        putExtra("JOB_SEEKER_ID", validId)
+                                    }
+                                    context.startActivity(intent)
                                 } else {
                                     // Handle invalid ID case
                                     Toast.makeText(context, "Unable to open profile", Toast.LENGTH_SHORT).show()
