@@ -34,28 +34,16 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-
     kotlinOptions {
         jvmTarget = "11"
     }
-
     buildFeatures {
         compose = true
-        viewBinding = true
-        dataBinding = true
-    }
-
-    packagingOptions {
-        // Exclude duplicate files
-        resources.excludes.add("META-INF/*")
     }
 }
 
 dependencies {
-
-//    implementation("com.github.ZEGOCLOUD:zego_zimkit_android:+")  // Latest ZIMKit
-//    implementation("com.github.ZEGOCLOUD:zego_zim_android:+")
-//
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
     implementation("com.github.ZEGOCLOUD:zego_inapp_chat_uikit_android:+") {
         exclude(group = "com.android.support", module = "support-compat")
     }
@@ -67,12 +55,6 @@ dependencies {
     implementation("im.zego:zim:2.14.0") {
         exclude(group = "com.android.support", module = "support-compat")
     }
-//    implementation("com.github.ZEGOCLOUD:zego_zim:2.14.0")
-//    implementation("com.github.ZEGOCLOUD:zego_inapp_chat:2.5.0")
-//
-//    implementation("com.github.ZEGOCLOUD:zego_uikit_android:2.5.0")
-
-//    implementation("com.github.ZEGOCLOUD:zimkit:2.5.0")
 
     implementation("com.cloudinary:cloudinary-android:2.1.0")
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
