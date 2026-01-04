@@ -46,6 +46,12 @@ interface JobSeekerRepo {
         callback : (Boolean, String) ->Unit
     )
 
+    fun changePassword(
+        currentPassword: String,
+        newPassword: String,
+        callback: (Boolean, String) -> Unit
+    )
+
     fun followJobSeeker(
         currentUserId: String,
         targetJobSeekerId: String,

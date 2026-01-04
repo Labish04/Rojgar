@@ -62,6 +62,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import coil.compose.AsyncImage
 import com.example.rojgar.viewmodel.JobSeekerViewModel
 
@@ -108,6 +110,9 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
     var followersCount by remember { mutableStateOf(2847) }
     var followingCount by remember { mutableStateOf(312) }
+
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
 
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -844,7 +849,6 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
                             Button(
                                 onClick = {
-                                    // Allow viewing CV for other users
                                     val intent = Intent(context, CvViewActivity::class.java).apply {
                                         putExtra("JOB_SEEKER_ID", finalTargetJobSeekerId)
                                     }
@@ -886,7 +890,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
             }
         }
 
-        // DRAWER - Light Blue Theme
+        // DRAWER
         AnimatedVisibility(
             visible = isDrawerOpen,
             enter = slideInHorizontally(
@@ -905,39 +909,46 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.5f))
+                        .background(Color.Black.copy(alpha = 0.6f))
                         .clickable { isDrawerOpen = false }
                 )
 
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .width(320.dp)
+                        .width(340.dp)
                         .align(Alignment.CenterEnd)
                         .shadow(24.dp)
-                        .background(Color.White)
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFFFAFAFA),
+                                    Color.White
+                                )
+                            )
+                        )
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(260.dp)
+                                .height(140.dp)
                                 .background(
-                                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
                                         colors = listOf(
-                                            Color(0xFF42A5F5),
-                                            Color(0xFF2196F3)
+                                            Color(0xFF1E88E5),
+                                            Color(0xFF42A5F5)
                                         )
                                     )
                                 )
                         ) {
                             Surface(
                                 modifier = Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(20.dp)
-                                    .size(40.dp),
+                                    .align(Alignment.TopEnd)
+                                    .padding(16.dp)
+                                    .size(36.dp),
                                 shape = CircleShape,
-                                color = Color.White.copy(alpha = 0.3f)
+                                color = Color.White.copy(alpha = 0.2f)
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.outline_arrow_back_ios_24),
@@ -946,127 +957,180 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                     modifier = Modifier
                                         .graphicsLayer(rotationZ = 180f)
                                         .clickable { isDrawerOpen = false }
-                                        .padding(10.dp)
+                                        .padding(8.dp)
                                 )
                             }
 
-                            Column(
+                            // Profile Section
+                            Row(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(24.dp),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
+                                    .fillMaxWidth()
+                                    .align(Alignment.CenterStart)
+                                    .padding(start = 20.dp, end = 20.dp, bottom = 16.dp, top = 56.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Card(
                                     modifier = Modifier
-                                        .size(110.dp)
-                                        .border(4.dp, Color.White, CircleShape),
+                                        .size(70.dp)
+                                        .border(3.dp, Color.White, CircleShape),
                                     shape = CircleShape,
-                                    elevation = CardDefaults.cardElevation(12.dp)
+                                    elevation = CardDefaults.cardElevation(8.dp)
                                 ) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.profilepicture),
-                                        contentDescription = "Profile",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
+                                    if (jobSeekerState?.profilePhoto != null) {
+                                        AsyncImage(
+                                            model = jobSeekerState?.profilePhoto,
+                                            contentDescription = "Profile",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.profileemptypic),
+                                            contentDescription = "Profile",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
                                 }
 
-                                Spacer(modifier = Modifier.height(16.dp))
+                                Spacer(modifier = Modifier.width(16.dp))
 
-                                Text(
-                                    text = "Sarah Johnson",
-                                    style = TextStyle(
-                                        fontSize = 26.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = jobSeekerState?.fullName ?: "User",
+                                        style = TextStyle(
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = Color.White
+                                        ),
+                                        maxLines = 1
                                     )
-                                )
 
-                                Spacer(modifier = Modifier.height(4.dp))
+                                    Spacer(modifier = Modifier.height(4.dp))
 
-                                Text(
-                                    text = "IT Student",
-                                    style = TextStyle(
-                                        fontSize = 15.sp,
-                                        color = Color.White.copy(alpha = 0.9f),
-                                        fontWeight = FontWeight.Medium
+                                    Text(
+                                        text = jobSeekerState?.profession ?: "No Profession",
+                                        style = TextStyle(
+                                            fontSize = 13.sp,
+                                            color = Color.White.copy(alpha = 0.9f),
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        maxLines = 1
                                     )
-                                )
+                                }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
 
-                        StylishDrawerMenuItem(
-                            icon = R.drawable.round_info_outline_24,
-                            text = "Saved Jobs",
-                            subtitle = "View bookmarked opportunities",
-                            onClick = {
-                                isDrawerOpen = false
-                                Toast.makeText(context, "Saved Jobs clicked", Toast.LENGTH_SHORT).show()
-                            }
-                        )
+                        // MENU ITEMS
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            ModernDrawerMenuItem(
+                                icon = R.drawable.save_outline,
+                                text = "Saved Jobs",
+                                subtitle = "View bookmarked opportunities",
+                                iconColor = Color(0xFF4CAF50),
+                                onClick = {
+                                    isDrawerOpen = false
+                                    Toast.makeText(context, "Saved Jobs clicked", Toast.LENGTH_SHORT).show()
+                                }
+                            )
 
-                        StylishDrawerMenuItem(
-                            icon = R.drawable.round_info_outline_24,
-                            text = "Applied Jobs",
-                            subtitle = "Track your applications",
-                            onClick = {
-                                isDrawerOpen = false
-                                Toast.makeText(context, "Applied Jobs clicked", Toast.LENGTH_SHORT).show()
-                            }
-                        )
+                            ModernDrawerMenuItem(
+                                icon = R.drawable.appliedjob,
+                                text = "Applied Jobs",
+                                subtitle = "Track your applications",
+                                iconColor = Color(0xFF2196F3),
+                                onClick = {
+                                    isDrawerOpen = false
+                                    Toast.makeText(context, "Applied Jobs clicked", Toast.LENGTH_SHORT).show()
+                                }
+                            )
 
-                        StylishDrawerMenuItem(
-                            icon = R.drawable.round_info_outline_24,
-                            text = "Settings",
-                            subtitle = "Manage preferences",
-                            onClick = {
-                                isDrawerOpen = false
-                                Toast.makeText(context, "Settings clicked", Toast.LENGTH_SHORT).show()
-                            }
-                        )
+                            ModernDrawerMenuItem(
+                                icon = R.drawable.feedback,
+                                text = "Feedback",
+                                subtitle = "Help you to improve",
+                                iconColor = Color(0xFF2196F3),
+                                onClick = {
+                                    isDrawerOpen = false
+                                    Toast.makeText(context, "Feedback clicked", Toast.LENGTH_SHORT).show()
+                                }
+                            )
 
-                        Spacer(modifier = Modifier.weight(1f))
+                            ModernDrawerMenuItem(
+                                icon = R.drawable.settings,
+                                text = "Settings",
+                                subtitle = "Manage preferences",
+                                iconColor = Color(0xFF9C27B0),
+                                onClick = {
+                                    showSettingsDialog = true
+                                }
+                            )
 
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 20.dp),
+                                color = Color.Gray.copy(alpha = 0.2f)
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        // LOGOUT BUTTON
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 28.dp)
+                                .padding(horizontal = 20.dp, vertical = 24.dp)
                                 .clickable {
                                     isDrawerOpen = false
-                                    repository.getCurrentJobSeeker()?.let {
-                                        Toast.makeText(context, "Logging out...", Toast.LENGTH_SHORT).show()
-                                        activity.finish()
+                                    repository.logout(currentUserId) { success, message ->
+                                        if (success) {
+                                            Toast
+                                                .makeText(context, "Logged out successfully", Toast.LENGTH_SHORT)
+                                                .show()
+                                            val intent = Intent(context, LoginActivity::class.java)
+                                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                            context.startActivity(intent)
+                                            activity.finish()
+                                        } else {
+                                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                        }
                                     }
                                 },
                             shape = RoundedCornerShape(20.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = Color(0xFFFFEBEE)
                             ),
-                            elevation = CardDefaults.cardElevation(0.dp)
+                            elevation = CardDefaults.cardElevation(4.dp)
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(20.dp),
+                                    .padding(18.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.round_info_outline_24),
+                                    painter = painterResource(id = R.drawable.baseline_logout_24),
                                     contentDescription = "Logout",
-                                    tint = Color.Red,
-                                    modifier = Modifier.size(28.dp)
+                                    tint = Color(0xFFD32F2F),
+                                    modifier = Modifier.size(26.dp)
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
                                     text = "Logout",
                                     style = TextStyle(
-                                        fontSize = 20.sp,
+                                        fontSize = 18.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.Red
+                                        color = Color(0xFFD32F2F)
                                     )
                                 )
                             }
@@ -1074,6 +1138,141 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                     }
                 }
             }
+        }
+
+        // SETTINGS DIALOG
+        if (showSettingsDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(20f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.7f))
+                        .clickable { showSettingsDialog = false }
+                )
+
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .fillMaxWidth(0.85f)
+                        .wrapContentHeight(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    ),
+                    elevation = CardDefaults.cardElevation(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Settings",
+                                style = TextStyle(
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1565C0)
+                                )
+                            )
+
+                            Surface(
+                                modifier = Modifier.size(32.dp),
+                                shape = CircleShape,
+                                color = Color(0xFFF5F5F5)
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                                    contentDescription = "Close",
+                                    tint = Color(0xFF546E7A),
+                                    modifier = Modifier
+                                        .clickable { showSettingsDialog = false }
+                                        .padding(8.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // SETTINGS OPTIONS
+                        SettingsOption(
+                            icon = R.drawable.outline_lock_24,
+                            title = "Change Password",
+                            subtitle = "Update your password",
+                            iconColor = Color(0xFF4CAF50),
+                            onClick = {
+                                showSettingsDialog = false
+                                showChangePasswordDialog = true
+                            }
+                        )
+
+                        var isDarkMode by remember { mutableStateOf(false) }
+                        SettingsOptionWithSwitch(
+                            icon = R.drawable.darkmode,
+                            title = "Dark Mode",
+                            subtitle = if (isDarkMode) "Dark theme enabled" else "Light theme enabled",
+                            iconColor = Color(0xFF9C27B0),
+                            isChecked = isDarkMode,
+                            onCheckedChange = { isDarkMode = it }
+                        )
+
+                        var isPrivateProfile by remember { mutableStateOf(false) }
+                        SettingsOptionWithSwitch(
+                            icon = R.drawable.privateprofile,
+                            title = "Private Profile",
+                            subtitle = if (isPrivateProfile) "Profile is private" else "Profile is public",
+                            iconColor = Color(0xFF2196F3),
+                            isChecked = isPrivateProfile,
+                            onCheckedChange = { isPrivateProfile = it }
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        SettingsOption(
+                            icon = R.drawable.deactivateaccount,
+                            title = "Deactivate Account",
+                            subtitle = "Temporarily disable your account",
+                            iconColor = Color(0xFFFF9800),
+                            onClick = {
+                                showSettingsDialog = false
+                                Toast.makeText(context, "Deactivate Account", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+
+                        SettingsOption(
+                            icon = R.drawable.deleteaccount,
+                            title = "Delete Account",
+                            subtitle = "Permanently remove your account",
+                            iconColor = Color(0xFFF44336),
+                            onClick = {
+                                showSettingsDialog = false
+                                Toast.makeText(context, "Delete Account", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // CHANGE PASSWORD DIALOG
+        if (showChangePasswordDialog) {
+            ChangePasswordDialog(
+                onDismiss = { showChangePasswordDialog = false },
+                repository = repository,
+                context = context
+            )
         }
     }
 }
@@ -1120,73 +1319,6 @@ fun formatCount(count: Int): String {
     }
 }
 
-@Composable
-fun StylishDrawerMenuItem(
-    icon: Int,
-    text: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 6.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = Color(0xFFF5F5F5)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = CircleShape,
-                color = Color(0xFF2196F3).copy(alpha = 0.15f)
-            ) {
-                Icon(
-                    painter = painterResource(id = icon),
-                    contentDescription = text,
-                    tint = Color(0xFF2196F3),
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = text,
-                    style = TextStyle(
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF263238)
-                    )
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    style = TextStyle(
-                        fontSize = 13.sp,
-                        color = Color(0xFF78909C)
-                    )
-                )
-            }
-
-            Icon(
-                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                contentDescription = "Navigate",
-                tint = Color(0xFF90A4AE),
-                modifier = Modifier
-                    .size(18.dp)
-                    .graphicsLayer(rotationZ = 180f)
-            )
-        }
-    }
-}
-
 @Preview
 @Composable
 fun PreviewJobSeekerProfile() {
@@ -1226,6 +1358,714 @@ fun VideoPlayer(uri: Uri, modifier: Modifier = Modifier) {
     DisposableEffect(Unit) {
         onDispose {
             exoPlayer.release()
+        }
+    }
+}
+
+@Composable
+fun ModernDrawerMenuItem(
+    icon: Int,
+    text: String,
+    subtitle: String,
+    iconColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 6.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = iconColor.copy(alpha = 0.1f)
+            ) {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = text,
+                    tint = iconColor,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = text,
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF263238)
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        color = Color(0xFF78909C)
+                    )
+                )
+            }
+
+            Icon(
+                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                contentDescription = "Navigate",
+                tint = Color(0xFFBDBDBD),
+                modifier = Modifier
+                    .size(16.dp)
+                    .graphicsLayer(rotationZ = 180f)
+            )
+        }
+    }
+}
+
+@Composable
+fun SettingsOption(
+    icon: Int,
+    title: String,
+    subtitle: String,
+    iconColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFFAFAFA)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(44.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = iconColor.copy(alpha = 0.12f)
+            ) {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = title,
+                    tint = iconColor,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = TextStyle(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF263238)
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        color = Color(0xFF78909C)
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsOptionWithSwitch(
+    icon: Int,
+    title: String,
+    subtitle: String,
+    iconColor: Color,
+    isChecked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFFAFAFA)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(44.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = iconColor.copy(alpha = 0.12f)
+            ) {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = title,
+                    tint = iconColor,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = TextStyle(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF263238)
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        color = Color(0xFF78909C)
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Switch(
+                checked = isChecked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = iconColor,
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = Color(0xFFBDBDBD)
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun ChangePasswordDialog(
+    onDismiss: () -> Unit,
+    repository: JobSeekerRepoImpl,
+    context: Context
+) {
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+
+    var currentPasswordVisible by remember { mutableStateOf(false) }
+    var newPasswordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+
+    var currentPasswordError by remember { mutableStateOf(false) }
+    var newPasswordError by remember { mutableStateOf(false) }
+    var confirmPasswordError by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+
+    // Password validation
+    fun validatePasswords(): Boolean {
+        currentPasswordError = currentPassword.isEmpty()
+        newPasswordError = newPassword.isEmpty() || newPassword.length < 6
+        confirmPasswordError = confirmPassword != newPassword
+
+        when {
+            currentPassword.isEmpty() -> {
+                errorMessage = "Current password is required"
+                return false
+            }
+            newPassword.isEmpty() -> {
+                errorMessage = "New password is required"
+                return false
+            }
+            newPassword.length < 6 -> {
+                errorMessage = "Password must be at least 6 characters"
+                return false
+            }
+            confirmPassword != newPassword -> {
+                errorMessage = "Passwords do not match"
+                return false
+            }
+            currentPassword == newPassword -> {
+                errorMessage = "New password must be different from current"
+                return false
+            }
+        }
+        return true
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(30f)
+    ) {
+        // Background overlay
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.75f))
+                .clickable { onDismiss() }
+        )
+
+        // Dialog card
+        Card(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.9f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(20.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(28.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(48.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(0xFF4CAF50).copy(alpha = 0.15f)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.outline_lock_24),
+                                contentDescription = "Lock",
+                                tint = Color(0xFF4CAF50),
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Text(
+                            text = "Change Password",
+                            style = TextStyle(
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1565C0)
+                            )
+                        )
+                    }
+
+                    Surface(
+                        modifier = Modifier.size(36.dp),
+                        shape = CircleShape,
+                        color = Color(0xFFF5F5F5)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = "Close",
+                            tint = Color(0xFF546E7A),
+                            modifier = Modifier
+                                .clickable { onDismiss() }
+                                .padding(10.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Description
+                Text(
+                    text = "Create a strong password to keep your account secure",
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        color = Color(0xFF78909C),
+                        lineHeight = 20.sp
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Current Password Field
+                Text(
+                    text = "Current Password",
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF263238)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = currentPassword,
+                    onValueChange = {
+                        currentPassword = it
+                        currentPasswordError = false
+                        errorMessage = ""
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = if (currentPasswordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_lock_24),
+                            contentDescription = null,
+                            tint = if (currentPasswordError) Color(0xFFF44336) else Color(0xFF1976D2),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = { currentPasswordVisible = !currentPasswordVisible }) {
+                            Icon(
+                                painter = painterResource(
+                                    if (currentPasswordVisible)
+                                        R.drawable.baseline_visibility_24
+                                    else
+                                        R.drawable.baseline_visibility_off_24
+                                ),
+                                contentDescription = null,
+                                tint = Color(0xFF78909C),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    },
+                    isError = currentPasswordError,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF8F9FA),
+                        unfocusedContainerColor = Color(0xFFF8F9FA),
+                        focusedIndicatorColor = Color(0xFF2196F3),
+                        unfocusedIndicatorColor = Color(0xFFE0E0E0),
+                        errorContainerColor = Color(0xFFFFF5F5),
+                        errorIndicatorColor = Color(0xFFF44336)
+                    ),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // New Password Field
+                Text(
+                    text = "New Password",
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF263238)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = {
+                        newPassword = it
+                        newPasswordError = false
+                        errorMessage = ""
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = if (newPasswordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_lock_24),
+                            contentDescription = null,
+                            tint = if (newPasswordError) Color(0xFFF44336) else Color(0xFF4CAF50),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
+                            Icon(
+                                painter = painterResource(
+                                    if (newPasswordVisible)
+                                        R.drawable.baseline_visibility_24
+                                    else
+                                        R.drawable.baseline_visibility_off_24
+                                ),
+                                contentDescription = null,
+                                tint = Color(0xFF78909C),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    },
+                    isError = newPasswordError,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF8F9FA),
+                        unfocusedContainerColor = Color(0xFFF8F9FA),
+                        focusedIndicatorColor = Color(0xFF2196F3),
+                        unfocusedIndicatorColor = Color(0xFFE0E0E0),
+                        errorContainerColor = Color(0xFFFFF5F5),
+                        errorIndicatorColor = Color(0xFFF44336)
+                    ),
+                    singleLine = true
+                )
+
+                // Password strength indicator
+                if (newPassword.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    val strength = when {
+                        newPassword.length < 6 -> "Weak"
+                        newPassword.length < 10 -> "Medium"
+                        else -> "Strong"
+                    }
+
+                    val strengthColor = when (strength) {
+                        "Weak" -> Color(0xFFF44336)
+                        "Medium" -> Color(0xFFFF9800)
+                        else -> Color(0xFF4CAF50)
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(60.dp)
+                                .height(4.dp)
+                                .background(
+                                    if (newPassword.length >= 6) strengthColor else Color(0xFFE0E0E0),
+                                    RoundedCornerShape(2.dp)
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(60.dp)
+                                .height(4.dp)
+                                .background(
+                                    if (newPassword.length >= 10) strengthColor else Color(0xFFE0E0E0),
+                                    RoundedCornerShape(2.dp)
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(60.dp)
+                                .height(4.dp)
+                                .background(
+                                    if (newPassword.length >= 12) strengthColor else Color(0xFFE0E0E0),
+                                    RoundedCornerShape(2.dp)
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = strength,
+                            style = TextStyle(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = strengthColor
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Confirm Password Field
+                Text(
+                    text = "Confirm New Password",
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF263238)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = {
+                        confirmPassword = it
+                        confirmPasswordError = false
+                        errorMessage = ""
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = if (confirmPasswordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_lock_24),
+                            contentDescription = null,
+                            tint = if (confirmPasswordError) Color(0xFFF44336)
+                            else if (confirmPassword.isNotEmpty() && confirmPassword == newPassword) Color(0xFF4CAF50)
+                            else Color(0xFF1976D2),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                            Icon(
+                                painter = painterResource(
+                                    if (confirmPasswordVisible)
+                                        R.drawable.baseline_visibility_24
+                                    else
+                                        R.drawable.baseline_visibility_off_24
+                                ),
+                                contentDescription = null,
+                                tint = Color(0xFF78909C),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    },
+                    isError = confirmPasswordError,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF8F9FA),
+                        unfocusedContainerColor = Color(0xFFF8F9FA),
+                        focusedIndicatorColor = Color(0xFF2196F3),
+                        unfocusedIndicatorColor = Color(0xFFE0E0E0),
+                        errorContainerColor = Color(0xFFFFF5F5),
+                        errorIndicatorColor = Color(0xFFF44336)
+                    ),
+                    singleLine = true
+                )
+
+                // Error message
+                if (errorMessage.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFFFF5F5)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.round_info_outline_24),
+                                contentDescription = null,
+                                tint = Color(0xFFF44336),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = errorMessage,
+                                style = TextStyle(
+                                    fontSize = 13.sp,
+                                    color = Color(0xFFF44336)
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Cancel Button
+                    Button(
+                        onClick = { onDismiss() },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF5F5F5),
+                            contentColor = Color(0xFF546E7A)
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(0.dp)
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // Confirm Button
+                    Button(
+                        onClick = {
+                            if (validatePasswords()) {
+                                isLoading = true
+                                repository.changePassword(
+                                    currentPassword = currentPassword,
+                                    newPassword = newPassword
+                                ) { success, message ->
+                                    isLoading = false
+                                    if (success) {
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                        onDismiss()
+                                    } else {
+                                        // Show error in the dialog
+                                        currentPasswordError = true
+                                        errorMessage = message
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !isLoading,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .shadow(8.dp, RoundedCornerShape(16.dp)),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50),
+                            contentColor = Color.White
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(0.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+                            Text(
+                                text = if (isLoading) "Updating..." else "Update",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
