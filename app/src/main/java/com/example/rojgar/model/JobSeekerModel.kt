@@ -18,7 +18,6 @@ data class JobSeekerModel(
     val bio : String = "",
     val profession : String = "",
     val profilePhoto : String = "",
-    val coverPhoto : String = "",
     val video : String = "",
 
 ){
@@ -38,7 +37,6 @@ data class JobSeekerModel(
             "profession" to profession,
             "bio" to bio,
             "profilePhoto" to profilePhoto,
-            "coverPhoto" to coverPhoto,
             "video" to video,
         )
     }

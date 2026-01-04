@@ -128,13 +128,6 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
         repo.uploadProfileImage(context, imageUri, callback)
     }
 
-    fun updateCoverPhoto(
-        context: Context,
-        imageUri: Uri,
-        callback: (String?) -> Unit
-    ){
-        repo.updateCoverPhoto(context, imageUri, callback)
-    }
 
 
 }
