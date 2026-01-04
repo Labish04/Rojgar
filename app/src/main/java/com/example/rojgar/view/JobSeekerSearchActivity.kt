@@ -29,6 +29,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
@@ -38,6 +43,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -63,7 +70,10 @@ import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobSeekerViewModel
 import com.example.rojgar.viewmodel.JobViewModel
 import com.google.gson.Gson
-
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
+import coil.request.ImageRequest
+import androidx.compose.ui.layout.ContentScale
 
 data class JobFilterState(
     val selectedCategories: List<String> = emptyList(),
@@ -1232,14 +1242,64 @@ fun JobSeekerProfileCard(
                     .background(Color.LightGray, RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = jobSeeker.fullName.first().toString(),
-                    style = TextStyle(
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                if (jobSeeker.profilePhoto.isNotEmpty()) {
+                    // Load job seeker profile image from URL using Coil
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(jobSeeker.profilePhoto)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Job Seeker Profile Image",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            // Show loading indicator while image loads
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White
+                                )
+                            }
+                        },
+                        error = {
+                            // Show fallback (first letter) if image fails to load
+                            Text(
+                                text = try {
+                                    if (jobSeeker.fullName.isNotEmpty()) jobSeeker.fullName.first().toString() else "?"
+                                } catch (e: Exception) {
+                                    "?"
+                                },
+                                style = TextStyle(
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            )
+                        },
+                        success = {
+                            SubcomposeAsyncImageContent()
+                        }
                     )
-                )
+                } else {
+                    // Show first letter if no image available
+                    Text(
+                        text = try {
+                            if (jobSeeker.fullName.isNotEmpty()) jobSeeker.fullName.first().toString() else "?"
+                        } catch (e: Exception) {
+                            "?"
+                        },
+                        style = TextStyle(
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -1307,83 +1367,216 @@ fun CompanyProfileCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(16.dp),
+                spotColor = Color(0xFF6366F1).copy(alpha = 0.3f)
+            ),
         colors = CardDefaults.cardColors(
-            containerColor = White
+            containerColor = Color.White
         ),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Company Logo
+            // Company Logo - Perfectly Circular Profile Image
             Box(
                 modifier = Modifier
-                    .size(60.dp)
-                    .background(Color.LightGray, RoundedCornerShape(8.dp)),
+                    .size(75.dp),
                 contentAlignment = Alignment.Center
             ) {
-                if (company.companyProfileImage.isNotEmpty()) {
-                    // You can use Coil or Glide to load the image here
-                    Text(
-                        text = company.companyName.first().toString(),
-                        style = TextStyle(
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                // Outer ring with gradient border effect
+                Box(
+                    modifier = Modifier
+                        .size(75.dp)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(Color(0xFFEC4899), Color(0xFFF43F5E))
+                            ),
+                            shape = CircleShape
                         )
-                    )
-                } else {
-                    Text(
-                        text = company.companyName.first().toString(),
-                        style = TextStyle(
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    )
+                        .padding(2.dp), // Creates the border effect
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Inner circle for the actual profile image
+                    Box(
+                        modifier = Modifier
+                            .size(71.dp)
+                            .background(
+                                color = Color.White,
+                                shape = CircleShape
+                            )
+                            .clip(CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (company.companyProfileImage.isNotEmpty()) {
+                            // Load company profile image from URL using Coil
+                            SubcomposeAsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(company.companyProfileImage)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Company Profile Image",
+                                modifier = Modifier
+                                    .size(71.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop,
+                                loading = {
+                                    // Show loading indicator while image loads
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            color = Color(0xFF6366F1)
+                                        )
+                                    }
+                                },
+                                error = {
+                                    // Show fallback with gradient background
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                brush = Brush.linearGradient(
+                                                    colors = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
+                                                ),
+                                                shape = CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = company.companyName.first().toString().uppercase(),
+                                            style = TextStyle(
+                                                fontSize = 26.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                        )
+                                    }
+                                },
+                                success = {
+                                    SubcomposeAsyncImageContent()
+                                }
+                            )
+                        } else {
+                            // Show first letter with gradient background if no image available
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
+                                        ),
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = company.companyName.first().toString().uppercase(),
+                                    style = TextStyle(
+                                        fontSize = 26.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        letterSpacing = 1.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(20.dp))
 
-            // Company Details
+            // Company Details - Enhanced Typography
             Column(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = company.companyName,
                     style = TextStyle(
-                        fontSize = 18.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = Color(0xFF1F2937),
+                        letterSpacing = 0.5.sp
                     )
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = company.companyLocation.ifEmpty { "Location not available" },
-                    style = TextStyle(
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    ),
-                    maxLines = 2,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Location with icon
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = Color(0xFF6B7280)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = company.companyLocation.ifEmpty { "Location not available" },
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            color = Color(0xFF6B7280),
+                            fontWeight = FontWeight.Medium
+                        ),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
+
+                // Company establishment year if available
+                if (company.companyEstablishedDate.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color(0xFF9CA3AF)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Founded ${company.companyEstablishedDate.take(4)}",
+                            style = TextStyle(
+                                fontSize = 12.sp,
+                                color = Color(0xFF9CA3AF),
+                                fontWeight = FontWeight.Normal
+                            )
+                        )
+                    }
+                }
             }
 
-            // Arrow Icon
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "View Company",
+            Box(
                 modifier = Modifier
-                    .size(24.dp)
-                    .graphicsLayer(rotationZ = 180f), // Rotate to point right
-                tint = Color.Gray
-            )
+                    .size(40.dp)
+                    .background(
+                        color = Color(0xFF6366F1).copy(alpha = 0.1f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "View Company",
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer(rotationZ = 180f), // Rotate to point right
+                    tint = Color(0xFF6366F1)
+                )
+            }
         }
     }
 }
