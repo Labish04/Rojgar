@@ -356,6 +356,10 @@ fun UltraCoolReviewItem(
     val isMyReview = review.userId == currentUserId
     val timeAgo = viewModel.formatTimeAgo(review.timestamp)
     val editedLabel = viewModel.getEditedLabel(review)
+    
+    // Observe job seeker usernames from ViewModel
+    val jobSeekerUsernames by viewModel.jobSeekerUsernames.observeAsState(emptyMap())
+    val displayName = jobSeekerUsernames[review.userId] ?: review.userName
 
     var showMenu by remember { mutableStateOf(false) }
     var isExpanded by remember { mutableStateOf(false) }
@@ -474,7 +478,7 @@ fun UltraCoolReviewItem(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = review.userName.firstOrNull()?.uppercase() ?: "?",
+                                        text = displayName.firstOrNull()?.uppercase() ?: "?",
                                         color = Color(0xFF757575),
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 18.sp
@@ -489,7 +493,7 @@ fun UltraCoolReviewItem(
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = review.userName + if (isMyReview) "Anup Neupane" else "",
+                                text = displayName,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 17.sp,
                                 color = Color(0xFF212121)

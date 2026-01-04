@@ -47,4 +47,9 @@ interface ReviewRepo {
     ): String?
 
     fun removeReviewListener(listenerId: String?)
+
+    fun getJobSeekerUsername(
+        jobSeekerId: String,
+        callback: (Boolean, String, String?) -> Unit
+    )
 }

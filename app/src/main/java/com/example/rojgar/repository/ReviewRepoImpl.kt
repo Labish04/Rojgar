@@ -13,6 +13,7 @@ class ReviewRepoImpl : ReviewRepo {
     val auth: FirebaseAuth = FirebaseAuth.getInstance()
     val database: FirebaseDatabase = FirebaseDatabase.getInstance()
     val ref: DatabaseReference = database.getReference("Reviews")
+    val jobSeekerRef: DatabaseReference = database.getReference("JobSeekers")
 
     private val listeners = mutableMapOf<String, ValueEventListener>()
 
@@ -260,6 +261,38 @@ class ReviewRepoImpl : ReviewRepo {
                 ref.removeEventListener(listener)
                 listeners.remove(id)
             }
+        }
+    }
+
+    override fun getJobSeekerUsername(
+        jobSeekerId: String,
+        callback: (Boolean, String, String?) -> Unit
+    ) {
+        try {
+            jobSeekerRef.child(jobSeekerId).addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        try {
+                            val fullName = snapshot.child("fullName").value as? String
+                            if (!fullName.isNullOrEmpty()) {
+                                callback(true, "Job seeker name fetched successfully", fullName)
+                            } else {
+                                callback(false, "Full name is empty", null)
+                            }
+                        } catch (e: Exception) {
+                            callback(false, "Failed to parse job seeker data: ${e.message}", null)
+                        }
+                    } else {
+                        callback(false, "Job seeker not found", null)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    callback(false, error.message, null)
+                }
+            })
+        } catch (e: Exception) {
+            callback(false, e.message ?: "An error occurred", null)
         }
     }
 }

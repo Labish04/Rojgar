@@ -30,6 +30,10 @@ class ReviewViewModel(private val repo: ReviewRepo) : ViewModel() {
     private val _toastMessage = MutableLiveData<String?>()
     val toastMessage: LiveData<String?> get() = _toastMessage
 
+    // Job seeker usernames cache
+    private val _jobSeekerUsernames = MutableLiveData<Map<String, String>>(emptyMap())
+    val jobSeekerUsernames: LiveData<Map<String, String>> get() = _jobSeekerUsernames
+
     // Review listener ID for cleanup
     private var reviewListenerId: String? = null
 
@@ -43,6 +47,20 @@ class ReviewViewModel(private val repo: ReviewRepo) : ViewModel() {
                 loadReviews(review.companyId) // Reload reviews after adding
             }
         }
+    }
+
+    fun fetchJobSeekerUsername(jobSeekerId: String) {
+        repo.getJobSeekerUsername(jobSeekerId) { success, _, username ->
+            if (success && username != null) {
+                val currentMap = _jobSeekerUsernames.value?.toMutableMap() ?: mutableMapOf()
+                currentMap[jobSeekerId] = username
+                _jobSeekerUsernames.value = currentMap
+            }
+        }
+    }
+
+    fun getJobSeekerUsername(jobSeekerId: String): String? {
+        return _jobSeekerUsernames.value?.get(jobSeekerId)
     }
 
     fun updateReview(review: ReviewModel) {
@@ -91,6 +109,13 @@ class ReviewViewModel(private val repo: ReviewRepo) : ViewModel() {
             onDataChange = { reviews ->
                 _reviews.value = reviews
                 calculateAverageRating(reviews)
+
+                // Fetch usernames for all reviewers
+                reviews.forEach { review ->
+                    if (getJobSeekerUsername(review.userId) == null) {
+                        fetchJobSeekerUsername(review.userId)
+                    }
+                }
 
                 // Update current user review
                 _userReview.value = reviews.find { it.userId == currentUserId }
