@@ -241,7 +241,10 @@ fun CompanyDashboardBody(
             when (selectedIndex) {
                 0 -> CompanyHomeScreenBody()
                 1 -> Text("Analysis Screen")
-                2 -> CompanyUploadPostScreen()
+                2 -> CompanyUploadPostScreen(
+                    selectedProfileUri = selectedProfileUri,
+                    onPickProfileImage = onPickProfileImage
+                )
                 3 -> CompanyProfileBody(
                     companyId = "",
                     isOwnProfile = true,

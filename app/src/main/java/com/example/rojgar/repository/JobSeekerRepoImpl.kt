@@ -345,43 +345,6 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         }
     }
 
-    override fun updateCoverPhoto(
-        context: Context,
-        imageUri: Uri,
-        callback: (String?) -> Unit
-    ) {
-        val executor = Executors.newSingleThreadExecutor()
-        executor.execute {
-            try {
-                val inputStream: InputStream? = context.contentResolver.openInputStream(imageUri)
-                var fileName = getFileNameFromUri(context, imageUri)
-
-                fileName = fileName?.substringBeforeLast(".") ?: "uploaded_image"
-
-                val response = cloudinary.uploader().upload(
-                    inputStream, ObjectUtils.asMap(
-                        "public_id", fileName,
-                        "resource_type", "image"
-                    )
-                )
-
-                var imageUrl = response["url"] as String?
-
-                imageUrl = imageUrl?.replace("http://", "https://")
-
-                Handler(Looper.getMainLooper()).post {
-                    callback(imageUrl)
-                }
-
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Handler(Looper.getMainLooper()).post {
-                    callback(null)
-                }
-            }
-        }
-    }
-
     override fun getFileNameFromUri(
         context: Context,
         imageUri: Uri

@@ -30,6 +30,7 @@ data class ChatRoom(
     }
 }
 
+
 data class ChatMessage(
     val messageId: String = "",
     val chatId: String = "",

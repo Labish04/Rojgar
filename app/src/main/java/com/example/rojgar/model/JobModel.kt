@@ -14,6 +14,7 @@ data class JobModel(
     val deadline: String = "",
     val responsibilities: String = "",
     val jobDescription: String = "",
+    val hiringBanner: String = "",
     val imageUrl: String = "",
     val timestamp: Long = System.currentTimeMillis()
 ){
@@ -32,6 +33,7 @@ data class JobModel(
             "deadline" to deadline,
             "responsibilities" to responsibilities,
             "jobDescription" to jobDescription,
+            "hiringBanner" to hiringBanner,
             "imageUrl" to imageUrl,
             "timestamp" to timestamp
         )

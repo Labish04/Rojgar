@@ -10,50 +10,24 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.Image
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -61,10 +35,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.example.rojgar.R
 import com.example.rojgar.model.JobSeekerModel
@@ -79,13 +51,7 @@ import com.example.rojgar.viewmodel.JobSeekerViewModel
 import java.util.Calendar
 
 class JobSeekerPersonalInformationActivity : ComponentActivity() {
-    // Single ImageUtils instance
     lateinit var imageUtils: ImageUtils
-
-    var isPickingCover by mutableStateOf(false)
-    var isPickingProfile by mutableStateOf(false)
-
-    var selectedCoverUri by mutableStateOf<Uri?>(null)
     var selectedProfileUri by mutableStateOf<Uri?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,16 +61,7 @@ class JobSeekerPersonalInformationActivity : ComponentActivity() {
         imageUtils = ImageUtils(this, this)
         imageUtils.registerLaunchers { uri ->
             if (uri != null) {
-                if (isPickingCover) {
-                    selectedCoverUri = uri
-                    Log.d("ImageSelection", "Cover photo selected: $uri")
-                } else if (isPickingProfile) {
-                    selectedProfileUri = uri
-                    Log.d("ImageSelection", "Profile photo selected: $uri")
-                }
-
-                isPickingCover = false
-                isPickingProfile = false
+                selectedProfileUri = uri
             }
         }
 
@@ -112,20 +69,11 @@ class JobSeekerPersonalInformationActivity : ComponentActivity() {
             val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
             JobSeekerPersonalInformationBody(
                 jobSeekerViewModel = jobSeekerViewModel,
-                selectedCoverUri = selectedCoverUri,
                 selectedProfileUri = selectedProfileUri,
-                onPickCoverImage = {
-                    isPickingCover = true
-                    isPickingProfile = false
-                    imageUtils.launchImagePicker()
-                },
                 onPickProfileImage = {
-                    isPickingProfile = true
-                    isPickingCover = false
                     imageUtils.launchImagePicker()
                 },
                 onClearSelectedImages = {
-                    selectedCoverUri = null
                     selectedProfileUri = null
                 }
             )
@@ -136,20 +84,13 @@ class JobSeekerPersonalInformationActivity : ComponentActivity() {
 @Composable
 fun JobSeekerPersonalInformationBody(
     jobSeekerViewModel: JobSeekerViewModel,
-    selectedCoverUri: Uri?,
     selectedProfileUri: Uri?,
-    onPickCoverImage: () -> Unit,
     onPickProfileImage: () -> Unit,
     onClearSelectedImages: () -> Unit
 ) {
     val context = LocalContext.current
     val activity = context as Activity
-
     val currentUser = jobSeekerViewModel.getCurrentJobSeeker()
-
-    var showSampleDialog by remember { mutableStateOf(false) }
-    var showErrorDialog by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") }
 
     var name by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
@@ -162,31 +103,21 @@ fun JobSeekerPersonalInformationBody(
     var expandedStatus by remember { mutableStateOf(false) }
     var bio by remember { mutableStateOf("") }
     var profession by remember { mutableStateOf("") }
-
     var gender by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
-
     var selectedDate by remember { mutableStateOf("") }
-
-    val calendar = Calendar.getInstance()
-    val year = calendar.get(Calendar.YEAR)
-    val month = calendar.get(Calendar.MONTH)
-    val day = calendar.get(Calendar.DAY_OF_MONTH)
-
-    val datePickerDialog = DatePickerDialog(
-        context,
-        { _, y, m, d ->
-            selectedDate = "$d/${m + 1}/$y"
-        },
-        year,
-        month,
-        day
-    )
-
     var existingJobSeeker by remember { mutableStateOf<JobSeekerModel?>(null) }
     var isUploading by remember { mutableStateOf(false) }
-    var uploadedCoverPhotoUrl by remember { mutableStateOf("") }
     var uploadedProfilePhotoUrl by remember { mutableStateOf("") }
+
+    val calendar = Calendar.getInstance()
+    val datePickerDialog = DatePickerDialog(
+        context,
+        { _, y, m, d -> selectedDate = "$d/${m + 1}/$y" },
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH),
+        calendar.get(Calendar.DAY_OF_MONTH)
+    )
 
     LaunchedEffect(Unit) {
         currentUser?.uid?.let { userId ->
@@ -204,946 +135,582 @@ fun JobSeekerPersonalInformationBody(
                     maritalStatus = jobSeeker.maritalStatus
                     bio = jobSeeker.bio
                     profession = jobSeeker.profession
-                    uploadedCoverPhotoUrl = jobSeeker.coverPhoto
                     uploadedProfilePhotoUrl = jobSeeker.profilePhoto
                     existingJobSeeker = jobSeeker
-                } else {
-                    Toast.makeText(context, "Failed to load profile: $message", Toast.LENGTH_SHORT).show()
-                }
-            }
-        } ?: run {
-            Toast.makeText(context, "No user logged in", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    if (showSampleDialog) {
-        Dialog(onDismissRequest = { showSampleDialog = false }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .background(Color.White)
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Cover Photo Requirements",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = DarkBlue2
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Card(
-                        modifier = Modifier
-                            .width(200.dp)
-                            .height(308.dp),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.LightGray),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.addprofileicon),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(60.dp),
-                                    tint = Color.Gray
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Sample Cover Photo",
-                                    color = Color.DarkGray,
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "Required Dimensions:",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.Black
-                    )
-
-                    Text(
-                        text = "1080 × 1668 pixels",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Purple
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "• Aspect Ratio: 9:13.9\n• Portrait orientation\n• High quality image recommended",
-                        fontSize = 14.sp,
-                        color = Color.Gray,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        TextButton(
-                            onClick = { showSampleDialog = false }
-                        ) {
-                            Text("Close", color = Gray)
-                        }
-
-                        Button(
-                            onClick = {
-                                showSampleDialog = false
-                                onPickCoverImage()
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = DarkBlue2
-                            )
-                        ) {
-                            Text("Upload Photo")
-                        }
-                    }
                 }
             }
         }
     }
 
-    if (showErrorDialog) {
-        AlertDialog(
-            onDismissRequest = { showErrorDialog = false },
-            title = {
-                Text(
-                    text = "Upload Failed",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Red
-                )
-            },
-            text = {
-                Text(
-                    text = errorMessage,
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Center
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = { showErrorDialog = false },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = DarkBlue2
-                    )
-                ) {
-                    Text("OK")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showErrorDialog = false
-                        showSampleDialog = true
-                    }
-                ) {
-                    Text("View Requirements", color = Purple)
-                }
-            }
-        )
-    }
-
-    Scaffold(
-        topBar = {
-            Card(
-                modifier = Modifier
-                    .height(140.dp)
-                    .padding(top = 55.dp)
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(5.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkBlue2)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 15.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Start
-                ) {
-
-                    IconButton(onClick = {
-                        val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
-                        context.startActivity(intent)
-                    }) {
-                        Icon(
-                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(30.dp)
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Gradient Background
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            DarkBlue2,
+                            Blue,
+                            Color(0xFFE3F2FD)
                         )
-                    }
-                    Spacer(modifier = Modifier.width(50.dp))
-                    Text(
-                        "Personal Information",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
                     )
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    ) { padding ->
+                )
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .background(Blue)
+                .statusBarsPadding()
         ) {
+            // Top Bar
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.Transparent,
+                shadowElevation = 0.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = "Back",
+                            tint = White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    Text(
+                        text = "Personal Information",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = White,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.width(48.dp))
+                }
+            }
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(250.dp)
+                // Profile Picture Section
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Cover Photo
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(250.dp)
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) {
-                                onPickCoverImage()
-                            }
-                            .padding(10.dp)
-                    ) {
-                        when {
-                            selectedCoverUri != null -> {
-                                AsyncImage(
-                                    model = selectedCoverUri,
-                                    contentDescription = "cover Image",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                            uploadedCoverPhotoUrl.isNotEmpty() -> {
-                                AsyncImage(
-                                    model = uploadedCoverPhotoUrl,
-                                    contentDescription = "cover Image",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                            else -> {
-                                Image(
-                                    painterResource(R.drawable.coveremptypic),
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                        }
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .offset(y = 50.dp)
+                            .size(140.dp)
+                            .shadow(12.dp, CircleShape)
+                            .background(White, CircleShape)
+                            .clickable { onPickProfileImage() }
+                            .padding(6.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(120.dp)
-                                .background(Color.White, CircleShape)
-                                .clickable(
-                                    indication = null,
-                                    interactionSource = remember { MutableInteractionSource() }
-                                ) {
-                                    onPickProfileImage()
-                                },
+                                .fillMaxSize()
+                                .background(
+                                    Brush.radialGradient(
+                                        colors = listOf(Color(0xFFE3F2FD), Color(0xFFBBDEFB))
+                                    ),
+                                    CircleShape
+                                )
+                                .border(3.dp, Purple.copy(alpha = 0.3f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(110.dp)
-                                    .background(Color.LightGray, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                when {
-                                    selectedProfileUri != null -> {
-                                        AsyncImage(
-                                            model = selectedProfileUri,
-                                            contentDescription = "Selected Profile Photo",
-                                            modifier = Modifier.fillMaxSize()
-                                                .clip(CircleShape),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                    }
-                                    uploadedProfilePhotoUrl.isNotEmpty() -> {
-                                        AsyncImage(
-                                            model = uploadedProfilePhotoUrl,
-                                            contentDescription = "Profile Photo",
-                                            modifier = Modifier.fillMaxSize()
-                                                .clip(CircleShape),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                    }
-                                    else -> {
+                            when {
+                                selectedProfileUri != null -> {
+                                    AsyncImage(
+                                        model = selectedProfileUri,
+                                        contentDescription = "Profile Photo",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                                uploadedProfilePhotoUrl.isNotEmpty() -> {
+                                    AsyncImage(
+                                        model = uploadedProfilePhotoUrl,
+                                        contentDescription = "Profile Photo",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                                else -> {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
                                         Icon(
                                             painter = painterResource(id = R.drawable.addprofileicon),
                                             contentDescription = "Add Profile",
-                                            modifier = Modifier.size(50.dp),
-                                            tint = Color.Gray
+                                            modifier = Modifier.size(48.dp),
+                                            tint = Purple
+                                        )
+                                        Text(
+                                            text = "Add Photo",
+                                            fontSize = 12.sp,
+                                            color = DarkBlue2,
+                                            fontWeight = FontWeight.Medium
                                         )
                                     }
                                 }
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Tap to change photo",
+                        fontSize = 13.sp,
+                        color = White.copy(alpha = 0.9f),
+                        fontWeight = FontWeight.Light
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(70.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-                // NAME TEXTFIELD
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.usericon),
-                            contentDescription = "Name",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    label = { Text("Enter Your Name") },
+                // Form Card
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    singleLine = true,
-                    colors = TextFieldDefaults.colors(
-                        disabledIndicatorColor = Color.Transparent,
-                        disabledContainerColor = Blue,
-                        focusedContainerColor = Blue,
-                        unfocusedContainerColor = Blue,
-                        focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Color.Black
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // PHONE NUMBER TEXTFIELD
-                OutlinedTextField(
-                    value = phoneNumber,
-                    onValueChange = { phoneNumber = it },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.call),
-                            contentDescription = "Phone Number",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    label = { Text("Enter Your Phone Number") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    singleLine = true,
-                    colors = TextFieldDefaults.colors(
-                        disabledIndicatorColor = Color.Transparent,
-                        disabledContainerColor = Blue,
-                        focusedContainerColor = Blue,
-                        unfocusedContainerColor = Blue,
-                        focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Color.Black
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // GENDER TEXTFIELD
-                Box(
-                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = gender,
-                        onValueChange = { gender = it },
-                        readOnly = true,
-                        enabled = false,
-                        leadingIcon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.gendericon),
-                                contentDescription = "Gender",
-                                tint = Color.Black,
-                                modifier = Modifier.size(27.dp)
-                            )
-                        },
-                        label = { Text("Select Your Gender") },
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(60.dp)
-                            .clickable { expanded = true },
-                        shape = RoundedCornerShape(15.dp),
-                        trailingIcon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
-                                contentDescription = "Dropdown",
-                                tint = Color.Black,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clickable { expanded = true }
-                            )
-                        },
-                        singleLine = true,
-                        colors = TextFieldDefaults.colors(
-                            disabledIndicatorColor = Color.Black,
-                            disabledContainerColor = Blue,
-                            focusedContainerColor = Blue,
-                            unfocusedContainerColor = Blue,
-                            focusedIndicatorColor = Purple,
-                            unfocusedIndicatorColor = Color.Black,
-                            disabledTextColor = Color.Black,
-                        )
-                    )
-
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier
-                            .background(White)
-                            .fillMaxWidth()
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Male") },
-                            onClick = {
-                                gender = "Male"
-                                expanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Female") },
-                            onClick = {
-                                gender = "Female"
-                                expanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Other") },
-                            onClick = {
-                                gender = "Other"
-                                expanded = false
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // DATE OF BIRTH
-                OutlinedTextField(
-                    value = selectedDate,
-                    onValueChange = { selectedDate = it },
-                    placeholder = { Text("dd/mm/yyyy") },
-                    enabled = false,
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.birthdaydateicon),
-                            contentDescription = "Calendar",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    trailingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.calendaricon),
-                            contentDescription = "Open Calendar",
-                            tint = Color.Black,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clickable { datePickerDialog.show() }
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp)
-                        .clickable { datePickerDialog.show() },
-                    shape = RoundedCornerShape(15.dp),
-                    colors = TextFieldDefaults.colors(
-                        disabledIndicatorColor = Color.Black,
-                        disabledContainerColor = Blue,
-                        disabledTextColor = Color.Black,
-                        focusedContainerColor = Color(0xFFE3F2FD),
-                        unfocusedContainerColor = Color(0xFFE3F2FD),
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // CURRENT ADDRESS
-                OutlinedTextField(
-                    value = currentAddress,
-                    onValueChange = { currentAddress = it },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.locationicon),
-                            contentDescription = "Address",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    label = { Text("Your Current Address") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    singleLine = true,
-                    colors = TextFieldDefaults.colors(
-                        disabledIndicatorColor = Color.Transparent,
-                        disabledContainerColor = Blue,
-                        focusedContainerColor = Blue,
-                        unfocusedContainerColor = Blue,
-                        focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Color.Black
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // PERMANENT ADDRESS
-                OutlinedTextField(
-                    value = permanentAddress,
-                    onValueChange = { permanentAddress = it },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.locationicon),
-                            contentDescription = "Permanent",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    label = { Text("Your Permanent Address") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    singleLine = true,
-                    colors = TextFieldDefaults.colors(
-                        disabledIndicatorColor = Color.Transparent,
-                        disabledContainerColor = Blue,
-                        focusedContainerColor = Blue,
-                        unfocusedContainerColor = Blue,
-                        focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Color.Black
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // EMAIL
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.emailicon),
-                            contentDescription = "Mail",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    label = { Text("Enter Your Email") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    singleLine = true,
-                    colors = TextFieldDefaults.colors(
-                        disabledIndicatorColor = Color.Transparent,
-                        disabledContainerColor = Blue,
-                        focusedContainerColor = Blue,
-                        unfocusedContainerColor = Blue,
-                        focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Color.Black
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                OutlinedTextField(
-                    value = religion,
-                    onValueChange = { religion = it },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.religionicon),
-                            contentDescription = "Religion",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    label = { Text("Enter Your Religion") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    singleLine = true,
-                    colors = TextFieldDefaults.colors(
-                        disabledIndicatorColor = Color.Transparent,
-                        disabledContainerColor = Blue,
-                        focusedContainerColor = Blue,
-                        unfocusedContainerColor = Blue,
-                        focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Color.Black
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                OutlinedTextField(
-                    value = nationality,
-                    onValueChange = { nationality = it },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.nationalityicon),
-                            contentDescription = "Nationality",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    label = { Text("Enter Your Nationality") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    singleLine = true,
-                    colors = TextFieldDefaults.colors(
-                        disabledIndicatorColor = Color.Transparent,
-                        disabledContainerColor = Blue,
-                        focusedContainerColor = Blue,
-                        unfocusedContainerColor = Blue,
-                        focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Color.Black
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Box(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = maritalStatus,
-                        onValueChange = { maritalStatus = it },
-                        readOnly = true,
-                        enabled = false,
-                        leadingIcon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.maritalstatusicon),
-                                contentDescription = "Marital Status",
-                                tint = Color.Black,
-                                modifier = Modifier.size(27.dp)
-                            )
-                        },
-                        label = { Text("Select Your Marital Status") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(60.dp)
-                            .clickable { expandedStatus = true },
-                        shape = RoundedCornerShape(15.dp),
-                        trailingIcon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
-                                contentDescription = "Dropdown",
-                                tint = Color.Black,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clickable { expandedStatus = true }
-                            )
-                        },
-                        singleLine = true,
-                        colors = TextFieldDefaults.colors(
-                            disabledIndicatorColor = Color.Black,
-                            disabledContainerColor = Blue,
-                            focusedContainerColor = Blue,
-                            unfocusedContainerColor = Blue,
-                            focusedIndicatorColor = Purple,
-                            unfocusedIndicatorColor = Color.Black,
-                            disabledTextColor = Color.Black,
-                        )
-                    )
-
-                    DropdownMenu(
-                        expanded = expandedStatus,
-                        onDismissRequest = { expandedStatus = false },
-                        modifier = Modifier
-                            .background(White)
-                            .fillMaxWidth()
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Single") },
-                            onClick = {
-                                maritalStatus = "Single"
-                                expandedStatus = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Married") },
-                            onClick = {
-                                maritalStatus = "Married"
-                                expandedStatus = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Divorced") },
-                            onClick = {
-                                maritalStatus = "Divorced"
-                                expandedStatus = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Widowed") },
-                            onClick = {
-                                maritalStatus = "Widowed"
-                                expandedStatus = false
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                OutlinedTextField(
-                    value = profession,
-                    onValueChange = { profession = it },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.professionicon),
-                            contentDescription = "profession",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    label = { Text("Enter Your Profession") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    singleLine = true,
-                    colors = TextFieldDefaults.colors(
-                        disabledIndicatorColor = Color.Transparent,
-                        disabledContainerColor = Blue,
-                        focusedContainerColor = Blue,
-                        unfocusedContainerColor = Blue,
-                        focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Color.Black
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // BIO
-                OutlinedTextField(
-                    value = bio,
-                    onValueChange = { bio = it },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.bioicon),
-                            contentDescription = "Bio",
-                            tint = Color.Black,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    label = { Text("Bio") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(100.dp),
-                    shape = RoundedCornerShape(15.dp),
-                    singleLine = false,
-                    maxLines = 3,
-                    colors = TextFieldDefaults.colors(
-                        disabledIndicatorColor = Color.Transparent,
-                        disabledContainerColor = Blue,
-                        focusedContainerColor = Blue,
-                        unfocusedContainerColor = Blue,
-                        focusedIndicatorColor = Purple,
-                        unfocusedIndicatorColor = Color.Black
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(30.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    // Save Button
-                    Button(
-                        onClick = {
-                            if (isUploading) return@Button
-
-                            currentUser?.uid?.let { userId ->
-                                Log.d("Save", "Starting save process for user: $userId")
-
-                                isUploading = true
-
-                                fun saveProfile(coverUrl: String?, profileUrl: String?) {
-                                    val finalCoverPhotoUrl = coverUrl ?: uploadedCoverPhotoUrl
-                                    val finalProfilePhotoUrl = profileUrl ?: uploadedProfilePhotoUrl
-
-                                    val updatedModel = JobSeekerModel(
-                                        jobSeekerId = userId,
-                                        fullName = name,
-                                        email = email,
-                                        phoneNumber = phoneNumber,
-                                        gender = gender,
-                                        dob = selectedDate,
-                                        currentAddress = currentAddress,
-                                        permanentAddress = permanentAddress,
-                                        bio = bio,
-                                        profession = profession,
-                                        profilePhoto = finalProfilePhotoUrl,
-                                        coverPhoto = finalCoverPhotoUrl,
-                                        religion = religion,
-                                        nationality = nationality,
-                                        maritalStatus = maritalStatus,
-                                        video = existingJobSeeker?.video ?: "",
-//                                        followers = existingJobSeeker?.followers ?: emptyList(),
-//                                        appliedJobs = existingJobSeeker?.appliedJobs ?: emptyList()
-                                    )
-
-                                    jobSeekerViewModel.updateProfile(updatedModel) { success, message ->
-                                        isUploading = false
-                                        if (success) {
-                                            Toast.makeText(context, "Personal Information Updated Successfully!", Toast.LENGTH_SHORT).show()
-                                            existingJobSeeker = updatedModel
-                                            onClearSelectedImages()
-
-                                            uploadedCoverPhotoUrl = finalCoverPhotoUrl
-                                            uploadedProfilePhotoUrl = finalProfilePhotoUrl
-                                        } else {
-                                            Toast.makeText(context, "Update Failed: $message", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                }
-
-                                if (selectedCoverUri != null) {
-                                    jobSeekerViewModel.updateCoverPhoto(context, selectedCoverUri) { coverUrl ->
-                                        Log.d("Upload", "Cover photo upload result: $coverUrl")
-
-                                        if (selectedProfileUri != null) {
-                                            jobSeekerViewModel.uploadProfileImage(context, selectedProfileUri) { profileUrl ->
-                                                Log.d("Upload", "Profile photo upload result: $profileUrl")
-                                                saveProfile(coverUrl, profileUrl)
-                                            }
-                                        } else {
-                                            saveProfile(coverUrl, null)
-                                        }
-                                    }
-                                } else {
-                                    if (selectedProfileUri != null) {
-                                        jobSeekerViewModel.uploadProfileImage(context, selectedProfileUri) { profileUrl ->
-                                            saveProfile(null, profileUrl)
-                                        }
-                                    } else {
-                                        saveProfile(null, null)
-                                    }
-                                }
-                            } ?: run {
-                                Toast.makeText(context, "No user logged in", Toast.LENGTH_SHORT).show()
-                                isUploading = false
-                            }
-                        },
-                        shape = RoundedCornerShape(25.dp),
-                        modifier = Modifier
-                            .width(130.dp)
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DarkBlue2,
-                            contentColor = Color.White
-                        ),
-                        enabled = !isUploading
-                    ) {
-                        if (isUploading) {
-                            CircularProgressIndicator(
-                                color = Color.White,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        } else {
-                            Text(
-                                text = "Save",
-                                style = TextStyle(
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(20.dp))
-
-                    // Cancel Button
-                    Button(
-                        onClick = {
-                            activity.finish()
-                        },
-                        shape = RoundedCornerShape(25.dp),
-                        modifier = Modifier
-                            .width(130.dp)
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Gray,
-                            contentColor = Color.Black
-                        ),
-                        enabled = !isUploading
+                            .padding(24.dp)
                     ) {
                         Text(
-                            text = "Cancel",
-                            style = TextStyle(
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.SemiBold,
+                            text = "Profile Details",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkBlue2,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+
+                        // Name
+                        ModernTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = "Full Name",
+                            icon = R.drawable.usericon
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Phone
+                        ModernTextField(
+                            value = phoneNumber,
+                            onValueChange = { phoneNumber = it },
+                            label = "Phone Number",
+                            icon = R.drawable.call
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Gender Dropdown
+                        ModernDropdown(
+                            value = gender,
+                            label = "Gender",
+                            icon = R.drawable.gendericon,
+                            expanded = expanded,
+                            onExpandedChange = { expanded = it },
+                            options = listOf("Male", "Female", "Other"),
+                            onOptionSelected = { gender = it; expanded = false }
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Date of Birth
+                        ModernTextField(
+                            value = selectedDate,
+                            onValueChange = {},
+                            label = "Date of Birth",
+                            icon = R.drawable.birthdaydateicon,
+                            readOnly = true,
+                            onClick = { datePickerDialog.show() },
+                            trailingIcon = R.drawable.calendaricon
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Current Address
+                        ModernTextField(
+                            value = currentAddress,
+                            onValueChange = { currentAddress = it },
+                            label = "Current Address",
+                            icon = R.drawable.locationicon
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Permanent Address
+                        ModernTextField(
+                            value = permanentAddress,
+                            onValueChange = { permanentAddress = it },
+                            label = "Permanent Address",
+                            icon = R.drawable.locationicon
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Email
+                        ModernTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = "Email",
+                            icon = R.drawable.emailicon
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Religion
+                        ModernTextField(
+                            value = religion,
+                            onValueChange = { religion = it },
+                            label = "Religion",
+                            icon = R.drawable.religionicon
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Nationality
+                        ModernTextField(
+                            value = nationality,
+                            onValueChange = { nationality = it },
+                            label = "Nationality",
+                            icon = R.drawable.nationalityicon
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Marital Status
+                        ModernDropdown(
+                            value = maritalStatus,
+                            label = "Marital Status",
+                            icon = R.drawable.maritalstatusicon,
+                            expanded = expandedStatus,
+                            onExpandedChange = { expandedStatus = it },
+                            options = listOf("Single", "Married", "Divorced", "Widowed"),
+                            onOptionSelected = { maritalStatus = it; expandedStatus = false }
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Profession
+                        ModernTextField(
+                            value = profession,
+                            onValueChange = { profession = it },
+                            label = "Profession",
+                            icon = R.drawable.professionicon
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Bio
+                        OutlinedTextField(
+                            value = bio,
+                            onValueChange = { bio = it },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.bioicon),
+                                    contentDescription = null,
+                                    tint = DarkBlue2,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    "Bio",
+                                    color = Gray,
+                                    fontSize = 14.sp
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            maxLines = 4,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color(0xFFF5F9FF),
+                                unfocusedContainerColor = Color(0xFFF5F9FF),
+                                focusedIndicatorColor = Purple,
+                                unfocusedIndicatorColor = Color(0xFFE0E0E0),
+                                cursorColor = Purple
                             )
                         )
+
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        // Action Buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = { activity.finish() },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(54.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Gray.copy(alpha = 0.2f),
+                                    contentColor = Color.DarkGray
+                                ),
+                                elevation = ButtonDefaults.buttonElevation(0.dp),
+                                enabled = !isUploading
+                            ) {
+                                Text(
+                                    text = "Cancel",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            Button(
+                                onClick = {
+                                    if (isUploading) return@Button
+                                    currentUser?.uid?.let { userId ->
+                                        isUploading = true
+
+                                        fun saveProfile(profileUrl: String?) {
+                                            val finalProfilePhotoUrl = profileUrl ?: uploadedProfilePhotoUrl
+
+                                            val updatedModel = JobSeekerModel(
+                                                jobSeekerId = userId,
+                                                fullName = name,
+                                                email = email,
+                                                phoneNumber = phoneNumber,
+                                                gender = gender,
+                                                dob = selectedDate,
+                                                currentAddress = currentAddress,
+                                                permanentAddress = permanentAddress,
+                                                bio = bio,
+                                                profession = profession,
+                                                profilePhoto = finalProfilePhotoUrl,
+                                                religion = religion,
+                                                nationality = nationality,
+                                                maritalStatus = maritalStatus,
+                                                video = existingJobSeeker?.video ?: ""
+                                            )
+
+                                            jobSeekerViewModel.updateProfile(updatedModel) { success, message ->
+                                                isUploading = false
+                                                if (success) {
+                                                    Toast.makeText(context, "Profile Updated Successfully!", Toast.LENGTH_SHORT).show()
+                                                    existingJobSeeker = updatedModel
+                                                    onClearSelectedImages()
+                                                    uploadedProfilePhotoUrl = finalProfilePhotoUrl
+                                                } else {
+                                                    Toast.makeText(context, "Update Failed: $message", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
+
+                                        if (selectedProfileUri != null) {
+                                            jobSeekerViewModel.uploadProfileImage(context, selectedProfileUri!!) { profileUrl ->
+                                                saveProfile(profileUrl)
+                                            }
+                                        } else {
+                                            saveProfile(null)
+                                        }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(54.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = DarkBlue2
+                                ),
+                                elevation = ButtonDefaults.buttonElevation(4.dp),
+                                enabled = !isUploading
+                            ) {
+                                if (isUploading) {
+                                    CircularProgressIndicator(
+                                        color = White,
+                                        strokeWidth = 2.dp,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Save Profile",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
 }
 
-@Preview
 @Composable
-fun JobSeekerPersonalInformationPreview() {
-    JobSeekerPersonalInformationBody(
-        jobSeekerViewModel = JobSeekerViewModel(JobSeekerRepoImpl()),
-        selectedCoverUri = null,
-        selectedProfileUri = null,
-        onPickCoverImage = {},
-        onPickProfileImage = {},
-        onClearSelectedImages = {}
+fun ModernTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    icon: Int,
+    readOnly: Boolean = false,
+    onClick: (() -> Unit)? = null,
+    trailingIcon: Int? = null
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        leadingIcon = {
+            Icon(
+                painter = painterResource(id = icon),
+                contentDescription = null,
+                tint = DarkBlue2,
+                modifier = Modifier.size(22.dp)
+            )
+        },
+        trailingIcon = trailingIcon?.let {
+            {
+                Icon(
+                    painter = painterResource(id = it),
+                    contentDescription = null,
+                    tint = Purple,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clickable { onClick?.invoke() }
+                )
+            }
+        },
+        label = {
+            Text(
+                label,
+                color = Gray,
+                fontSize = 14.sp
+            )
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(60.dp)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable { onClick() }
+                } else Modifier
+            ),
+        shape = RoundedCornerShape(16.dp),
+        singleLine = true,
+        readOnly = readOnly,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color(0xFFF5F9FF),
+            unfocusedContainerColor = Color(0xFFF5F9FF),
+            disabledContainerColor = Color(0xFFF5F9FF),
+            focusedIndicatorColor = Purple,
+            unfocusedIndicatorColor = Color(0xFFE0E0E0),
+            disabledIndicatorColor = Color(0xFFE0E0E0),
+            disabledTextColor = Color.Black,
+            cursorColor = Purple
+        )
     )
+}
+
+@Composable
+fun ModernDropdown(
+    value: String,
+    label: String,
+    icon: Int,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    options: List<String>,
+    onOptionSelected: (String) -> Unit
+) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            readOnly = true,
+            enabled = false,
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = null,
+                    tint = DarkBlue2,
+                    modifier = Modifier.size(22.dp)
+                )
+            },
+            label = {
+                Text(
+                    label,
+                    color = Gray,
+                    fontSize = 14.sp
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
+                .clickable { onExpandedChange(true) },
+            shape = RoundedCornerShape(16.dp),
+            trailingIcon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
+                    contentDescription = null,
+                    tint = Purple,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clickable { onExpandedChange(true) }
+                )
+            },
+            singleLine = true,
+            colors = TextFieldDefaults.colors(
+                disabledContainerColor = Color(0xFFF5F9FF),
+                disabledIndicatorColor = Color(0xFFE0E0E0),
+                disabledTextColor = Color.Black
+            )
+        )
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+            modifier = Modifier
+                .background(White)
+                .fillMaxWidth(0.9f)
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            option,
+                            color = DarkBlue2,
+                            fontWeight = if (value == option) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    onClick = { onOptionSelected(option) }
+                )
+            }
+        }
+    }
 }
