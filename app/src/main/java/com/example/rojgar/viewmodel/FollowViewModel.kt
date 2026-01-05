@@ -49,7 +49,7 @@ class FollowViewModel(private val followRepo: FollowRepo) : ViewModel() {
                 _loading.postValue(false)
                 if (success) {
                     _isFollowing.postValue(true)
-                    // Update counts
+                    // Force refresh both counts
                     getFollowersCount(followingId)
                     getFollowingCount(followerId)
                 }
@@ -71,7 +71,7 @@ class FollowViewModel(private val followRepo: FollowRepo) : ViewModel() {
                 _loading.postValue(false)
                 if (success) {
                     _isFollowing.postValue(false)
-                    // Update counts
+                    // Force refresh both counts
                     getFollowersCount(followingId)
                     getFollowingCount(followerId)
                 }
@@ -118,5 +118,10 @@ class FollowViewModel(private val followRepo: FollowRepo) : ViewModel() {
                 }
             }
         }
+    }
+
+    fun refreshAllCounts(userId: String) {
+        getFollowersCount(userId)
+        getFollowingCount(userId)
     }
 }

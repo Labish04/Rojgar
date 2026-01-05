@@ -64,6 +64,17 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".view.CreateGroupActivity"
+            android:exported="true"
+            android:label="@string/title_activity_chat"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".view.MessageActivity"
             android:exported="true"
             android:label="@string/title_activity_message"

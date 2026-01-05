@@ -338,6 +338,26 @@ class JobSeekerRepoImpl : JobSeekerRepo {
             }
     }
 
+    override fun getJobSeekerDetails(
+        jobSeekerId: String,
+        callback: (Boolean, String, JobSeekerModel?) -> Unit
+    ) {
+        ref.child(jobSeekerId).addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    val jobSeeker = snapshot.getValue(JobSeekerModel::class.java)
+                    callback(true, "Job seeker details fetched", jobSeeker)
+                } else {
+                    callback(false, "Job seeker not found", null)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                callback(false, error.message, null)
+            }
+        })
+    }
+
     override fun uploadProfileImage(
         context: Context,
         imageUri: Uri,

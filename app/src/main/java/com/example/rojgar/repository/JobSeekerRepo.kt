@@ -83,6 +83,10 @@ interface JobSeekerRepo {
         callback: (Boolean, String) -> Unit
     )
 
+    fun getJobSeekerDetails(
+        jobSeekerId: String,
+        callback: (Boolean, String, JobSeekerModel?) -> Unit
+    )
 
 
 }

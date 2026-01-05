@@ -8,6 +8,10 @@ data class FollowModel(
     val followingType: String = "",    // "JobSeeker" or "Company"
     val timestamp: Long = System.currentTimeMillis()
 ) {
+    // Add compound key for querying
+    val followerId_followingId: String
+        get() = "$followerId-$followingId"
+
     fun toMap(): Map<String, Any?> {
         return mapOf(
             "followId" to followId,
@@ -15,6 +19,7 @@ data class FollowModel(
             "followerType" to followerType,
             "followingId" to followingId,
             "followingType" to followingType,
+            "followerId_followingId" to followerId_followingId, // Add this
             "timestamp" to timestamp
         )
     }
