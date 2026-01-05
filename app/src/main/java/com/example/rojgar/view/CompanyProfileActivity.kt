@@ -39,8 +39,11 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
 import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.repository.CompanyRepoImpl
+import com.example.rojgar.repository.FollowRepoImpl
+import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.utils.ImageUtils
 import com.example.rojgar.viewmodel.CompanyViewModel
+import com.example.rojgar.viewmodel.FollowViewModel
 
 class CompanyProfileActivity : ComponentActivity() {
     lateinit var imageUtils: ImageUtils
@@ -110,8 +113,16 @@ fun CompanyProfileBody(
 ) {
     val context = LocalContext.current
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
+    val followViewModel = remember { FollowViewModel(FollowRepoImpl()) }
 
     val company = companyViewModel.companyDetails.observeAsState(initial = null)
+    val isFollowingState by followViewModel.isFollowing.observeAsState(initial = false)
+
+    val followersCountState by followViewModel.followersCount.observeAsState(initial = 0)
+    val followingCountState by followViewModel.followingCount.observeAsState(initial = 0)
+
+    val currentCompany = remember { CompanyRepoImpl().getCurrentCompany() }
+    val currentJobSeeker = remember { JobSeekerRepoImpl().getCurrentJobSeeker() }
 
     var isFollowing by remember { mutableStateOf(false) }
     var isUploadingCover by remember { mutableStateOf(false) }
@@ -121,12 +132,26 @@ fun CompanyProfileBody(
     var displayedCoverUrl by remember { mutableStateOf("") }
     var displayedProfileUrl by remember { mutableStateOf("") }
 
+    val currentUserId = remember {
+        if (currentCompany != null) currentCompany.uid
+        else if (currentJobSeeker != null) currentJobSeeker.uid
+        else ""
+    }
+
+    val currentUserType = remember {
+        when {
+            currentCompany != null -> "Company"
+            currentJobSeeker != null -> "JobSeeker"
+            else -> ""
+        }
+    }
+
     // Fetch company profile based on whether it's own profile or viewing another company
     LaunchedEffect(companyId) {
         if (companyId.isNotEmpty()) {
             if (isOwnProfile) {
                 companyViewModel.fetchCurrentCompany()
-            } else {
+            } else { 
                 // Fetch specific company profile for viewing
                 companyViewModel.getCompanyDetails(companyId)
             }
@@ -201,6 +226,21 @@ fun CompanyProfileBody(
                 }
             }
         }
+    }
+
+    // Check follow status when company data loads
+    LaunchedEffect(company.value, currentUserId, companyId) {
+        company.value?.let { targetCompany ->
+            if (currentUserId.isNotEmpty() && companyId.isNotEmpty() && !isOwnProfile) {
+                followViewModel.checkFollowStatus(currentUserId, companyId)
+                followViewModel.getFollowersCount(companyId)
+                followViewModel.getFollowingCount(companyId)
+            }
+        }
+    }
+
+    LaunchedEffect(followersCountState, followingCountState) {
+        // Update UI with real follow counts
     }
 
     Scaffold(
@@ -383,7 +423,9 @@ fun CompanyProfileBody(
                         ) {
                             if (selectedProfileUri != null || displayedProfileUrl.isNotEmpty()) {
                                 Image(
-                                    painter = rememberAsyncImagePainter(selectedProfileUri ?: displayedProfileUrl),
+                                    painter = rememberAsyncImagePainter(
+                                        selectedProfileUri ?: displayedProfileUrl
+                                    ),
                                     contentDescription = "Profile Image",
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -406,7 +448,8 @@ fun CompanyProfileBody(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = company.value?.companyName?.firstOrNull()?.toString() ?: "L",
+                                        text = company.value?.companyName?.firstOrNull()?.toString()
+                                            ?: "L",
                                         fontSize = 52.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White
@@ -559,87 +602,87 @@ fun CompanyProfileBody(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Action Buttons (different for own profile vs viewing others)
-                if (isOwnProfile) {
-                    // Own profile - show edit options
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Button(
-                            onClick = { /* Edit Profile */ },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(52.dp)
-                                .shadow(8.dp, RoundedCornerShape(16.dp)),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF6366F1)
-                            ),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Edit Profile",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
-                        }
-
-                        OutlinedButton(
-                            onClick = { /* Settings */ },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(52.dp)
-                                .shadow(4.dp, RoundedCornerShape(16.dp)),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color(0xFF6366F1),
-                                containerColor = Color.White
-                            ),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(width = 2.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Settings",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
-                        }
-                    }
-                } else {
+                if (!isOwnProfile) {
                     // Viewing other company's profile - show follow and message
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Button(
-                            onClick = { isFollowing = !isFollowing },
+                            onClick = {
+                                if (currentUserId.isNotEmpty() && currentUserType.isNotEmpty()) {
+                                    if (isFollowingState) {
+                                        followViewModel.unfollow(
+                                            followerId = currentUserId,
+                                            followerType = currentUserType,
+                                            followingId = companyId,
+                                            followingType = "Company",
+                                            onComplete = { success, message ->
+                                                if (success) {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Unfollowed!",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Failed: $message",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+                                        )
+                                    } else {
+                                        followViewModel.follow(
+                                            followerId = currentUserId,
+                                            followerType = currentUserType,
+                                            followingId = companyId,
+                                            followingType = "Company",
+                                            onComplete = { success, message ->
+                                                if (success) {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Followed!",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Failed: $message",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+                                        )
+                                    }
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "Please login to follow",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            },
                             modifier = Modifier
                                 .weight(1f)
                                 .height(52.dp)
                                 .shadow(8.dp, RoundedCornerShape(16.dp)),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isFollowing) Color(0xFF10B981) else Color(0xFF6366F1)
+                                containerColor = if (isFollowingState) Color(0xFF10B981) else Color(
+                                    0xFF6366F1
+                                )
                             ),
                             shape = RoundedCornerShape(16.dp)
                         ) {
                             Icon(
-                                imageVector = if (isFollowing) Icons.Default.Check else Icons.Default.Add,
+                                imageVector = if (isFollowingState) Icons.Default.Check else Icons.Default.Add,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (isFollowing) "Following" else "Follow",
+                                text = if (isFollowingState) "Following" else "Follow",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp
                             )
@@ -648,7 +691,11 @@ fun CompanyProfileBody(
                         OutlinedButton(
                             onClick = {
                                 // Navigate to chat/message screen
-                                Toast.makeText(context, "Message feature coming soon!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "Message feature coming soon!",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             },
                             modifier = Modifier
                                 .weight(1f)
