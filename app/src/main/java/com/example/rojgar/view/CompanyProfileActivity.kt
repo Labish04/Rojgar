@@ -151,7 +151,7 @@ fun CompanyProfileBody(
         if (companyId.isNotEmpty()) {
             if (isOwnProfile) {
                 companyViewModel.fetchCurrentCompany()
-            } else { 
+            } else {
                 // Fetch specific company profile for viewing
                 companyViewModel.getCompanyDetails(companyId)
             }

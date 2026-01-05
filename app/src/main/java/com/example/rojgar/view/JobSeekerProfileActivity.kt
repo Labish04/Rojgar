@@ -617,7 +617,6 @@ fun JobSeekerProfileBody(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    if (isOwnProfile) {
                         Text(
                             text = "Introduction Video",
                             style = TextStyle(
@@ -665,12 +664,14 @@ fun JobSeekerProfileBody(
                                             Column(
                                                 horizontalAlignment = Alignment.CenterHorizontally
                                             ) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.baseline_upload_24),
-                                                    contentDescription = "Upload",
-                                                    tint = Color.White.copy(alpha = 0.7f),
-                                                    modifier = Modifier.size(48.dp)
-                                                )
+                                                if(isOwnProfile) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.baseline_upload_24),
+                                                        contentDescription = "Upload",
+                                                        tint = Color.White.copy(alpha = 0.7f),
+                                                        modifier = Modifier.size(48.dp)
+                                                    )
+                                                }
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
                                                     "No video selected",
@@ -731,7 +732,7 @@ fun JobSeekerProfileBody(
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
-                    }
+
 
                     if (isOwnProfile) {
                         Row(
@@ -740,7 +741,8 @@ fun JobSeekerProfileBody(
                         ) {
                             Button(
                                 onClick = {
-                                    val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
+                                    val intent =
+                                        Intent(context, JobSeekerProfileDetailsActivity::class.java)
                                     context.startActivity(intent)
                                 },
                                 shape = RoundedCornerShape(16.dp),
@@ -769,6 +771,7 @@ fun JobSeekerProfileBody(
                                     )
                                 }
                             }
+                        }
 
                             Button(
                                 onClick = {
@@ -795,7 +798,7 @@ fun JobSeekerProfileBody(
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
-                    }
+
                 }
             }
         }
