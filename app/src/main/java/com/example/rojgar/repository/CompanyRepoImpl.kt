@@ -10,7 +10,6 @@ import androidx.compose.runtime.mutableStateListOf
 import com.cloudinary.Cloudinary
 import com.cloudinary.utils.ObjectUtils
 import com.example.rojgar.model.CompanyModel
-import com.example.rojgar.model.JobModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.DataSnapshot
@@ -19,7 +18,6 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import java.io.InputStream
-import java.util.UUID
 import java.util.concurrent.Executors
 
 class CompanyRepoImpl : CompanyRepo {
@@ -35,7 +33,6 @@ class CompanyRepoImpl : CompanyRepo {
             "api_secret" to "DhiLcks25VLVZCBhWgGvObdGGyE"
         )
     )
-
 
     override fun register(
         email: String,
@@ -75,7 +72,9 @@ class CompanyRepoImpl : CompanyRepo {
         model: CompanyModel,
         callback: (Boolean, String) -> Unit
     ) {
-        ref.child(companyId).setValue(model).addOnCompleteListener {
+        // Ensure isActive is set to true for new accounts
+        val updatedModel = model.copy(isActive = true)
+        ref.child(companyId).setValue(updatedModel).addOnCompleteListener {
             if (it.isSuccessful) {
                 callback(true, "Registration Successful")
             } else {
@@ -98,7 +97,11 @@ class CompanyRepoImpl : CompanyRepo {
                     val company = snapshot.getValue(CompanyModel::class.java)
                     if (company != null) {
                         callback(true, "Profile fetched", company)
+                    } else {
+                        callback(false, "Company data is null", null)
                     }
+                } else {
+                    callback(false, "Company not found", null)
                 }
             }
 
@@ -112,9 +115,9 @@ class CompanyRepoImpl : CompanyRepo {
         ref.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
-                    var allCompanys = mutableStateListOf<CompanyModel>()
+                    val allCompanys = mutableStateListOf<CompanyModel>()
                     for (data in snapshot.children) {
-                        var company = data.getValue(CompanyModel::class.java)
+                        val company = data.getValue(CompanyModel::class.java)
                         if (company != null) {
                             // Set the companyId to the key of the Firebase node
                             val companyWithId = company.copy(companyId = data.key ?: "")
@@ -158,7 +161,6 @@ class CompanyRepoImpl : CompanyRepo {
         }
     }
 
-
     override fun getCompanyDetails(
         companyId: String,
         callback: (Boolean, String, CompanyModel?) -> Unit
@@ -170,7 +172,6 @@ class CompanyRepoImpl : CompanyRepo {
 
         ref.child(companyId)
             .addListenerForSingleValueEvent(object : ValueEventListener {
-
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (snapshot.exists()) {
                         val company = snapshot.getValue(CompanyModel::class.java)
@@ -191,8 +192,6 @@ class CompanyRepoImpl : CompanyRepo {
         imageUri: Uri,
         callback: (Boolean, String) -> Unit
     ) {
-        // For now, just save the URI as a string
-        // In production, you would upload to Firebase Storage
         ref.child(companyId).child("companyRegistrationDocument")
             .setValue(imageUri.toString())
             .addOnSuccessListener {
@@ -294,4 +293,120 @@ class CompanyRepoImpl : CompanyRepo {
         return fileName
     }
 
+    // NEW METHOD: Deactivate account
+    override fun deactivateAccount(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(companyId).child("isActive").setValue(false)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Also sign out the user
+                    auth.signOut()
+                    callback(true, "Account deactivated successfully")
+                } else {
+                    callback(false, task.exception?.message ?: "Failed to deactivate account")
+                }
+            }
+    }
+
+    // NEW METHOD: Reactivate account
+    override fun reactivateAccount(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(companyId).child("isActive").setValue(true)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    callback(true, "Account reactivated successfully")
+                } else {
+                    callback(false, task.exception?.message ?: "Failed to reactivate account")
+                }
+            }
+    }
+
+    // NEW METHOD: Check account status by ID
+    override fun checkAccountStatus(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(companyId).child("isActive").get()
+            .addOnSuccessListener { snapshot ->
+                val isActive = snapshot.getValue(Boolean::class.java) ?: true
+                if (isActive) {
+                    callback(true, "Account is active")
+                } else {
+                    callback(false, "Account is deactivated")
+                }
+            }
+            .addOnFailureListener { exception ->
+                callback(false, "Error checking account status: ${exception.message}")
+            }
+    }
+
+    // NEW METHOD: Check account status by email (for login flow)
+    // Add this method to CompanyRepoImpl class to fix the email query issue
+
+    override fun checkAccountStatusByEmail(
+        email: String,
+        callback: (Boolean, String?, String) -> Unit
+    ) {
+        val normalizedEmail = email.lowercase().trim()
+
+        // Query all companies and filter by email
+        ref.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    var foundCompany: CompanyModel? = null
+                    var foundCompanyId: String? = null
+
+                    // Iterate through all companies to find matching email
+                    for (companySnapshot in snapshot.children) {
+                        val company = companySnapshot.getValue(CompanyModel::class.java)
+                        if (company != null) {
+                            val companyEmailNormalized = company.companyEmail.lowercase().trim()
+                            if (companyEmailNormalized == normalizedEmail) {
+                                foundCompany = company
+                                foundCompanyId = companySnapshot.key
+                                break
+                            }
+                        }
+                    }
+
+                    if (foundCompany != null && foundCompanyId != null) {
+                        val isActive = foundCompany.isActive
+                        if (isActive) {
+                            callback(true, foundCompanyId, "Account is active")
+                        } else {
+                            callback(false, foundCompanyId, "Account is deactivated")
+                        }
+                    } else {
+                        callback(false, null, "No company found with this email")
+                    }
+                } else {
+                    callback(false, null, "Email not found in companies")
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                callback(false, null, "Error: ${error.message}")
+            }
+        })
+    }
+
+    // NEW METHOD: Update company profile
+    override fun updateCompanyProfile(
+        model: CompanyModel,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(model.companyId)
+            .setValue(model)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    callback(true, "Company profile updated successfully")
+                } else {
+                    callback(false, task.exception?.message ?: "Profile update failed")
+                }
+            }
+    }
 }

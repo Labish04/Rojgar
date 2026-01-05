@@ -205,7 +205,7 @@ fun ForgetPasswordBody() {
                             isLoading = true
 
                             // Check user type
-                            findUserTypeByEmail(
+                            FindUserTypeByEmail(
                                 email = email,
                                 onUserTypeFound = { userType ->
                                     when (userType) {
@@ -284,7 +284,7 @@ fun ForgetPasswordBody() {
 }
 
 // Function to find user type
-fun findUserTypeByEmail(
+fun FindUserTypeByEmail(
     email: String,
     onUserTypeFound: (String) -> Unit,
     onError: (String) -> Unit
