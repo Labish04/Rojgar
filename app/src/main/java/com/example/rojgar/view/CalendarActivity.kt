@@ -158,22 +158,7 @@ fun CalendarBody() {
             .distinct()
     }
 
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddEventDialog = true },
-                modifier = Modifier.size(52.dp),
-                containerColor = Color(0xFF2196F3),
-                contentColor = Color.White
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.addicon),
-                    contentDescription = "Add Event",
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-        }
-    ) { padding ->
+    Scaffold { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -375,7 +360,22 @@ fun CalendarBody() {
                                                     indication = null,
                                                     interactionSource = remember { MutableInteractionSource() }
                                                 ) {
-                                                    if (dayNumber > 0) selectedDay = dayNumber
+                                                    if (dayNumber > 0) {
+                                                        val (dayStart, dayEnd) = CalendarDateUtils.dayRangeMillis(currentYear, currentMonth, dayNumber)
+                                                        val dayEvents = events.filter { event ->
+                                                            event.startTimeMillis < dayEnd && event.endTimeMillis > dayStart
+                                                        }
+
+                                                        selectedDay = dayNumber // Still select the day for UI purposes
+
+                                                        if (dayEvents.isNotEmpty()) {
+                                                            // Show edit dialog for the first event of the day
+                                                            editingEvent = dayEvents.first()
+                                                        } else {
+                                                            // Show add dialog for the selected date
+                                                            showAddEventDialog = true
+                                                        }
+                                                    }
                                                 }
                                                 .background(
                                                     when {
@@ -563,7 +563,7 @@ fun CalendarBody() {
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "Tap the + button to add your first event for this day",
+                                    text = "Tap on calendar dates to edit existing events or add new ones",
                                     color = Color(0xFF94A3B8),
                                     fontSize = 14.sp,
                                     textAlign = TextAlign.Center,
@@ -818,7 +818,7 @@ fun AllEventsBottomSheet(
                         if (searchQuery.isEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Tap the + button to create your first event",
+                                text = "Tap on calendar dates to create your first event",
                                 color = Color(0xFF94A3B8),
                                 fontSize = 14.sp,
                                 textAlign = TextAlign.Center
