@@ -21,39 +21,43 @@ class FollowRepoImpl : FollowRepo {
         followingType: String,
         callback: (Boolean, String) -> Unit
     ) {
-        // Check if already following
-        val query = followsRef.orderByChild("followerId_followingId")
-            .equalTo("$followerId-$followingId")
+        // Use compound key for check
+        val compoundKey = "$followerId-$followingId"
+
+        val query = followsRef
+            .orderByChild("followerId_followingId")
+            .equalTo(compoundKey)
 
         query.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
                     callback(false, "Already following")
-                } else {
-                    // Create new follow record
-                    val followId = UUID.randomUUID().toString()
-                    val follow = FollowModel(
-                        followId = followId,
-                        followerId = followerId,
-                        followerType = followerType,
-                        followingId = followingId,
-                        followingType = followingType
-                    )
-
-                    // Save to follows
-                    followsRef.child(followId).setValue(follow.toMap())
-                        .addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                // Update follower's following count
-                                incrementFollowingCount(followerId)
-                                // Update following's followers count
-                                incrementFollowersCount(followingId)
-                                callback(true, "Followed successfully")
-                            } else {
-                                callback(false, task.exception?.message ?: "Failed to follow")
-                            }
-                        }
+                    return
                 }
+
+                // Create new follow record
+                val followId = UUID.randomUUID().toString()
+                val follow = FollowModel(
+                    followId = followId,
+                    followerId = followerId,
+                    followerType = followerType,
+                    followingId = followingId,
+                    followingType = followingType
+                )
+
+                // Save to follows
+                followsRef.child(followId).setValue(follow.toMap())
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            // Update follower's following count
+                            incrementFollowingCount(followerId)
+                            // Update following's followers count
+                            incrementFollowersCount(followingId)
+                            callback(true, "Followed successfully")
+                        } else {
+                            callback(false, task.exception?.message ?: "Failed to follow")
+                        }
+                    }
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -69,26 +73,48 @@ class FollowRepoImpl : FollowRepo {
         followingType: String,
         callback: (Boolean, String) -> Unit
     ) {
-        val query = followsRef.orderByChild("followerId_followingId")
-            .equalTo("$followerId-$followingId")
+        // Create compound key for direct lookup
+        val compoundKey = "$followerId-$followingId"
+
+        // Query using the compound key
+        val query = followsRef
+            .orderByChild("followerId_followingId")
+            .equalTo(compoundKey)
 
         query.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    snapshot.children.firstOrNull()?.let { followSnapshot ->
-                        followSnapshot.ref.removeValue()
-                            .addOnCompleteListener { task ->
-                                if (task.isSuccessful) {
-                                    // Decrement follower's following count
-                                    decrementFollowingCount(followerId)
-                                    // Decrement following's followers count
-                                    decrementFollowersCount(followingId)
-                                    callback(true, "Unfollowed successfully")
-                                } else {
-                                    callback(false, task.exception?.message ?: "Failed to unfollow")
-                                }
+                if (!snapshot.exists()) {
+                    callback(false, "Not following")
+                    return
+                }
+
+                // There should be only one match for the compound key
+                var followToRemoveKey: String? = null
+
+                for (followSnapshot in snapshot.children) {
+                    val follow = followSnapshot.getValue(FollowModel::class.java)
+                    if (follow != null &&
+                        follow.followerId == followerId &&
+                        follow.followingId == followingId &&
+                        follow.followerType == followerType &&
+                        follow.followingType == followingType) {
+                        followToRemoveKey = followSnapshot.key
+                        break
+                    }
+                }
+
+                if (followToRemoveKey != null) {
+                    followsRef.child(followToRemoveKey).removeValue()
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                // Decrement counts
+                                decrementFollowingCount(followerId)
+                                decrementFollowersCount(followingId)
+                                callback(true, "Unfollowed successfully")
+                            } else {
+                                callback(false, task.exception?.message ?: "Failed to unfollow")
                             }
-                    } ?: callback(false, "Follow record not found")
+                        }
                 } else {
                     callback(false, "Not following")
                 }
@@ -105,12 +131,27 @@ class FollowRepoImpl : FollowRepo {
         followingId: String,
         callback: (Boolean) -> Unit
     ) {
-        val query = followsRef.orderByChild("followerId_followingId")
-            .equalTo("$followerId-$followingId")
+        // Use compound key for more efficient query
+        val compoundKey = "$followerId-$followingId"
+        val query = followsRef
+            .orderByChild("followerId_followingId")
+            .equalTo(compoundKey)
 
         query.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                callback(snapshot.exists())
+                var isFollowing = false
+
+                for (followSnapshot in snapshot.children) {
+                    val follow = followSnapshot.getValue(FollowModel::class.java)
+                    if (follow != null &&
+                        follow.followerId == followerId &&
+                        follow.followingId == followingId) {
+                        isFollowing = true
+                        break
+                    }
+                }
+
+                callback(isFollowing)
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -123,34 +164,62 @@ class FollowRepoImpl : FollowRepo {
         userId: String,
         callback: (Int) -> Unit
     ) {
-        val query = followsRef.orderByChild("followingId").equalTo(userId)
+        // Use the stat counter instead of querying all follows
+        statsRef.child(userId).child("followersCount")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val count = snapshot.getValue(Int::class.java) ?: 0
+                    callback(count)
+                }
 
-        query.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                callback(snapshot.childrenCount.toInt())
-            }
+                override fun onCancelled(error: DatabaseError) {
+                    // Fallback to query if stat counter doesn't exist
+                    val query = followsRef.orderByChild("followingId").equalTo(userId)
+                    query.addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            callback(snapshot.childrenCount.toInt())
+                            // Initialize the stat counter
+                            statsRef.child(userId).child("followersCount")
+                                .setValue(snapshot.childrenCount.toInt())
+                        }
 
-            override fun onCancelled(error: DatabaseError) {
-                callback(0)
-            }
-        })
+                        override fun onCancelled(error: DatabaseError) {
+                            callback(0)
+                        }
+                    })
+                }
+            })
     }
 
     override fun getFollowingCount(
         userId: String,
         callback: (Int) -> Unit
     ) {
-        val query = followsRef.orderByChild("followerId").equalTo(userId)
+        // Use the stat counter instead of querying all follows
+        statsRef.child(userId).child("followingCount")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val count = snapshot.getValue(Int::class.java) ?: 0
+                    callback(count)
+                }
 
-        query.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                callback(snapshot.childrenCount.toInt())
-            }
+                override fun onCancelled(error: DatabaseError) {
+                    // Fallback to query if stat counter doesn't exist
+                    val query = followsRef.orderByChild("followerId").equalTo(userId)
+                    query.addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            callback(snapshot.childrenCount.toInt())
+                            // Initialize the stat counter
+                            statsRef.child(userId).child("followingCount")
+                                .setValue(snapshot.childrenCount.toInt())
+                        }
 
-            override fun onCancelled(error: DatabaseError) {
-                callback(0)
-            }
-        })
+                        override fun onCancelled(error: DatabaseError) {
+                            callback(0)
+                        }
+                    })
+                }
+            })
     }
 
     override fun getFollowers(
@@ -203,62 +272,80 @@ class FollowRepoImpl : FollowRepo {
 
     private fun incrementFollowingCount(userId: String) {
         statsRef.child(userId).child("followingCount")
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val currentCount = snapshot.getValue(Int::class.java) ?: 0
-                    statsRef.child(userId).child("followingCount").setValue(currentCount + 1)
+            .runTransaction(object : com.google.firebase.database.Transaction.Handler {
+                override fun doTransaction(currentData: com.google.firebase.database.MutableData): com.google.firebase.database.Transaction.Result {
+                    val currentCount = currentData.getValue(Int::class.java) ?: 0
+                    currentData.value = currentCount + 1
+                    return com.google.firebase.database.Transaction.success(currentData)
                 }
 
-                override fun onCancelled(error: DatabaseError) {
-                    // Initialize if doesn't exist
-                    statsRef.child(userId).child("followingCount").setValue(1)
+                override fun onComplete(
+                    error: com.google.firebase.database.DatabaseError?,
+                    committed: Boolean,
+                    currentData: com.google.firebase.database.DataSnapshot?
+                ) {
+                    // Optional: Log transaction completion
                 }
             })
     }
 
     private fun incrementFollowersCount(userId: String) {
         statsRef.child(userId).child("followersCount")
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val currentCount = snapshot.getValue(Int::class.java) ?: 0
-                    statsRef.child(userId).child("followersCount").setValue(currentCount + 1)
+            .runTransaction(object : com.google.firebase.database.Transaction.Handler {
+                override fun doTransaction(currentData: com.google.firebase.database.MutableData): com.google.firebase.database.Transaction.Result {
+                    val currentCount = currentData.getValue(Int::class.java) ?: 0
+                    currentData.value = currentCount + 1
+                    return com.google.firebase.database.Transaction.success(currentData)
                 }
 
-                override fun onCancelled(error: DatabaseError) {
-                    // Initialize if doesn't exist
-                    statsRef.child(userId).child("followersCount").setValue(1)
+                override fun onComplete(
+                    error: com.google.firebase.database.DatabaseError?,
+                    committed: Boolean,
+                    currentData: com.google.firebase.database.DataSnapshot?
+                ) {
+                    // Optional: Log transaction completion
                 }
             })
     }
 
     private fun decrementFollowingCount(userId: String) {
         statsRef.child(userId).child("followingCount")
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val currentCount = snapshot.getValue(Int::class.java) ?: 0
+            .runTransaction(object : com.google.firebase.database.Transaction.Handler {
+                override fun doTransaction(currentData: com.google.firebase.database.MutableData): com.google.firebase.database.Transaction.Result {
+                    val currentCount = currentData.getValue(Int::class.java) ?: 0
                     if (currentCount > 0) {
-                        statsRef.child(userId).child("followingCount").setValue(currentCount - 1)
+                        currentData.value = currentCount - 1
                     }
+                    return com.google.firebase.database.Transaction.success(currentData)
                 }
 
-                override fun onCancelled(error: DatabaseError) {
-                    // Do nothing
+                override fun onComplete(
+                    error: com.google.firebase.database.DatabaseError?,
+                    committed: Boolean,
+                    currentData: com.google.firebase.database.DataSnapshot?
+                ) {
+                    // Optional: Log transaction completion
                 }
             })
     }
 
     private fun decrementFollowersCount(userId: String) {
         statsRef.child(userId).child("followersCount")
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val currentCount = snapshot.getValue(Int::class.java) ?: 0
+            .runTransaction(object : com.google.firebase.database.Transaction.Handler {
+                override fun doTransaction(currentData: com.google.firebase.database.MutableData): com.google.firebase.database.Transaction.Result {
+                    val currentCount = currentData.getValue(Int::class.java) ?: 0
                     if (currentCount > 0) {
-                        statsRef.child(userId).child("followersCount").setValue(currentCount - 1)
+                        currentData.value = currentCount - 1
                     }
+                    return com.google.firebase.database.Transaction.success(currentData)
                 }
 
-                override fun onCancelled(error: DatabaseError) {
-                    // Do nothing
+                override fun onComplete(
+                    error: com.google.firebase.database.DatabaseError?,
+                    committed: Boolean,
+                    currentData: com.google.firebase.database.DataSnapshot?
+                ) {
+                    // Optional: Log transaction completion
                 }
             })
     }

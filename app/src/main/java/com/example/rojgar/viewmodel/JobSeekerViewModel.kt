@@ -136,6 +136,15 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
         repo.uploadProfileImage(context, imageUri, callback)
     }
 
-
+    fun getJobSeekerDetails(jobSeekerId: String) {
+        repo.getJobSeekerDetails(jobSeekerId) { success, message, fetchedJobSeeker ->
+            if (success && fetchedJobSeeker != null) {
+                _jobSeeker.postValue(fetchedJobSeeker)
+            } else {
+                // Handle error
+                _jobSeeker.postValue(null)
+            }
+        }
+    }
 
 }
