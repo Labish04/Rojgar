@@ -54,6 +54,8 @@ import androidx.compose.ui.zIndex
 import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -189,20 +191,36 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                         )
                     )
 
-                    Surface(
-                        modifier = Modifier.size(48.dp),
-                        shape = CircleShape,
-                        color = Color.White,
-                        shadowElevation = 4.dp
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.outline_more_vert_24),
-                            contentDescription = "Menu",
-                            tint = Color(0xFF1976D2),
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(
+                            onClick = { /* Share */ },
                             modifier = Modifier
-                                .clickable { isDrawerOpen = true }
-                                .padding(14.dp)
-                        )
+                                .shadow(8.dp, CircleShape)
+                                .background(Color.White.copy(alpha = 0.95f), CircleShape)
+                                .size(44.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share",
+                                tint = Color(0xFF1F2937)
+                            )
+                        }
+
+                        Surface(
+                            modifier = Modifier.size(48.dp),
+                            shape = CircleShape,
+                            color = Color.White,
+                            shadowElevation = 4.dp
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.outline_more_vert_24),
+                                contentDescription = "Menu",
+                                tint = Color(0xFF1976D2),
+                                modifier = Modifier
+                                    .clickable { isDrawerOpen = true }
+                                    .padding(14.dp)
+                            )
+                        }
                     }
                 }
             }
