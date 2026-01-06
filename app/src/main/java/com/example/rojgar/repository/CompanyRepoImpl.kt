@@ -2,6 +2,7 @@ package com.example.rojgar.repository
 
 import android.content.Context
 import android.database.Cursor
+import android.location.Geocoder
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
@@ -10,6 +11,7 @@ import androidx.compose.runtime.mutableStateListOf
 import com.cloudinary.Cloudinary
 import com.cloudinary.utils.ObjectUtils
 import com.example.rojgar.model.CompanyModel
+import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.DataSnapshot
@@ -18,6 +20,7 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import java.io.InputStream
+import java.util.Locale
 import java.util.concurrent.Executors
 
 class CompanyRepoImpl : CompanyRepo {
@@ -408,5 +411,37 @@ class CompanyRepoImpl : CompanyRepo {
                     callback(false, task.exception?.message ?: "Profile update failed")
                 }
             }
+    }
+
+    override fun getLatLngFromAddress(context: Context, address: String): LatLng? {
+        return try {
+            val geocoder = Geocoder(context, Locale.getDefault())
+
+            // Try different address formats for better accuracy in Nepal
+            val addressVariations = listOf(
+                "$address, Kathmandu, Nepal",
+                "$address, Nepal",
+                address
+            )
+
+            for (addressVariant in addressVariations) {
+                try {
+                    @Suppress("DEPRECATION")
+                    val addresses = geocoder.getFromLocationName(addressVariant, 1)
+
+                    if (!addresses.isNullOrEmpty()) {
+                        return LatLng(addresses[0].latitude, addresses[0].longitude)
+                    }
+                } catch (e: Exception) {
+                    // Try next variation
+                    continue
+                }
+            }
+
+            null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 }

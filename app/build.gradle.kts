@@ -43,6 +43,9 @@ android {
 }
 
 dependencies {
+    implementation("com.google.maps.android:maps-compose:4.3.3")
+    implementation("com.google.android.gms:play-services-maps:19.0.0")
+
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
     implementation("com.github.ZEGOCLOUD:zego_inapp_chat_uikit_android:+") {
         exclude(group = "com.android.support", module = "support-compat")

@@ -3,6 +3,7 @@ package com.example.rojgar.repository
 import android.content.Context
 import android.net.Uri
 import com.example.rojgar.model.CompanyModel
+import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.auth.FirebaseUser
 
 interface CompanyRepo {
@@ -95,4 +96,6 @@ interface CompanyRepo {
         model: CompanyModel,
         callback: (Boolean, String) -> Unit
     )
+
+    fun getLatLngFromAddress(context: Context, address: String): LatLng?
 }

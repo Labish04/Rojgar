@@ -2,6 +2,7 @@ package com.example.rojgar.viewmodel
 
 import android.content.Context
 import android.net.Uri
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.repository.CompanyRepo
@@ -11,6 +12,9 @@ class CompanyViewModel(val repo: CompanyRepo) {
 
     private val _companyDetails = MutableLiveData<CompanyModel?>()
     val companyDetails: MutableLiveData<CompanyModel?> get() = _companyDetails
+
+    private val _allCompanies = MutableLiveData<List<CompanyModel>>()
+    val allCompanies: LiveData<List<CompanyModel>> get() = _allCompanies
 
     private val _loading = MutableLiveData<Boolean>()
     val loading: MutableLiveData<Boolean> get() = _loading
@@ -147,5 +151,15 @@ class CompanyViewModel(val repo: CompanyRepo) {
         callback: (Boolean, String) -> Unit
     ) {
         repo.checkAccountStatus(companyId, callback)
+    }
+
+    fun fetchAllCompaniesForMap() {
+        _loading.value = true
+        repo.getAllCompany { success, message, list ->
+            _loading.value = false
+            if (success && list != null) {
+                _allCompanies.value = list
+            }
+        }
     }
 }

@@ -11,6 +11,8 @@ data class CompanyModel(
     val companyProfileImage: String = "",
     val companyCoverPhoto: String = "",
     val isActive: Boolean = true, // Added isActive field with default true
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0
 ) {
     fun toMap(): Map<String, Any?> {
         return mapOf(
