@@ -23,9 +23,12 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -33,6 +36,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -41,7 +45,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -49,9 +55,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.rojgar.R
 import com.example.rojgar.repository.CompanyRepoImpl
 import com.example.rojgar.repository.JobSeekerRepoImpl
@@ -67,7 +76,6 @@ class LoginActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             LoginBody()
-
         }
     }
 }
@@ -81,14 +89,16 @@ fun LoginBody() {
     val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
 
+    var showReactivationDialog by remember { mutableStateOf(false) }
+    var pendingReactivationUserId by remember { mutableStateOf<String?>(null) }
+    var pendingUserType by remember { mutableStateOf<String?>(null) }
 
     var email by remember { mutableStateOf("") }
-    var password by remember {mutableStateOf("")}
-
+    var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
 
     Scaffold { padding ->
-        Column (
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding()
@@ -112,8 +122,7 @@ fun LoginBody() {
                 )
 
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
@@ -124,39 +133,36 @@ fun LoginBody() {
                             .offset(y = 120.dp)
                             .size(200.dp)
                     )
-
                 }
             }
-            Row (
-                modifier = Modifier
-                    .fillMaxWidth(),
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
-            ){
+            ) {
                 Column {
-                    Text("Welcome to Rojgar",
+                    Text(
+                        "Welcome to Rojgar",
                         style = TextStyle(
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold
                         )
                     )
 
-                    Text("Find your dream job or hire top talent.",
-                        style = TextStyle(
-                            fontSize = 12.sp
-                        ),
-                        modifier = Modifier
-                            .padding(vertical = 5.dp)
+                    Text(
+                        "Find your dream job or hire top talent.",
+                        style = TextStyle(fontSize = 12.sp),
+                        modifier = Modifier.padding(vertical = 5.dp)
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            Row (
-                modifier = Modifier
-                    .padding(horizontal = 30.dp)
-            ){
+            Row(
+                modifier = Modifier.padding(horizontal = 30.dp)
+            ) {
                 LoginTextField(
                     value = email,
                     onValueChange = { email = it },
@@ -168,10 +174,9 @@ fun LoginBody() {
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            Row (
-                modifier = Modifier
-                    .padding(horizontal = 30.dp)
-            ){
+            Row(
+                modifier = Modifier.padding(horizontal = 30.dp)
+            ) {
                 LoginTextField(
                     value = password,
                     onValueChange = { password = it },
@@ -183,79 +188,83 @@ fun LoginBody() {
 
             Spacer(modifier = Modifier.height(5.dp))
 
-            Row (
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 30.dp)
-            ){
-                Row (
+            ) {
+                Row(
                     verticalAlignment = Alignment.CenterVertically
-                ){
+                ) {
                     Checkbox(
                         checked = rememberMe,
                         onCheckedChange = { rememberMe = it },
-                                modifier = Modifier
-                                .offset(y = -5.dp)
+                        modifier = Modifier.offset(y = -5.dp)
                     )
 
                     Text(
                         text = "Remember me.",
-                        style = TextStyle(
-                            fontSize = 18.sp
-                        ),
-                        modifier = Modifier
-                            .offset(y = -5.dp)
-
+                        style = TextStyle(fontSize = 18.sp),
+                        modifier = Modifier.offset(y = -5.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(45.dp))
-                Row (
-                    modifier = Modifier
-                        .fillMaxWidth(),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
-
                 ) {
                     Text(
-                        "Forget Password?", style = TextStyle(
+                        "Forget Password?",
+                        style = TextStyle(
                             fontSize = 15.sp,
                             color = Purple
                         ),
-                        modifier = Modifier
-                            .clickable(interactionSource = remember {
-                                MutableInteractionSource()
-                            },
-                                indication = null    ){
-                                val intent = Intent(context, ForgetPasswordActivity::class.java)
-                                context.startActivity(intent)
-                            },
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            val intent = Intent(context, ForgetPasswordActivity::class.java)
+                            context.startActivity(intent)
+                        },
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            Row (
-                modifier = Modifier
-                    .fillMaxWidth(),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
-            ){
+            ) {
                 Button(
                     onClick = {
                         if (email.isEmpty() || password.isEmpty()) {
                             Toast.makeText(context, "Email and password required", Toast.LENGTH_SHORT).show()
                         } else {
-                            findUserTypeByEmail(
+                            FindUserTypeByEmail(
                                 email = email,
                                 onUserTypeFound = { userType ->
                                     when (userType) {
                                         "JOBSEEKER" -> {
                                             jobSeekerViewModel.login(email, password) { success, message ->
-                                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                                                 if (success) {
-                                                    Toast.makeText(context, "Login Successful as JobSeeker", Toast.LENGTH_SHORT).show()
-                                                    val intent = Intent(context, JobSeekerDashboardActivity::class.java)
-                                                    context.startActivity(intent)
-                                                    activity.finish()
+                                                    val currentUser = jobSeekerViewModel.getCurrentJobSeeker()
+                                                    if (currentUser != null) {
+                                                        jobSeekerViewModel.checkAccountStatus(currentUser.uid) { isActive, statusMessage ->
+                                                            if (!isActive && statusMessage == "Account is deactivated") {
+                                                                pendingReactivationUserId = currentUser.uid
+                                                                pendingUserType = "JOBSEEKER"
+                                                                showReactivationDialog = true
+                                                            } else {
+                                                                Toast.makeText(context, "Login Successful as JobSeeker", Toast.LENGTH_SHORT).show()
+                                                                val intent = Intent(context, JobSeekerDashboardActivity::class.java)
+                                                                context.startActivity(intent)
+                                                                activity.finish()
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                                                 }
                                             }
                                         }
@@ -294,63 +303,62 @@ fun LoginBody() {
                         .fillMaxWidth()
                         .padding(horizontal = 30.dp)
                 ) {
-                    Text("Login", style = TextStyle(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    ))
+                    Text(
+                        "Login",
+                        style = TextStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp
+                        )
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            Row (
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
-            ){
-                Text("Don't hanve an account?",
-                    style = TextStyle(
-                        fontSize = 18.sp
-                    ))
+            ) {
+                Text(
+                    "Don't have an account?",
+                    style = TextStyle(fontSize = 18.sp)
+                )
                 Spacer(modifier = Modifier.width(5.dp))
-                Text("SignUp",
+                Text(
+                    "SignUp",
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         color = Purple
                     ),
-                    modifier = Modifier
-                        .clickable(interactionSource = remember {
-                            MutableInteractionSource()
-                        },
-                            indication = null    ){
-                            val intent = Intent(context, RegisterAsActivity ::class.java)
-                            context.startActivity(intent)
-                        },
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        val intent = Intent(context, RegisterAsActivity::class.java)
+                        context.startActivity(intent)
+                    },
                 )
             }
 
-            Row (
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 20.dp, horizontal = 30.dp),
                 verticalAlignment = Alignment.CenterVertically
-            ){
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f)
-                )
+            ) {
+                HorizontalDivider(modifier = Modifier.weight(1f))
                 Text("OR", modifier = Modifier.padding(horizontal = 15.dp))
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f)
-                )
+                HorizontalDivider(modifier = Modifier.weight(1f))
             }
-            Row (
-                modifier = Modifier
-                    .fillMaxWidth(),
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
-            ){
+            ) {
                 Button(
                     onClick = {},
                     colors = ButtonDefaults.buttonColors(
@@ -362,12 +370,11 @@ fun LoginBody() {
                         .fillMaxWidth()
                         .padding(horizontal = 30.dp)
                 ) {
-                    Row (
-                        modifier = Modifier
-                            .fillMaxWidth(),
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
-                    ){
+                    ) {
                         Image(
                             painter = painterResource(R.drawable.google),
                             contentDescription = null,
@@ -376,7 +383,8 @@ fun LoginBody() {
                                 .padding(horizontal = 10.dp)
                         )
                         Text(
-                            "Login with Google", style = TextStyle(
+                            "Login with Google",
+                            style = TextStyle(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 20.sp
                             )
@@ -384,14 +392,14 @@ fun LoginBody() {
                     }
                 }
             }
+
             Spacer(modifier = Modifier.height(10.dp))
-            Column (
-                modifier = Modifier
-                    .fillMaxSize(),
-            ){
+
+            Column(
+                modifier = Modifier.fillMaxSize(),
+            ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text("You can only login with google as a JobSeeker.")
@@ -405,6 +413,44 @@ fun LoginBody() {
                 )
             }
         }
+    }
+
+    // Modern Reactivation Dialog
+    if (showReactivationDialog) {
+        ReactivationDialog(
+            onDismiss = {
+                showReactivationDialog = false
+                pendingReactivationUserId = null
+                pendingUserType = null
+                jobSeekerViewModel.logout("") { _, _ -> }
+            },
+            onConfirm = {
+                pendingReactivationUserId?.let { userId ->
+                    when (pendingUserType) {
+                        "JOBSEEKER" -> {
+                            jobSeekerViewModel.reactivateAccount(userId) { success, message ->
+                                if (success) {
+                                    Toast.makeText(
+                                        context,
+                                        "Account reactivated successfully!",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+
+                                    showReactivationDialog = false
+
+                                    val intent = Intent(context, JobSeekerDashboardActivity::class.java)
+                                    context.startActivity(intent)
+                                    activity.finish()
+                                } else {
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    showReactivationDialog = false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        )
     }
 }
 
@@ -421,23 +467,17 @@ fun LoginTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-
         label = { Text(label) },
-
-        visualTransformation =
-            if (isPassword && !visibility) PasswordVisualTransformation()
-            else VisualTransformation.None,
-
+        visualTransformation = if (isPassword && !visibility) PasswordVisualTransformation()
+        else VisualTransformation.None,
         leadingIcon = {
             Icon(
                 painter = painterResource(id = leadingIcon),
                 contentDescription = null,
                 tint = NormalBlue,
-                modifier = Modifier.
-                size(22.dp)
+                modifier = Modifier.size(22.dp)
             )
         },
-
         trailingIcon = {
             if (isPassword) {
                 IconButton(onClick = { visibility = !visibility }) {
@@ -454,11 +494,8 @@ fun LoginTextField(
                 }
             }
         },
-
         modifier = Modifier.fillMaxWidth(),
-
         shape = RoundedCornerShape(15.dp),
-
         colors = TextFieldDefaults.colors(
             focusedContainerColor = White,
             unfocusedContainerColor = White,
@@ -468,8 +505,210 @@ fun LoginTextField(
     )
 }
 
+@Composable
+fun ReactivationDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    // Modern blue color palette
+    val primaryBlue = Color(0xFF2563EB)
+    val lightBlue = Color(0xFF60A5FA)
+    val darkBlue = Color(0xFF1E40AF)
+    val surfaceBlue = Color(0xFFEFF6FF)
+    val accentBlue = Color(0xFF3B82F6)
 
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 8.dp
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Top decorative gradient bar
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(lightBlue, primaryBlue, darkBlue)
+                            )
+                        )
+                )
 
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Icon with gradient background
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    lightBlue.copy(alpha = 0.2f),
+                                    primaryBlue.copy(alpha = 0.15f)
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.baseline_visibility_24),
+                        contentDescription = null,
+                        tint = primaryBlue,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Title
+                Text(
+                    text = "Account Deactivated",
+                    style = TextStyle(
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = darkBlue
+                    ),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Description
+                Text(
+                    text = "Your account has been deactivated. Would you like to reactivate it and continue?",
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = Color.Gray,
+                        lineHeight = 24.sp
+                    ),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Info box
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(surfaceBlue)
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_visibility_24),
+                            contentDescription = null,
+                            tint = accentBlue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Reactivating will restore full access to all your account features.",
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                color = darkBlue,
+                                lineHeight = 20.sp
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Cancel button
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = primaryBlue
+                        )
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            style = TextStyle(
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
+
+                    // Reactivate button
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = primaryBlue
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 4.dp,
+                            pressedElevation = 8.dp
+                        )
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.baseline_visibility_24),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Reactivate",
+                                style = TextStyle(
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+}
 
 @Preview
 @Composable
