@@ -67,6 +67,12 @@ interface CompanyRepo {
         imageUri: Uri,
         callback: (String?) -> Unit
     )
+    fun uploadCompanyDocumentImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    )
+
     fun getFileNameFromUri(context: Context, imageUri: Uri): String?
 
 

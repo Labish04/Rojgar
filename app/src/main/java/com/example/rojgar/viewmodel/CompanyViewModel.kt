@@ -119,4 +119,11 @@ class CompanyViewModel(val repo: CompanyRepo) {
     ){
         repo.uploadCompanyCoverPhoto(context, imageUri, callback)
     }
+    fun uploadCompanyDocumentImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    ){
+        repo.uploadCompanyDocumentImage(context, imageUri, callback)
+    }
 }

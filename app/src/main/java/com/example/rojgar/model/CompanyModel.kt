@@ -10,6 +10,7 @@ data class CompanyModel(
     val companyEstablishedDate : String = "",
     val companyProfileImage : String = "",
     val companyCoverPhoto : String = "",
+    val companyDocumentImage : String = "",
 ){
     fun toMap() : Map<String,Any?>{
         return mapOf(
@@ -21,7 +22,8 @@ data class CompanyModel(
             "companyLocation" to companyLocation,
             "companyEstablishedDate" to companyEstablishedDate,
             "companyProfileImage" to companyProfileImage,
-            "companyCoverPhoto" to companyCoverPhoto
+            "companyCoverPhoto" to companyCoverPhoto,
+            "companyDocumentImage" to companyDocumentImage
         )
     }
 }

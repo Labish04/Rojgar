@@ -1,3 +1,4 @@
+/*
 package com.example.rojgar.view
 
 import android.net.Uri
@@ -32,19 +33,49 @@ import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
 import com.example.rojgar.repository.CompanyRepoImpl
+import com.example.rojgar.repository.JobSeekerRepoImpl
+import com.example.rojgar.utils.ImageUtils
+import com.example.rojgar.viewmodel.CompanyViewModel
+import com.example.rojgar.viewmodel.JobSeekerViewModel
 
 class DocumentCompanyActivity : ComponentActivity() {
+    lateinit var imageUtils: ImageUtils
+    var selectedCompanyDocumentUri by mutableStateOf<Uri?>(null)
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        imageUtils = ImageUtils(this, this)
+        imageUtils.registerLaunchers { uri ->
+            if (uri != null) {
+                selectedCompanyDocumentUri = uri
+            }
+        }
         setContent {
-            DocumentCompanyBody()
+            val CompanyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
+            JobSeekerPersonalInformationBody(
+                CompanyViewModel = CompanyViewModel,
+                selectedCompanyDocumentUri= selectedCompanyDocumentUri,
+                onPickCompanyDocumentImage = {
+                    imageUtils.launchImagePicker()
+                },
+                onClearSelectedImages = {
+                    selectedCompanyDocumentUri = null
+                }
+            )
         }
     }
 }
 
 @Composable
-fun DocumentCompanyBody() {
+fun DocumentCompanyBody(
+    CompanyViewModel: CompanyViewModel,
+    selectedCompanyDocumentUri: Uri?,
+    onPickCompanyDocumentImage: () -> Unit,
+    onClearSelectedImages: () -> Unit
+) {
     val context = LocalContext.current
     val repository = remember { CompanyRepoImpl() }
 
@@ -246,4 +277,4 @@ fun DocumentCompanyBody() {
 @Composable
 fun PreviewDocumentCompany() {
     DocumentCompanyBody()
-}
+}*/
