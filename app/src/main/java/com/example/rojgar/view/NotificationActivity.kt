@@ -20,14 +20,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
+import com.example.rojgar.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rojgar.model.NotificationModel
 import com.example.rojgar.model.NotificationType
+import com.example.rojgar.model.UserType
 import com.example.rojgar.viewmodel.NotificationViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -36,9 +39,18 @@ class NotificationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Get user type from intent extras
+        val userTypeString = intent.getStringExtra("USER_TYPE") ?: "JOBSEEKER"
+        val userType = try {
+            UserType.valueOf(userTypeString)
+        } catch (e: IllegalArgumentException) {
+            UserType.JOBSEEKER
+        }
+
         setContent {
             NotificationTheme {
-                NotificationBody()
+                NotificationBody(userType = userType)
             }
         }
     }
@@ -65,7 +77,12 @@ fun NotificationTheme(content: @Composable () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationBody(viewModel: NotificationViewModel = viewModel()) {
+fun NotificationBody(
+    userType: UserType = UserType.JOBSEEKER,
+    viewModel: NotificationViewModel = viewModel(
+        factory = NotificationViewModelFactory(userType)
+    )
+) {
     val notifications by viewModel.notifications.collectAsState()
     val unreadCount by viewModel.unreadCount.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -83,9 +100,28 @@ fun NotificationBody(viewModel: NotificationViewModel = viewModel()) {
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
-                        if (unreadCount > 0) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (unreadCount > 0) {
+                                Text(
+                                    "$unreadCount unread",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    "•",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                )
+                            }
                             Text(
-                                "$unreadCount unread",
+                                text = when (userType) {
+                                    UserType.JOBSEEKER -> "Jobseeker"
+                                    UserType.COMPANY -> "Company"
+                                    UserType.ALL -> "All"
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -148,7 +184,7 @@ fun NotificationBody(viewModel: NotificationViewModel = viewModel()) {
                     )
                 }
                 notifications.isEmpty() -> {
-                    EmptyNotificationState()
+                    EmptyNotificationState(userType)
                 }
                 else -> {
                     LazyColumn(
@@ -184,7 +220,7 @@ fun NotificationBody(viewModel: NotificationViewModel = viewModel()) {
                             showDeleteDialog = false
                         }
                     ) {
-                        Text("Clear All", color = Color.Red)
+                        Text("Clear ", color = Color.Red)
                     }
                 },
                 dismissButton = {
@@ -223,14 +259,14 @@ fun NotificationItem(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Red, RoundedCornerShape(16.dp))
+                    .background(Color.White, RoundedCornerShape(16.dp))
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Delete",
-                    tint = Color.White
+                    tint = Color.Black
                 )
             }
         }
@@ -240,9 +276,9 @@ fun NotificationItem(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = if (notification.isRead)
-                    MaterialTheme.colorScheme.surface
+                    Color.White
                 else
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    Color(0xFFE8F4F8)
             ),
             elevation = CardDefaults.cardElevation(
                 defaultElevation = if (notification.isRead) 2.dp else 4.dp
@@ -263,7 +299,7 @@ fun NotificationItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = getNotificationIcon(notification.type),
+                        painter = getNotificationIcon(notification.type),
                         contentDescription = null,
                         tint = getNotificationColor(notification.type),
                         modifier = Modifier.size(24.dp)
@@ -283,6 +319,7 @@ fun NotificationItem(
                             text = notification.title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
@@ -338,6 +375,7 @@ fun NotificationItem(
                     Icon(
                         Icons.Default.MoreVert,
                         contentDescription = "More options",
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -383,7 +421,7 @@ fun NotificationItem(
 }
 
 @Composable
-fun EmptyNotificationState() {
+fun EmptyNotificationState(userType: UserType) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -417,24 +455,39 @@ fun EmptyNotificationState() {
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        val emptyMessage = when (userType) {
+            UserType.JOBSEEKER -> "When you receive job alerts, application updates, or messages, they'll appear here"
+            UserType.COMPANY -> "When you receive candidate applications, messages, or system updates, they'll appear here"
+            UserType.ALL -> "When you get notifications, they'll show up here"
+        }
+
         Text(
-            text = "When you get notifications, they'll show up here",
+            text = emptyMessage,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
     }
 }
 
-fun getNotificationIcon(type: NotificationType): ImageVector {
+@Composable
+fun getNotificationIcon(type: NotificationType): Painter {
     return when (type) {
         NotificationType.JOB_ALERT ->
-            Icons.Default.Email
+            painterResource(R.drawable.outline_work_24)
         NotificationType.MESSAGE ->
-            Icons.Default.Send
+            painterResource(R.drawable.outline_business_messages_24)
         NotificationType.SYSTEM ->
-            Icons.Default.Settings
+            painterResource(R.drawable.settings)
         NotificationType.GENERAL ->
-            Icons.Default.Notifications
+            painterResource(R.drawable.outline_notifications_24)
+        NotificationType.APPLICATION_UPDATE ->
+            painterResource(R.drawable.outline_work_24)
+        NotificationType.CANDIDATE_ALERT ->
+            painterResource(R.drawable.outline_work_24)
+        NotificationType.INTERVIEW_SCHEDULED ->
+            painterResource(R.drawable.outline_notifications_24)
+        NotificationType.PROFILE_UPDATE ->
+            painterResource(R.drawable.outline_notifications_24)
     }
 }
 
@@ -444,6 +497,10 @@ fun getNotificationColor(type: NotificationType): Color {
         NotificationType.MESSAGE -> Color(0xFF2196F3)
         NotificationType.SYSTEM -> Color(0xFFFF9800)
         NotificationType.GENERAL -> Color(0xFF9C27B0)
+        NotificationType.APPLICATION_UPDATE -> Color(0xFF00BCD4)
+        NotificationType.CANDIDATE_ALERT -> Color(0xFFE91E63)
+        NotificationType.INTERVIEW_SCHEDULED -> Color(0xFF673AB7)
+        NotificationType.PROFILE_UPDATE -> Color(0xFF795548)
     }
 }
 
@@ -460,10 +517,15 @@ fun formatTimestamp(timestamp: Long): String {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun NotificationPreview() {
-    NotificationTheme {
-        NotificationBody()
+// ViewModelFactory to pass userType to ViewModel
+class NotificationViewModelFactory(
+    private val userType: UserType
+) : androidx.lifecycle.ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(NotificationViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return NotificationViewModel(userType = userType) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

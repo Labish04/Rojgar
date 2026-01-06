@@ -3,6 +3,7 @@ package com.example.rojgar.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rojgar.model.NotificationModel
+import com.example.rojgar.model.UserType
 import com.example.rojgar.repository.NotificationRepo
 import com.example.rojgar.repository.NotificationRepoImpl
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,7 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class NotificationViewModel(
-    private val repository: NotificationRepo = NotificationRepoImpl()
+    private val repository: NotificationRepo = NotificationRepoImpl(),
+    private val userType: UserType = UserType.JOBSEEKER
 ) : ViewModel() {
 
     private val _notifications = MutableStateFlow<List<NotificationModel>>(emptyList())
@@ -30,7 +32,7 @@ class NotificationViewModel(
 
     private fun loadNotifications() {
         viewModelScope.launch {
-            repository.getAllNotifications().collect { notificationList ->
+            repository.getAllNotifications(userType).collect { notificationList ->
                 _notifications.value = notificationList.sortedByDescending { it.timestamp }
                 _isLoading.value = false
             }
@@ -39,7 +41,7 @@ class NotificationViewModel(
 
     private fun observeUnreadCount() {
         viewModelScope.launch {
-            repository.getUnreadCount().collect { count ->
+            repository.getUnreadCount(userType).collect { count ->
                 _unreadCount.value = count
             }
         }
@@ -65,7 +67,7 @@ class NotificationViewModel(
 
     fun clearAllNotifications() {
         viewModelScope.launch {
-            repository.clearAllNotifications()
+            repository.clearAllNotifications(userType)
         }
     }
 

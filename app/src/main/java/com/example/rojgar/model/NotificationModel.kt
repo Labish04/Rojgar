@@ -7,12 +7,23 @@ data class NotificationModel(
     val timestamp: Long,
     val isRead: Boolean = false,
     val type: NotificationType = NotificationType.GENERAL,
-    val actionUrl: String? = null
+    val actionUrl: String? = null,
+    val userType: UserType = UserType.JOBSEEKER // Target user type for this notification
 )
 
 enum class NotificationType {
     JOB_ALERT,
     MESSAGE,
     SYSTEM,
-    GENERAL
+    GENERAL,
+    APPLICATION_UPDATE,  // For jobseekers
+    CANDIDATE_ALERT,     // For companies
+    INTERVIEW_SCHEDULED,
+    PROFILE_UPDATE
+}
+
+enum class UserType {
+    JOBSEEKER,
+    COMPANY,
+    ALL  // For notifications visible to both
 }
