@@ -13,6 +13,9 @@ class FollowViewModel(private val followRepo: FollowRepo) : ViewModel() {
     private val _isFollowing = MutableLiveData<Boolean>()
     val isFollowing: LiveData<Boolean> = _isFollowing
 
+    private val _isBlocked = MutableLiveData<Boolean>()
+    val isBlocked: LiveData<Boolean> = _isBlocked
+
     private val _followersCount = MutableLiveData<Int>(0)
     val followersCount: LiveData<Int> = _followersCount
 
@@ -36,6 +39,14 @@ class FollowViewModel(private val followRepo: FollowRepo) : ViewModel() {
         }
     }
 
+    fun checkBlockStatus(blockerId: String, blockedId: String) {
+        viewModelScope.launch {
+            followRepo.isBlocked(blockerId, blockedId) { isBlocked ->
+                _isBlocked.postValue(isBlocked)
+            }
+        }
+    }
+
     fun follow(
         followerId: String,
         followerType: String,
@@ -49,7 +60,6 @@ class FollowViewModel(private val followRepo: FollowRepo) : ViewModel() {
                 _loading.postValue(false)
                 if (success) {
                     _isFollowing.postValue(true)
-                    // Update counts
                     getFollowersCount(followingId)
                     getFollowingCount(followerId)
                 }
@@ -71,9 +81,47 @@ class FollowViewModel(private val followRepo: FollowRepo) : ViewModel() {
                 _loading.postValue(false)
                 if (success) {
                     _isFollowing.postValue(false)
-                    // Update counts
                     getFollowersCount(followingId)
                     getFollowingCount(followerId)
+                }
+                onComplete(success, message)
+            }
+        }
+    }
+
+    fun blockUser(
+        blockerId: String,
+        blockerType: String,
+        blockedId: String,
+        blockedType: String,
+        onComplete: (Boolean, String) -> Unit = { _, _ -> }
+    ) {
+        _loading.postValue(true)
+        viewModelScope.launch {
+            followRepo.blockUser(blockerId, blockerType, blockedId, blockedType) { success, message ->
+                _loading.postValue(false)
+                if (success) {
+                    _isBlocked.postValue(true)
+                    _isFollowing.postValue(false)
+                    getFollowersCount(blockedId)
+                    getFollowingCount(blockerId)
+                }
+                onComplete(success, message)
+            }
+        }
+    }
+
+    fun unblockUser(
+        blockerId: String,
+        blockedId: String,
+        onComplete: (Boolean, String) -> Unit = { _, _ -> }
+    ) {
+        _loading.postValue(true)
+        viewModelScope.launch {
+            followRepo.unblockUser(blockerId, blockedId) { success, message ->
+                _loading.postValue(false)
+                if (success) {
+                    _isBlocked.postValue(false)
                 }
                 onComplete(success, message)
             }
