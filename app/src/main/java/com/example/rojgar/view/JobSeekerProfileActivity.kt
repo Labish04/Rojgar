@@ -1239,7 +1239,6 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                 context = context
             )
         }
-
         if (showDeleteAccountDialog) {
             DeleteAccountConfirmationDialog(
                 onDismiss = { showDeleteAccountDialog = false },

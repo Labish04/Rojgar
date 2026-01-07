@@ -140,8 +140,11 @@ fun CompanyProfileBody(
 
     var isDrawerOpen by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
+
 
     val repository = remember { CompanyRepoImpl() }
+    val jobSeekerRepository = remember { JobSeekerRepoImpl() }
 
     val currentUserId = remember {
         if (currentCompany != null) currentCompany.uid
@@ -367,7 +370,7 @@ fun CompanyProfileBody(
 
                         if (isOwnProfile) {
                             IconButton(
-                                onClick = { isDrawerOpen = true },  // <- Change this line
+                                onClick = { isDrawerOpen = true },
                                 modifier = Modifier
                                     .shadow(8.dp, CircleShape)
                                     .background(Color.White.copy(alpha = 0.95f), CircleShape)
@@ -384,14 +387,12 @@ fun CompanyProfileBody(
                 }
             }
 
-            // Profile Content with elevated design
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .offset(y = (-70).dp)
                     .padding(horizontal = 20.dp)
             ) {
-                // Enhanced Profile Image with Ring
                 Box(
                     modifier = Modifier.align(Alignment.Start)
                 ) {
@@ -599,9 +600,7 @@ fun CompanyProfileBody(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Action Buttons (different for own profile vs viewing others)
                 if (!isOwnProfile) {
-                    // Viewing other company's profile - show follow and message
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -968,6 +967,16 @@ fun CompanyProfileBody(
                             )
 
                             CompanyDrawerMenuItem(
+                                icon = R.drawable.feedback,
+                                text = "Help & Support",
+                                subtitle = "Get help or send feedback",
+                                iconColor = Color(0xFF2196F3),
+                                onClick = {
+                                    isDrawerOpen = false
+                                    Toast.makeText(context, "Edit Profile clicked", Toast.LENGTH_SHORT).show()                                }
+                            )
+
+                            CompanyDrawerMenuItem(
                                 icon = R.drawable.settings,
                                 text = "Settings",
                                 subtitle = "Manage preferences",
@@ -976,16 +985,6 @@ fun CompanyProfileBody(
                                     isDrawerOpen = false
                                     showSettingsDialog = true
                                 }
-                            )
-
-                            CompanyDrawerMenuItem(
-                                icon = R.drawable.feedback,
-                                text = "Help & Support",
-                                subtitle = "Get help or send feedback",
-                                iconColor = Color(0xFF2196F3),
-                                onClick = {
-                                    isDrawerOpen = false
-                                    Toast.makeText(context, "Edit Profile clicked", Toast.LENGTH_SHORT).show()                                }
                             )
 
                             Spacer(modifier = Modifier.height(12.dp))
@@ -1063,7 +1062,16 @@ fun CompanyProfileBody(
                 onDismiss = { showSettingsDialog = false },
                 onChangePasswordClick = {
                     showSettingsDialog = false
+                    showChangePasswordDialog = true
                 },
+                context = context
+            )
+        }
+
+        if (showChangePasswordDialog) {
+            ChangePasswordDialog(
+                onDismiss = { showChangePasswordDialog = false },
+                repository = jobSeekerRepository,
                 context = context
             )
         }
@@ -1328,8 +1336,8 @@ fun CompanySettingsDialog(
     onChangePasswordClick: () -> Unit,
     context: Context
 ) {
+
     var isDarkMode by remember { mutableStateOf(false) }
-    var isPrivateProfile by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -1381,9 +1389,10 @@ fun CompanySettingsDialog(
                         Icon(
                             painter = painterResource(R.drawable.outline_arrow_back_ios_24),
                             contentDescription = "Close",
+//                            onClick = { isDrawerOpen = true
+//                                showSettingsDialog = false },
                             tint = Color(0xFF546E7A),
                             modifier = Modifier
-                                .clickable { onDismiss() }
                                 .padding(8.dp)
                         )
                     }
