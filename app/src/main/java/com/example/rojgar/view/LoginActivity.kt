@@ -270,12 +270,27 @@ fun LoginBody() {
                                         }
                                         "COMPANY" -> {
                                             companyViewModel.login(email, password) { success, message ->
-                                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                                                 if (success) {
-                                                    Toast.makeText(context, "Login Successful as Company", Toast.LENGTH_SHORT).show()
-                                                    val intent = Intent(context, CompanyDashboardActivity::class.java)
-                                                    context.startActivity(intent)
-                                                    activity.finish()
+                                                    val currentUser = companyViewModel.getCurrentCompany()
+                                                    if (currentUser != null) {
+                                                        // Check if company account is deactivated
+                                                        companyViewModel.checkAccountStatus(currentUser.uid) { isActive, statusMessage ->
+                                                            if (!isActive && statusMessage == "Account is deactivated") {
+                                                                // Account is deactivated, show reactivation dialog
+                                                                pendingReactivationUserId = currentUser.uid
+                                                                pendingUserType = "COMPANY"
+                                                                showReactivationDialog = true
+                                                            } else {
+                                                                // Account is active, proceed to dashboard
+                                                                Toast.makeText(context, "Login Successful as Company", Toast.LENGTH_SHORT).show()
+                                                                val intent = Intent(context, CompanyDashboardActivity::class.java)
+                                                                context.startActivity(intent)
+                                                                activity.finish()
+                                                            }
+                                                        }
+                                                    }
+                                                } else {
+                                                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                                                 }
                                             }
                                         }
@@ -422,7 +437,11 @@ fun LoginBody() {
                 showReactivationDialog = false
                 pendingReactivationUserId = null
                 pendingUserType = null
-                jobSeekerViewModel.logout("") { _, _ -> }
+                // Logout based on user type
+                when (pendingUserType) {
+                    "JOBSEEKER" -> jobSeekerViewModel.logout("") { _, _ -> }
+                    "COMPANY" -> companyViewModel.logout("") { _, _ -> }
+                }
             },
             onConfirm = {
                 pendingReactivationUserId?.let { userId ->
@@ -439,6 +458,26 @@ fun LoginBody() {
                                     showReactivationDialog = false
 
                                     val intent = Intent(context, JobSeekerDashboardActivity::class.java)
+                                    context.startActivity(intent)
+                                    activity.finish()
+                                } else {
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    showReactivationDialog = false
+                                }
+                            }
+                        }
+                        "COMPANY" -> {
+                            companyViewModel.reactivateAccount(userId) { success, message ->
+                                if (success) {
+                                    Toast.makeText(
+                                        context,
+                                        "Company account reactivated successfully!",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+
+                                    showReactivationDialog = false
+
+                                    val intent = Intent(context, CompanyDashboardActivity::class.java)
                                     context.startActivity(intent)
                                     activity.finish()
                                 } else {
@@ -542,7 +581,6 @@ fun ReactivationDialog(
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Top decorative gradient bar
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -557,7 +595,6 @@ fun ReactivationDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Icon with gradient background
                 Box(
                     modifier = Modifier
                         .size(80.dp)
@@ -582,7 +619,6 @@ fun ReactivationDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Title
                 Text(
                     text = "Account Deactivated",
                     style = TextStyle(
@@ -595,7 +631,6 @@ fun ReactivationDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Description
                 Text(
                     text = "Your account has been deactivated. Would you like to reactivate it and continue?",
                     style = TextStyle(
@@ -610,7 +645,6 @@ fun ReactivationDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Info box
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -641,12 +675,10 @@ fun ReactivationDialog(
 
                 Spacer(modifier = Modifier.height(28.dp))
 
-                // Action buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Cancel button
                     TextButton(
                         onClick = onDismiss,
                         modifier = Modifier
@@ -666,7 +698,6 @@ fun ReactivationDialog(
                         )
                     }
 
-                    // Reactivate button
                     Button(
                         onClick = onConfirm,
                         modifier = Modifier

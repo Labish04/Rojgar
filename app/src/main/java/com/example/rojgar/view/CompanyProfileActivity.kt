@@ -144,6 +144,8 @@ fun CompanyProfileBody(
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var showConfirmPasswordDialog by remember { mutableStateOf(false) }
+
 
 
     val repository = remember { CompanyRepoImpl() }
@@ -507,7 +509,6 @@ fun CompanyProfileBody(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Company Name with Premium Badge
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -520,7 +521,6 @@ fun CompanyProfileBody(
                         letterSpacing = (-0.5).sp
                     )
 
-                    // Premium Verified Badge
                     Surface(
                         shape = CircleShape,
                         color = Color(0xFF3B82F6),
@@ -1067,6 +1067,10 @@ fun CompanyProfileBody(
                     showSettingsDialog = false
                     showChangePasswordDialog = true
                 },
+                onDeactivateClick = {
+                    showSettingsDialog = false
+                    showConfirmPasswordDialog = true
+                },
                 onDeleteAccountClick = {
                     showSettingsDialog = false
                     showDeleteAccountDialog = true
@@ -1112,6 +1116,61 @@ fun CompanyProfileBody(
                                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                                     }
                                     showDeleteAccountDialog = false
+                                }
+                            }
+                            .addOnFailureListener { exception ->
+                                Toast.makeText(
+                                    context,
+                                    "Incorrect password. Please try again.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Unable to verify user. Please try again.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                context = context
+            )
+        }
+
+        if (showConfirmPasswordDialog) {
+            ConfirmPasswordForDeactivateDialog(
+                onDismiss = {
+                    showConfirmPasswordDialog = false
+                },
+                onConfirm = { password ->
+                    // Verify password first
+                    val currentUser = repository.getCurrentCompany()
+                    if (currentUser != null && currentUser.email != null) {
+                        val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(
+                            currentUser.email!!,
+                            password
+                        )
+
+                        currentUser.reauthenticate(credential)
+                            .addOnSuccessListener {
+                                // Password is correct, proceed with deactivation
+                                companyViewModel.deactivateAccount(currentUserId) { success, message ->
+                                    if (success) {
+                                        Toast.makeText(
+                                            context,
+                                            "Account deactivated successfully",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+
+                                        // Navigate to login screen
+                                        val intent = Intent(context, LoginActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        context.startActivity(intent)
+                                        activity.finish()
+                                    } else {
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    }
+                                    showConfirmPasswordDialog = false
                                 }
                             }
                             .addOnFailureListener { exception ->
@@ -1391,6 +1450,7 @@ fun CompanyDrawerMenuItem(
 fun CompanySettingsDialog(
     onDismiss: () -> Unit,
     onChangePasswordClick: () -> Unit,
+    onDeactivateClick: () -> Unit,
     onDeleteAccountClick: () -> Unit,
     context: Context
 ) {
@@ -1487,7 +1547,7 @@ fun CompanySettingsDialog(
                     title = "Deactivate Account",
                     subtitle = "Temporarily disable your account",
                     iconColor = Color(0xFFFF9800),
-                    onClick = {}
+                    onClick = onDeactivateClick
                 )
 
                 SettingsOption(
