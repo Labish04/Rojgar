@@ -174,6 +174,34 @@ class JobSeekerRepoImpl : JobSeekerRepo {
             }
     }
 
+    override fun deleteAccount(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        // First, delete the user data from the database
+        ref.child(jobseekerId).removeValue()
+            .addOnCompleteListener { dbTask ->
+                if (dbTask.isSuccessful) {
+                    // Then delete the Firebase Auth user
+                    val user = auth.currentUser
+                    if (user != null) {
+                        user.delete()
+                            .addOnCompleteListener { authTask ->
+                                if (authTask.isSuccessful) {
+                                    callback(true, "Account deleted permanently")
+                                } else {
+                                    callback(false, authTask.exception?.message ?: "Failed to delete authentication")
+                                }
+                            }
+                    } else {
+                        callback(false, "User not authenticated")
+                    }
+                } else {
+                    callback(false, dbTask.exception?.message ?: "Failed to delete account data")
+                }
+            }
+    }
+
     override fun reactivateAccount(
         jobseekerId: String,
         callback: (Boolean, String) -> Unit
@@ -187,6 +215,7 @@ class JobSeekerRepoImpl : JobSeekerRepo {
                 }
             }
     }
+
 
     override fun checkAccountStatus(
         jobseekerId: String,

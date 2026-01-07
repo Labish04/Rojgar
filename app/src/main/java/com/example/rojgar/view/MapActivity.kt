@@ -881,7 +881,6 @@ fun ModernCompanyInfoCard(
 
                     Spacer(modifier = Modifier.height(18.dp))
 
-                    // Email Section with Modern Design
                     if (company.companyEmail.isNotEmpty()) {
                         Row(
                             modifier = Modifier

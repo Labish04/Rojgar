@@ -78,7 +78,13 @@ class JobSeekerViewModel(val repo: JobSeekerRepo) {
         repo.deactivateAccount(jobseekerId, callback)
     }
 
-    // FIXED: This was calling deactivateAccount instead of reactivateAccount
+
+    fun deleteAccount(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.deleteAccount(jobseekerId, callback)
+    }
     fun reactivateAccount(
         jobseekerId: String,
         callback: (Boolean, String) -> Unit
@@ -93,7 +99,6 @@ class JobSeekerViewModel(val repo: JobSeekerRepo) {
         repo.checkAccountStatus(jobseekerId, callback)
     }
 
-    // NEW METHOD: Check account status by email
     fun checkAccountStatusByEmail(
         email: String,
         callback: (Boolean, String?, String) -> Unit

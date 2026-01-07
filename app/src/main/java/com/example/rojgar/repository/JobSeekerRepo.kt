@@ -49,13 +49,17 @@ interface JobSeekerRepo {
         jobseekerId: String,
         callback: (Boolean, String) -> Unit
     )
+    fun deleteAccount(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    )
+
 
     fun checkAccountStatus(
         jobseekerId: String,
         callback: (Boolean, String) -> Unit
     )
 
-    // NEW METHOD: Check account status by email (for login flow)
     fun checkAccountStatusByEmail(
         email: String,
         callback: (Boolean, String?, String) -> Unit
