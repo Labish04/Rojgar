@@ -44,4 +44,25 @@ interface FollowRepo {
         userId: String,
         callback: (Boolean, String, List<FollowModel>?) -> Unit
     )
+
+    // Block/Unblock methods
+    fun blockUser(
+        blockerId: String,
+        blockerType: String,
+        blockedId: String,
+        blockedType: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun unblockUser(
+        blockerId: String,
+        blockedId: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun isBlocked(
+        blockerId: String,
+        blockedId: String,
+        callback: (Boolean) -> Unit
+    )
 }
