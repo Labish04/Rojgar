@@ -19,3 +19,23 @@ data class FollowModel(
         )
     }
 }
+
+data class BlockModel(
+    val blockId: String = "",
+    val blockerId: String = "",        // Who is blocking
+    val blockerType: String = "",      // "JobSeeker" or "Company"
+    val blockedId: String = "",        // Who is being blocked
+    val blockedType: String = "",      // "JobSeeker" or "Company"
+    val timestamp: Long = System.currentTimeMillis()
+) {
+    fun toMap(): Map<String, Any?> {
+        return mapOf(
+            "blockId" to blockId,
+            "blockerId" to blockerId,
+            "blockerType" to blockerType,
+            "blockedId" to blockedId,
+            "blockedType" to blockedType,
+            "timestamp" to timestamp
+        )
+    }
+}
