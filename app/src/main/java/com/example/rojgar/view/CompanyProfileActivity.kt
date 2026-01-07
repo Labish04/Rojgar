@@ -1,5 +1,6 @@
 package com.example.rojgar.view
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -118,6 +119,7 @@ fun CompanyProfileBody(
     onPickProfileImage: () -> Unit
 ) {
     val context = LocalContext.current
+    val activity = context as Activity
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
     val followViewModel = remember { FollowViewModel(FollowRepoImpl()) }
 
@@ -141,6 +143,7 @@ fun CompanyProfileBody(
     var isDrawerOpen by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
 
     val repository = remember { CompanyRepoImpl() }
@@ -1064,6 +1067,10 @@ fun CompanyProfileBody(
                     showSettingsDialog = false
                     showChangePasswordDialog = true
                 },
+                onDeleteAccountClick = {
+                    showSettingsDialog = false
+                    showDeleteAccountDialog = true
+                },
                 context = context
             )
         }
@@ -1072,6 +1079,56 @@ fun CompanyProfileBody(
             ChangePasswordDialog(
                 onDismiss = { showChangePasswordDialog = false },
                 repository = jobSeekerRepository,
+                context = context
+            )
+        }
+
+        if (showDeleteAccountDialog) {
+            DeleteAccountConfirmationDialog(
+                onDismiss = { showDeleteAccountDialog = false },
+                onConfirm = { password ->
+                    val currentUser = repository.getCurrentCompany()
+                    if (currentUser != null && currentUser.email != null) {
+                        val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(
+                            currentUser.email!!,
+                            password
+                        )
+
+                        currentUser.reauthenticate(credential)
+                            .addOnSuccessListener {
+                                companyViewModel.deleteAccount(currentUserId) { success, message ->
+                                    if (success) {
+                                        Toast.makeText(
+                                            context,
+                                            "Account deleted permanently",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+
+                                        val intent = Intent(context, LoginActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        context.startActivity(intent)
+                                        activity.finish()
+                                    } else {
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    }
+                                    showDeleteAccountDialog = false
+                                }
+                            }
+                            .addOnFailureListener { exception ->
+                                Toast.makeText(
+                                    context,
+                                    "Incorrect password. Please try again.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Unable to verify user. Please try again.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
                 context = context
             )
         }
@@ -1334,6 +1391,7 @@ fun CompanyDrawerMenuItem(
 fun CompanySettingsDialog(
     onDismiss: () -> Unit,
     onChangePasswordClick: () -> Unit,
+    onDeleteAccountClick: () -> Unit,
     context: Context
 ) {
 
@@ -1437,7 +1495,7 @@ fun CompanySettingsDialog(
                     title = "Delete Account",
                     subtitle = "Permanently remove your account",
                     iconColor = Color(0xFFF44336),
-                    onClick = {  }
+                    onClick = onDeleteAccountClick
                 )
             }
 

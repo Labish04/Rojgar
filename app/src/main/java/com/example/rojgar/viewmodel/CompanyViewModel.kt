@@ -121,7 +121,13 @@ class CompanyViewModel(val repo: CompanyRepo) {
         repo.uploadCompanyCoverPhoto(context, imageUri, callback)
     }
 
-    // NEW METHOD: Check account status by email
+    fun deleteAccount(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.deleteAccount(companyId, callback)
+    }
+
     fun checkAccountStatusByEmail(
         email: String,
         callback: (Boolean, String?, String) -> Unit
@@ -129,7 +135,6 @@ class CompanyViewModel(val repo: CompanyRepo) {
         repo.checkAccountStatusByEmail(email, callback)
     }
 
-    // NEW METHOD: Reactivate account
     fun reactivateAccount(
         companyId: String,
         callback: (Boolean, String) -> Unit
@@ -137,7 +142,6 @@ class CompanyViewModel(val repo: CompanyRepo) {
         repo.reactivateAccount(companyId, callback)
     }
 
-    // NEW METHOD: Deactivate account
     fun deactivateAccount(
         companyId: String,
         callback: (Boolean, String) -> Unit
@@ -145,7 +149,6 @@ class CompanyViewModel(val repo: CompanyRepo) {
         repo.deactivateAccount(companyId, callback)
     }
 
-    // NEW METHOD: Check account status
     fun checkAccountStatus(
         companyId: String,
         callback: (Boolean, String) -> Unit

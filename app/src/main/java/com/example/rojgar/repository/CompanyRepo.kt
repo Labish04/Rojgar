@@ -71,6 +71,10 @@ interface CompanyRepo {
 
     fun getFileNameFromUri(context: Context, imageUri: Uri): String?
 
+    fun deleteAccount(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    )
     fun deactivateAccount(
         companyId: String,
         callback: (Boolean, String) -> Unit

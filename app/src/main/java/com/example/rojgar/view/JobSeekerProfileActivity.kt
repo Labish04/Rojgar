@@ -86,13 +86,11 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
     val jobSeekerState by jobSeekerViewModel.jobSeeker.observeAsState(initial = null)
     val currentUserId = repository.getCurrentJobSeeker()?.uid ?: ""
 
-    // Get target job seeker ID from intent
     val intentJobSeekerId = remember {
         (activity as? JobSeekerProfileActivity)?.intent?.getStringExtra("JOB_SEEKER_ID") ?: ""
     }
     val finalTargetJobSeekerId = targetJobSeekerId.ifEmpty { intentJobSeekerId }
 
-    // Check if current user is viewing their own profile
     val isOwnProfile = remember(currentUserId, finalTargetJobSeekerId) {
         currentUserId == finalTargetJobSeekerId && finalTargetJobSeekerId.isNotEmpty()
     }
@@ -133,10 +131,8 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
     LaunchedEffect(finalTargetJobSeekerId) {
         if (finalTargetJobSeekerId.isNotEmpty()) {
-            // Fetch target job seeker's data
             jobSeekerViewModel.fetchJobSeekerById(finalTargetJobSeekerId)
         } else {
-            // Fallback to current user if no target specified
             jobSeekerViewModel.fetchCurrentJobSeeker()
         }
     }
@@ -155,7 +151,6 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                     )
                 )
         ) {
-            // TOP BAR - Light Blue Theme
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1418,7 +1413,6 @@ fun SettingsDialog(
         }
     }
 }
-
 @Composable
 fun StatCard(count: Int, label: String, onClick: () -> Unit) {
     Surface(

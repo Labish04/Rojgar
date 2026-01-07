@@ -295,6 +295,32 @@ class CompanyRepoImpl : CompanyRepo {
         return fileName
     }
 
+    override fun deleteAccount(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(companyId).removeValue()
+            .addOnCompleteListener { dbTask ->
+                if (dbTask.isSuccessful) {
+                    val user = auth.currentUser
+                    if (user != null) {
+                        user.delete()
+                            .addOnCompleteListener { authTask ->
+                                if (authTask.isSuccessful) {
+                                    callback(true, "Account deleted permanently")
+                                } else {
+                                    callback(false, authTask.exception?.message ?: "Failed to delete authentication")
+                                }
+                            }
+                    } else {
+                        callback(false, "User not authenticated")
+                    }
+                } else {
+                    callback(false, dbTask.exception?.message ?: "Failed to delete account data")
+                }
+            }
+    }
+
     override fun deactivateAccount(
         companyId: String,
         callback: (Boolean, String) -> Unit
