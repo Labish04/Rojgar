@@ -172,7 +172,6 @@ class CompanyRepoImpl : CompanyRepo {
             callback(false, "Invalid companyId", null)
             return
         }
-
         ref.child(companyId)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -296,7 +295,6 @@ class CompanyRepoImpl : CompanyRepo {
         return fileName
     }
 
-    // NEW METHOD: Deactivate account
     override fun deactivateAccount(
         companyId: String,
         callback: (Boolean, String) -> Unit
@@ -304,7 +302,6 @@ class CompanyRepoImpl : CompanyRepo {
         ref.child(companyId).child("isActive").setValue(false)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    // Also sign out the user
                     auth.signOut()
                     callback(true, "Account deactivated successfully")
                 } else {
@@ -313,7 +310,6 @@ class CompanyRepoImpl : CompanyRepo {
             }
     }
 
-    // NEW METHOD: Reactivate account
     override fun reactivateAccount(
         companyId: String,
         callback: (Boolean, String) -> Unit
@@ -328,7 +324,6 @@ class CompanyRepoImpl : CompanyRepo {
             }
     }
 
-    // NEW METHOD: Check account status by ID
     override fun checkAccountStatus(
         companyId: String,
         callback: (Boolean, String) -> Unit
@@ -346,9 +341,6 @@ class CompanyRepoImpl : CompanyRepo {
                 callback(false, "Error checking account status: ${exception.message}")
             }
     }
-
-    // NEW METHOD: Check account status by email (for login flow)
-    // Add this method to CompanyRepoImpl class to fix the email query issue
 
     override fun checkAccountStatusByEmail(
         email: String,

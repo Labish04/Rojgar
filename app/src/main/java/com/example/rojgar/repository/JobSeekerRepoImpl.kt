@@ -178,7 +178,6 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         jobseekerId: String,
         callback: (Boolean, String) -> Unit
     ) {
-        // First, delete the user data from the database
         ref.child(jobseekerId).removeValue()
             .addOnCompleteListener { dbTask ->
                 if (dbTask.isSuccessful) {
@@ -235,12 +234,10 @@ class JobSeekerRepoImpl : JobSeekerRepo {
             }
     }
 
-    // NEW METHOD: Check account status by email
     override fun checkAccountStatusByEmail(
         email: String,
         callback: (Boolean, String?, String) -> Unit
     ) {
-        // Query by email to find the job seeker
         ref.orderByChild("email").equalTo(email)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {

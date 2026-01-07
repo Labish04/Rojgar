@@ -315,7 +315,6 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // STATS
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -343,9 +342,8 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ACTION BUTTONS - Different UI based on ownership
+            // ACTION BUTTONS
             if (isOwnProfile) {
-                // Own Profile - Edit Options
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -758,13 +756,12 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // BOTTOM ACTION BUTTONS
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         if (isOwnProfile) {
-                            // Profile Owner - Edit options
+                            // Profile Owner
                             Button(
                                 onClick = {
                                     val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)

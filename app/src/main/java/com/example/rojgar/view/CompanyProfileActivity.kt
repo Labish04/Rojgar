@@ -1,5 +1,7 @@
 package com.example.rojgar.view
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -28,13 +30,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
 import com.example.rojgar.model.CompanyModel
@@ -132,6 +138,11 @@ fun CompanyProfileBody(
     var displayedCoverUrl by remember { mutableStateOf("") }
     var displayedProfileUrl by remember { mutableStateOf("") }
 
+    var isDrawerOpen by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+
+    val repository = remember { CompanyRepoImpl() }
+
     val currentUserId = remember {
         if (currentCompany != null) currentCompany.uid
         else if (currentJobSeeker != null) currentJobSeeker.uid
@@ -146,13 +157,11 @@ fun CompanyProfileBody(
         }
     }
 
-    // Fetch company profile based on whether it's own profile or viewing another company
     LaunchedEffect(companyId) {
         if (companyId.isNotEmpty()) {
             if (isOwnProfile) {
                 companyViewModel.fetchCurrentCompany()
             } else {
-                // Fetch specific company profile for viewing
                 companyViewModel.getCompanyDetails(companyId)
             }
         } else {
@@ -160,7 +169,6 @@ fun CompanyProfileBody(
         }
     }
 
-    // Update displayed URLs when company data loads
     LaunchedEffect(company.value) {
         company.value?.let {
             displayedCoverUrl = it.companyCoverPhoto
@@ -168,7 +176,6 @@ fun CompanyProfileBody(
         }
     }
 
-    // Auto-upload cover photo when selected
     LaunchedEffect(selectedCoverUri) {
         if (selectedCoverUri != null && !isUploadingCover) {
             isUploadingCover = true
@@ -176,8 +183,6 @@ fun CompanyProfileBody(
                 isUploadingCover = false
                 if (uploadedUrl != null) {
                     displayedCoverUrl = uploadedUrl
-
-                    // Update in database
                     company.value?.let { currentCompany ->
                         val updatedCompany = currentCompany.copy(companyCoverPhoto = uploadedUrl)
                         companyViewModel.addCompanyToDatabase(
@@ -207,7 +212,6 @@ fun CompanyProfileBody(
                 if (uploadedUrl != null) {
                     displayedProfileUrl = uploadedUrl
 
-                    // Update in database
                     company.value?.let { currentCompany ->
                         val updatedCompany = currentCompany.copy(companyProfileImage = uploadedUrl)
                         companyViewModel.addCompanyToDatabase(
@@ -228,7 +232,6 @@ fun CompanyProfileBody(
         }
     }
 
-    // Check follow status when company data loads
     LaunchedEffect(company.value, currentUserId, companyId) {
         company.value?.let { targetCompany ->
             if (currentUserId.isNotEmpty() && companyId.isNotEmpty() && !isOwnProfile) {
@@ -240,7 +243,6 @@ fun CompanyProfileBody(
     }
 
     LaunchedEffect(followersCountState, followingCountState) {
-        // Update UI with real follow counts
     }
 
     Scaffold(
@@ -257,7 +259,6 @@ fun CompanyProfileBody(
                     .fillMaxWidth()
                     .height(240.dp)
             ) {
-                // Display cover photo
                 if (selectedCoverUri != null || displayedCoverUrl.isNotEmpty()) {
                     Image(
                         painter = rememberAsyncImagePainter(selectedCoverUri ?: displayedCoverUrl),
@@ -273,7 +274,6 @@ fun CompanyProfileBody(
                             .background(Color.Black.copy(alpha = 0.2f))
                     )
 
-                    // Show loading indicator for cover
                     if (isUploadingCover) {
                         Box(
                             modifier = Modifier
@@ -329,7 +329,6 @@ fun CompanyProfileBody(
                     }
                 }
 
-                // Glassmorphism Top Bar
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -366,10 +365,9 @@ fun CompanyProfileBody(
                             )
                         }
 
-                        // Show edit options only for own profile
                         if (isOwnProfile) {
                             IconButton(
-                                onClick = { /* More options */ },
+                                onClick = { isDrawerOpen = true },  // <- Change this line
                                 modifier = Modifier
                                     .shadow(8.dp, CircleShape)
                                     .background(Color.White.copy(alpha = 0.95f), CircleShape)
@@ -798,6 +796,277 @@ fun CompanyProfileBody(
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+
+        AnimatedVisibility(
+            visible = isDrawerOpen,
+            enter = slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec = tween(350, easing = FastOutSlowInEasing)
+            ) + fadeIn(),
+            exit = slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(350, easing = FastOutSlowInEasing)
+            ) + fadeOut(),
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(10f)
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.6f))
+                        .clickable { isDrawerOpen = false }
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(340.dp)
+                        .align(Alignment.CenterEnd)
+                        .shadow(24.dp)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFFFAFAFA),
+                                    Color.White
+                                )
+                            )
+                        )
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp)
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color(0xFF667EEA),
+                                            Color(0xFF764BA2)
+                                        )
+                                    )
+                                )
+                        ) {
+                            Surface(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(16.dp)
+                                    .size(36.dp),
+                                shape = CircleShape,
+                                color = Color.White.copy(alpha = 0.2f)
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                                    contentDescription = "Close",
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .graphicsLayer(rotationZ = 180f)
+                                        .clickable { isDrawerOpen = false }
+                                        .padding(8.dp)
+                                )
+                            }
+
+                            // Profile Section
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.CenterStart)
+                                    .padding(
+                                        start = 20.dp,
+                                        end = 20.dp,
+                                        bottom = 16.dp,
+                                        top = 56.dp
+                                    ),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Card(
+                                    modifier = Modifier
+                                        .size(70.dp)
+                                        .border(3.dp, Color.White, CircleShape),
+                                    shape = CircleShape,
+                                    elevation = CardDefaults.cardElevation(8.dp)
+                                ) {
+                                    if (displayedProfileUrl.isNotEmpty()) {
+                                        AsyncImage(
+                                            model = displayedProfileUrl,
+                                            contentDescription = "Company Logo",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(
+                                                    Brush.linearGradient(
+                                                        colors = listOf(
+                                                            Color(0xFF667EEA),
+                                                            Color(0xFF764BA2)
+                                                        )
+                                                    )
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = company.value?.companyName?.firstOrNull()?.toString() ?: "C",
+                                                fontSize = 32.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(16.dp))
+
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = company.value?.companyName ?: "Company",
+                                        style = TextStyle(
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = Color.White
+                                        ),
+                                        maxLines = 1
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Text(
+                                        text = "Information Technology",
+                                        style = TextStyle(
+                                            fontSize = 13.sp,
+                                            color = Color.White.copy(alpha = 0.9f),
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // MENU ITEMS
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            CompanyDrawerMenuItem(
+                                icon = R.drawable.outline_edit_24,
+                                text = "Edit Profile",
+                                subtitle = "Update company information",
+                                iconColor = Color(0xFF2196F3),
+                                onClick = {
+                                    isDrawerOpen = false
+                                    Toast.makeText(context, "Edit Profile clicked", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+
+                            CompanyDrawerMenuItem(
+                                icon = R.drawable.settings,
+                                text = "Settings",
+                                subtitle = "Manage preferences",
+                                iconColor = Color(0xFF9C27B0),
+                                onClick = {
+                                    isDrawerOpen = false
+                                    showSettingsDialog = true
+                                }
+                            )
+
+                            CompanyDrawerMenuItem(
+                                icon = R.drawable.feedback,
+                                text = "Help & Support",
+                                subtitle = "Get help or send feedback",
+                                iconColor = Color(0xFF2196F3),
+                                onClick = {
+                                    isDrawerOpen = false
+                                    Toast.makeText(context, "Edit Profile clicked", Toast.LENGTH_SHORT).show()                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 20.dp),
+                                color = Color.Gray.copy(alpha = 0.2f)
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        // LOGOUT BUTTON
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 24.dp)
+                                .clickable {
+                                    isDrawerOpen = false
+                                    repository.logout(currentUserId) { success, message ->
+                                        if (success) {
+                                            Toast.makeText(
+                                                context,
+                                                "Logged out successfully",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            val intent = Intent(context, LoginActivity::class.java)
+                                            intent.flags =
+                                                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                            context.startActivity(intent)
+                                            (context as? ComponentActivity)?.finish()
+                                        } else {
+                                            Toast.makeText(context, message, Toast.LENGTH_SHORT)
+                                                .show()
+                                        }
+                                    }
+                                },
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFFFEBEE)
+                            ),
+                            elevation = CardDefaults.cardElevation(4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(18.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.baseline_logout_24),
+                                    contentDescription = "Logout",
+                                    tint = Color(0xFFD32F2F),
+                                    modifier = Modifier.size(26.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Logout",
+                                    style = TextStyle(
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFD32F2F)
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showSettingsDialog) {
+            CompanySettingsDialog(
+                onDismiss = { showSettingsDialog = false },
+                onChangePasswordClick = {
+                    showSettingsDialog = false
+                },
+                context = context
+            )
+        }
     }
 }
 
@@ -980,6 +1249,319 @@ fun GradientSpecialtyChip(text: String, gradient: List<Color>) {
                 color = gradient[0],
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.3.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun CompanyDrawerMenuItem(
+    icon: Int,
+    text: String,
+    subtitle: String,
+    iconColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 6.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = iconColor.copy(alpha = 0.1f)
+            ) {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = text,
+                    tint = iconColor,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = text,
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF263238)
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        color = Color(0xFF78909C)
+                    )
+                )
+            }
+
+            Icon(
+                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                contentDescription = "Navigate",
+                tint = Color(0xFFBDBDBD),
+                modifier = Modifier
+                    .size(16.dp)
+                    .graphicsLayer(rotationZ = 180f)
+            )
+        }
+    }
+}
+
+@Composable
+fun CompanySettingsDialog(
+    onDismiss: () -> Unit,
+    onChangePasswordClick: () -> Unit,
+    context: Context
+) {
+    var isDarkMode by remember { mutableStateOf(false) }
+    var isPrivateProfile by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(20f)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable { onDismiss() }
+        )
+
+        Card(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.85f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Settings",
+                        style = TextStyle(
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF667EEA)
+                        )
+                    )
+
+                    Surface(
+                        modifier = Modifier.size(32.dp),
+                        shape = CircleShape,
+                        color = Color(0xFFF5F5F5)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = "Close",
+                            tint = Color(0xFF546E7A),
+                            modifier = Modifier
+                                .clickable { onDismiss() }
+                                .padding(8.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // SETTINGS OPTIONS
+                CompanySettingsOption(
+                    icon = R.drawable.outline_lock_24,
+                    title = "Change Password",
+                    subtitle = "Update your password",
+                    iconColor = Color(0xFF4CAF50),
+                    onClick = onChangePasswordClick
+                )
+
+                CompanySettingsOptionWithSwitch(
+                    icon = R.drawable.darkmode,
+                    title = "Dark Mode",
+                    subtitle = if (isDarkMode) "Dark theme enabled" else "Light theme enabled",
+                    iconColor = Color(0xFF9C27B0),
+                    isChecked = isDarkMode,
+                    onCheckedChange = { isDarkMode = it }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsOption(
+                    icon = R.drawable.deactivateaccount,
+                    title = "Deactivate Account",
+                    subtitle = "Temporarily disable your account",
+                    iconColor = Color(0xFFFF9800),
+                    onClick = {}
+                )
+
+                SettingsOption(
+                    icon = R.drawable.deleteaccount,
+                    title = "Delete Account",
+                    subtitle = "Permanently remove your account",
+                    iconColor = Color(0xFFF44336),
+                    onClick = {  }
+                )
+            }
+
+        }
+    }
+}
+
+@Composable
+fun CompanySettingsOption(
+    icon: Int,
+    title: String,
+    subtitle: String,
+    iconColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFFAFAFA)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(44.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = iconColor.copy(alpha = 0.12f)
+            ) {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = title,
+                    tint = iconColor,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = TextStyle(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF263238)
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        color = Color(0xFF78909C)
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CompanySettingsOptionWithSwitch(
+    icon: Int,
+    title: String,
+    subtitle: String,
+    iconColor: Color,
+    isChecked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFFAFAFA)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(44.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = iconColor.copy(alpha = 0.12f)
+            ) {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = title,
+                    tint = iconColor,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = TextStyle(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF263238)
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        color = Color(0xFF78909C)
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Switch(
+                checked = isChecked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = iconColor,
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = Color(0xFFBDBDBD)
+                )
             )
         }
     }

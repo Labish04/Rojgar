@@ -71,7 +71,6 @@ interface CompanyRepo {
 
     fun getFileNameFromUri(context: Context, imageUri: Uri): String?
 
-    // NEW METHODS FOR ACCOUNT DEACTIVATION/REACTIVATION
     fun deactivateAccount(
         companyId: String,
         callback: (Boolean, String) -> Unit
