@@ -129,6 +129,28 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
         }
     }
 
+    fun shareProfile(context: Context, jobSeekerId: String, fullName: String, profession: String) {
+        val shareText = """
+        Check out ${fullName}'s profile on Rojgar!
+        
+        Profession: $profession
+        
+        View full profile: https://rojgar.app/profile/$jobSeekerId
+        
+        Download Rojgar App to connect with talented professionals!
+    """.trimIndent()
+
+        val shareIntent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_TEXT, shareText)
+            putExtra(Intent.EXTRA_SUBJECT, "${fullName}'s Professional Profile")
+            type = "text/plain"
+        }
+
+        val chooserIntent = Intent.createChooser(shareIntent, "Share Profile via")
+        context.startActivity(chooserIntent)
+    }
+
     LaunchedEffect(finalTargetJobSeekerId) {
         if (finalTargetJobSeekerId.isNotEmpty()) {
             jobSeekerViewModel.fetchJobSeekerById(finalTargetJobSeekerId)
@@ -190,18 +212,27 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         IconButton(
-                            onClick = { /* Share */ },
+                            onClick = {
+                                shareProfile(
+
+                                    context = context,
+                                    jobSeekerId = finalTargetJobSeekerId.ifEmpty { currentUserId },
+                                    fullName = jobSeekerState?.fullName ?: "User",
+                                    profession = jobSeekerState?.profession ?: "Professional"
+                                )
+                            },
                             modifier = Modifier
-                                .shadow(8.dp, CircleShape)
+                                .shadow(4.dp, CircleShape)
                                 .background(Color.White.copy(alpha = 0.95f), CircleShape)
-                                .size(44.dp)
+                                .size(48.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Share",
-                                tint = Color(0xFF1F2937)
+                                tint = Color(0xFF1976D2)
                             )
                         }
+
 
                         Surface(
                             modifier = Modifier.size(48.dp),
@@ -215,7 +246,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                 tint = Color(0xFF1976D2),
                                 modifier = Modifier
                                     .clickable { isDrawerOpen = true }
-                                    .padding(14.dp)
+                                    .padding(16.dp)
                             )
                         }
                     }

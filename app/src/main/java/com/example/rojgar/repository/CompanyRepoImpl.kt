@@ -374,14 +374,12 @@ class CompanyRepoImpl : CompanyRepo {
     ) {
         val normalizedEmail = email.lowercase().trim()
 
-        // Query all companies and filter by email
         ref.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
                     var foundCompany: CompanyModel? = null
                     var foundCompanyId: String? = null
 
-                    // Iterate through all companies to find matching email
                     for (companySnapshot in snapshot.children) {
                         val company = companySnapshot.getValue(CompanyModel::class.java)
                         if (company != null) {
@@ -415,7 +413,6 @@ class CompanyRepoImpl : CompanyRepo {
         })
     }
 
-    // NEW METHOD: Update company profile
     override fun updateCompanyProfile(
         model: CompanyModel,
         callback: (Boolean, String) -> Unit
@@ -435,7 +432,6 @@ class CompanyRepoImpl : CompanyRepo {
         return try {
             val geocoder = Geocoder(context, Locale.getDefault())
 
-            // Try different address formats for better accuracy in Nepal
             val addressVariations = listOf(
                 "$address, Kathmandu, Nepal",
                 "$address, Nepal",
@@ -451,7 +447,6 @@ class CompanyRepoImpl : CompanyRepo {
                         return LatLng(addresses[0].latitude, addresses[0].longitude)
                     }
                 } catch (e: Exception) {
-                    // Try next variation
                     continue
                 }
             }

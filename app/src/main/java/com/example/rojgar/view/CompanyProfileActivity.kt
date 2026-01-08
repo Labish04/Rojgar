@@ -165,6 +165,27 @@ fun CompanyProfileBody(
         }
     }
 
+    fun shareCompanyProfile(context: Context, company: CompanyModel?) {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+
+            val shareText = buildString {
+                append("Check out ${company?.companyName ?: "this company"}'s profile!\n\n")
+                append("📍 Location: ${company?.companyLocation ?: "N/A"}\n")
+                append("📧 Email: ${company?.companyEmail ?: "N/A"}\n")
+                append("📞 Phone: ${company?.companyContactNumber ?: "N/A"}\n")
+                append("🏢 Industry: Information Technology\n")
+                append("🌐 Website: www.labish.com\n\n")
+                append("Join us on our journey of innovation and growth!")
+            }
+
+            putExtra(Intent.EXTRA_SUBJECT, "${company?.companyName ?: "Company"} Profile")
+            putExtra(Intent.EXTRA_TEXT, shareText)
+        }
+
+        context.startActivity(Intent.createChooser(shareIntent, "Share Company Profile via"))
+    }
+
     LaunchedEffect(companyId) {
         if (companyId.isNotEmpty()) {
             if (isOwnProfile) {
@@ -360,7 +381,9 @@ fun CompanyProfileBody(
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         IconButton(
-                            onClick = { /* Share */ },
+                            onClick = {
+                                shareCompanyProfile(context, company.value)
+                            },
                             modifier = Modifier
                                 .shadow(8.dp, CircleShape)
                                 .background(Color.White.copy(alpha = 0.95f), CircleShape)
