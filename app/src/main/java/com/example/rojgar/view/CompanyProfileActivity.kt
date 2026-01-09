@@ -51,6 +51,9 @@ import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.utils.ImageUtils
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.FollowViewModel
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
 
 class CompanyProfileActivity : ComponentActivity() {
     lateinit var imageUtils: ImageUtils
@@ -146,7 +149,7 @@ fun CompanyProfileBody(
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showConfirmPasswordDialog by remember { mutableStateOf(false) }
 
-
+    var showEditProfileDialog by remember { mutableStateOf(false) }
 
     val repository = remember { CompanyRepoImpl() }
     val jobSeekerRepository = remember { JobSeekerRepoImpl() }
@@ -988,7 +991,7 @@ fun CompanyProfileBody(
                                 iconColor = Color(0xFF2196F3),
                                 onClick = {
                                     isDrawerOpen = false
-                                    Toast.makeText(context, "Edit Profile clicked", Toast.LENGTH_SHORT).show()
+                                    showEditProfileDialog = true
                                 }
                             )
 
@@ -1214,6 +1217,29 @@ fun CompanyProfileBody(
                 context = context
             )
         }
+
+        if (showEditProfileDialog) {
+            EditCompanyProfileDialog(
+                company = company.value,
+                onDismiss = { showEditProfileDialog = false },
+                onSave = { updatedCompany ->
+                    companyViewModel.addCompanyToDatabase(
+                        updatedCompany.companyId,
+                        updatedCompany
+                    ) { success, message ->
+                        showEditProfileDialog = false
+                        if (success) {
+                            Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
+                            companyViewModel.fetchCurrentCompany()
+                        } else {
+                            Toast.makeText(context, "Failed to update: $message", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                context = context
+            )
+        }
+
     }
 }
 
@@ -1712,6 +1738,456 @@ fun CompanySettingsOptionWithSwitch(
                     uncheckedThumbColor = Color.White,
                     uncheckedTrackColor = Color(0xFFBDBDBD)
                 )
+            )
+        }
+    }
+}
+
+// Add this composable function to your CompanyProfileActivity.kt file
+
+@Composable
+fun EditCompanyProfileDialog(
+    company: CompanyModel?,
+    onDismiss: () -> Unit,
+    onSave: (CompanyModel) -> Unit,
+    context: Context
+) {
+    var companyName by remember { mutableStateOf(company?.companyName ?: "") }
+    var tagline by remember { mutableStateOf("Leading Technology Solutions Provider") }
+    var aboutCompany by remember { mutableStateOf("Labish is a pioneering technology company dedicated to delivering innovative solutions that transform businesses. With a team of experienced professionals, we specialize in software development, cloud solutions, and digital transformation.") }
+    var industry by remember { mutableStateOf("Information Technology") }
+    var location by remember { mutableStateOf(company?.companyLocation ?: "") }
+    var phone by remember { mutableStateOf(company?.companyContactNumber ?: "") }
+    var email by remember { mutableStateOf(company?.companyEmail ?: "") }
+    var website by remember { mutableStateOf("www.labish.com") }
+
+    // Core Specialties
+    var specialties by remember {
+        mutableStateOf(listOf(
+            "Software Development",
+            "Cloud Solutions",
+            "AI & ML",
+            "Mobile Apps",
+            "Web Development",
+            "Consulting"
+        ))
+    }
+    var newSpecialty by remember { mutableStateOf("") }
+    var showAddSpecialtyField by remember { mutableStateOf(false) }
+
+    var isSaving by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(30f)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable { if (!isSaving) onDismiss() }
+        )
+
+        Card(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.92f)
+                .fillMaxHeight(0.85f),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                // Header
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF667EEA),
+                                    Color(0xFF764BA2)
+                                )
+                            )
+                        )
+                        .padding(20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Edit Profile",
+                            style = TextStyle(
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        )
+
+                        Surface(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clickable { if (!isSaving) onDismiss() },
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.2f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color.White,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Scrollable Content
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Company Name
+                    EditTextField(
+                        label = "Company Name",
+                        value = companyName,
+                        onValueChange = { companyName = it },
+                        icon = Icons.Default.Face
+                    )
+
+                    // Tagline
+                    EditTextField(
+                        label = "Tagline",
+                        value = tagline,
+                        onValueChange = { tagline = it },
+                        icon = Icons.Default.Edit
+                    )
+
+                    // About Company
+                    EditTextFieldMultiline(
+                        label = "About Company",
+                        value = aboutCompany,
+                        onValueChange = { aboutCompany = it },
+                        icon = Icons.Default.Info
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Company Information",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF667EEA)
+                    )
+
+                    // Industry
+                    EditTextField(
+                        label = "Industry",
+                        value = industry,
+                        onValueChange = { industry = it },
+                        icon = Icons.Default.Email
+                    )
+
+                    // Location
+                    EditTextField(
+                        label = "Location",
+                        value = location,
+                        onValueChange = { location = it },
+                        icon = Icons.Default.LocationOn
+                    )
+
+                    // Phone
+                    EditTextField(
+                        label = "Phone",
+                        value = phone,
+                        onValueChange = { phone = it },
+                        icon = Icons.Default.Phone
+                    )
+
+                    // Email
+                    EditTextField(
+                        label = "Email",
+                        value = email,
+                        onValueChange = { email = it },
+                        icon = Icons.Default.Email,
+                        enabled = true
+                    )
+
+                    // Website
+                    EditTextField(
+                        label = "Website",
+                        value = website,
+                        onValueChange = { website = it },
+                        icon = Icons.Default.PlayArrow
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Core Specialties Section
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Core Specialties",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF667EEA)
+                        )
+
+                        IconButton(
+                            onClick = { showAddSpecialtyField = !showAddSpecialtyField },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (showAddSpecialtyField) Icons.Default.Close else Icons.Default.Add,
+                                contentDescription = "Add Specialty",
+                                tint = Color(0xFF667EEA)
+                            )
+                        }
+                    }
+
+                    // Add new specialty field
+                    if (showAddSpecialtyField) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = newSpecialty,
+                                onValueChange = { newSpecialty = it },
+                                modifier = Modifier.weight(1f),
+                                placeholder = { Text("Enter specialty") },
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color(0xFF667EEA),
+                                    unfocusedBorderColor = Color(0xFFE0E0E0)
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+
+                            Button(
+                                onClick = {
+                                    if (newSpecialty.isNotBlank()) {
+                                        specialties = specialties + newSpecialty.trim()
+                                        newSpecialty = ""
+                                        showAddSpecialtyField = false
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF667EEA)
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Add")
+                            }
+                        }
+                    }
+
+                    // Display specialties as removable chips
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        specialties.forEach { specialty ->
+                            RemovableSpecialtyChip(
+                                text = specialty,
+                                onRemove = {
+                                    specialties = specialties.filter { it != specialty }
+                                }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(80.dp))
+                }
+
+                // Save Button (Fixed at bottom)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shadowElevation = 8.dp,
+                    color = Color.White
+                ) {
+                    Button(
+                        onClick = {
+                            if (companyName.isBlank()) {
+                                Toast.makeText(
+                                    context,
+                                    "Company name cannot be empty",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return@Button
+                            }
+
+                            isSaving = true
+
+                            // Create updated company model
+                            val updatedCompany = company?.copy(
+                                companyName = companyName,
+                                companyLocation = location,
+                                companyContactNumber = phone,
+                                companyEmail = email
+                            ) ?: CompanyModel(
+                                companyName = companyName,
+                                companyLocation = location,
+                                companyContactNumber = phone,
+                                companyEmail = email
+                            )
+
+                            onSave(updatedCompany)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF667EEA)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        enabled = !isSaving
+                    ) {
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = "Save Changes",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EditTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    icon: ImageVector,
+    enabled: Boolean = true
+) {
+    Column {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF374151),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = Color(0xFF667EEA)
+                )
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF667EEA),
+                unfocusedBorderColor = Color(0xFFE0E0E0),
+                disabledBorderColor = Color(0xFFE0E0E0),
+                disabledTextColor = Color(0xFF9CA3AF)
+            ),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            enabled = enabled
+        )
+    }
+}
+
+@Composable
+fun EditTextFieldMultiline(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    icon: ImageVector
+) {
+    Column {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF374151),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp),
+            leadingIcon = {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = Color(0xFF667EEA),
+                    modifier = Modifier.padding(bottom = 80.dp)
+                )
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF667EEA),
+                unfocusedBorderColor = Color(0xFFE0E0E0)
+            ),
+            shape = RoundedCornerShape(12.dp),
+            maxLines = 5
+        )
+    }
+}
+
+@Composable
+fun RemovableSpecialtyChip(
+    text: String,
+    onRemove: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = Color(0xFF667EEA).copy(alpha = 0.1f),
+        border = BorderStroke(1.dp, Color(0xFF667EEA).copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = text,
+                fontSize = 13.sp,
+                color = Color(0xFF667EEA),
+                fontWeight = FontWeight.Medium
+            )
+
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Remove",
+                tint = Color(0xFF667EEA),
+                modifier = Modifier
+                    .size(16.dp)
+                    .clickable { onRemove() }
             )
         }
     }

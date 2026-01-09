@@ -209,12 +209,10 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                             color = Color(0xFF1565C0)
                         )
                     )
-
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         IconButton(
                             onClick = {
                                 shareProfile(
-
                                     context = context,
                                     jobSeekerId = finalTargetJobSeekerId.ifEmpty { currentUserId },
                                     fullName = jobSeekerState?.fullName ?: "User",
@@ -232,8 +230,6 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                 tint = Color(0xFF1976D2)
                             )
                         }
-
-
                         Surface(
                             modifier = Modifier.size(48.dp),
                             shape = CircleShape,
