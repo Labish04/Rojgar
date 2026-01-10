@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -35,18 +35,17 @@ import android.graphics.Bitmap
 import android.media.ThumbnailUtils
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.runtime.*
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.example.rojgar.R
-import com.example.rojgar.repository.JobSeekerRepoImpl
+import com.example.rojgar.repository.*
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -62,7 +61,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import coil.compose.AsyncImage
 import com.example.rojgar.viewmodel.JobSeekerViewModel
-
 
 class JobSeekerProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,33 +79,41 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
     val context = LocalContext.current
     val activity = context as Activity
 
+    // Initialize repositories
     val repository = remember { JobSeekerRepoImpl() }
-    val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
+    val followRepository = remember { FollowRepoImpl() }
+
+    // Initialize JobSeeker ViewModel
+    val jobSeekerViewModel = remember { JobSeekerViewModel(repository) }
+
     val jobSeekerState by jobSeekerViewModel.jobSeeker.observeAsState(initial = null)
     val currentUserId = repository.getCurrentJobSeeker()?.uid ?: ""
+    val currentUserType = "JobSeeker"
 
     val intentJobSeekerId = remember {
         (activity as? JobSeekerProfileActivity)?.intent?.getStringExtra("JOB_SEEKER_ID") ?: ""
     }
     val finalTargetJobSeekerId = targetJobSeekerId.ifEmpty { intentJobSeekerId }
 
+    // Check if viewing own profile or other's profile
+    val isOwnProfile = finalTargetJobSeekerId.isEmpty() || currentUserId == finalTargetJobSeekerId
+
     var selectedVideoUri by remember { mutableStateOf<Uri?>(null) }
     var videoThumbnail by remember { mutableStateOf<Bitmap?>(null) }
-    var isFollowing by remember { mutableStateOf(false) }
     var showMoreDialog by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(false) }
     var isDrawerOpen by remember { mutableStateOf(false) }
 
-    var followersCount by remember { mutableStateOf(2847) }
-    var followingCount by remember { mutableStateOf(312) }
-
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
-
     var showConfirmPasswordDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
-
+    // Follow states
+    var isFollowing by remember { mutableStateOf(false) }
+    var followersCount by remember { mutableStateOf(0) }
+    var followingCount by remember { mutableStateOf(0) }
+    var isLoadingFollow by remember { mutableStateOf(false) }
 
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -147,6 +153,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
         context.startActivity(chooserIntent)
     }
 
+    // Load job seeker data
     LaunchedEffect(finalTargetJobSeekerId) {
         if (finalTargetJobSeekerId.isNotEmpty()) {
             jobSeekerViewModel.fetchJobSeekerById(finalTargetJobSeekerId)
@@ -155,8 +162,78 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
         }
     }
 
-    // Check if viewing own profile or other's profile
-    val isOwnProfile = currentUserId == finalTargetJobSeekerId
+    // Load follow data
+    LaunchedEffect(finalTargetJobSeekerId, currentUserId) {
+        if (finalTargetJobSeekerId.isNotEmpty() && currentUserId.isNotEmpty()) {
+            // Check follow status if not own profile
+            if (!isOwnProfile) {
+                isLoadingFollow = true
+                followRepository.isFollowing(currentUserId, finalTargetJobSeekerId) { following ->
+                    isFollowing = following
+                    isLoadingFollow = false
+                }
+            }
+
+            // Get followers and following counts
+            followRepository.getFollowersCount(finalTargetJobSeekerId) { count ->
+                followersCount = count
+            }
+
+            followRepository.getFollowingCount(finalTargetJobSeekerId) { count ->
+                followingCount = count
+            }
+        }
+    }
+
+    // Handle follow action
+    fun handleFollow() {
+        if (currentUserId.isEmpty() || finalTargetJobSeekerId.isEmpty()) {
+            Toast.makeText(context, "Unable to follow", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        isLoadingFollow = true
+        followRepository.follow(
+            followerId = currentUserId,
+            followerType = currentUserType,
+            followingId = finalTargetJobSeekerId,
+            followingType = "JobSeeker"
+        ) { success, message ->
+            isLoadingFollow = false
+            if (success) {
+                isFollowing = true
+                followersCount++
+                Toast.makeText(context, "Followed successfully!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Failed to follow: $message", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Handle unfollow action
+    fun handleUnfollow() {
+        if (currentUserId.isEmpty() || finalTargetJobSeekerId.isEmpty()) {
+            Toast.makeText(context, "Unable to unfollow", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        isLoadingFollow = true
+        followRepository.unfollow(
+            followerId = currentUserId,
+            followerType = currentUserType,
+            followingId = finalTargetJobSeekerId,
+            followingType = "JobSeeker"
+        ) { success, message ->
+            isLoadingFollow = false
+            if (success) {
+                isFollowing = false
+                followersCount = maxOf(0, followersCount - 1)
+                Toast.makeText(context, "Unfollowed successfully!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Failed to unfollow: $message", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -229,20 +306,27 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                 tint = Color(0xFF1976D2)
                             )
                         }
-                        Surface(
-                            modifier = Modifier.size(48.dp),
-                            shape = CircleShape,
-                            color = Color.White,
-                            shadowElevation = 4.dp
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.outline_more_vert_24),
-                                contentDescription = "Menu",
-                                tint = Color(0xFF1976D2),
-                                modifier = Modifier
-                                    .clickable { isDrawerOpen = true }
-                                    .padding(16.dp)
-                            )
+
+                        // Show Menu button only if viewing own profile
+                        if (isOwnProfile) {
+                            Surface(
+                                modifier = Modifier.size(48.dp),
+                                shape = CircleShape,
+                                color = Color.White,
+                                shadowElevation = 4.dp
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.outline_more_vert_24),
+                                    contentDescription = "Menu",
+                                    tint = Color(0xFF1976D2),
+                                    modifier = Modifier
+                                        .clickable { isDrawerOpen = true }
+                                        .padding(16.dp)
+                                )
+                            }
+                        } else {
+                            // Dummy space to keep layout consistent
+                            Spacer(modifier = Modifier.size(48.dp))
                         }
                     }
                 }
@@ -336,6 +420,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // STAT CARDS - Using real follow data
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -345,17 +430,21 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                 StatCard(
                     count = followersCount,
                     label = "Followers",
-                    onClick = { Toast.makeText(context, "Followers: $followersCount", Toast.LENGTH_SHORT).show() }
+                    onClick = {
+                        Toast.makeText(context, "Followers: $followersCount", Toast.LENGTH_SHORT).show()
+                    }
                 )
 
                 StatCard(
                     count = followingCount,
                     label = "Following",
-                    onClick = { Toast.makeText(context, "Following: $followingCount", Toast.LENGTH_SHORT).show() }
+                    onClick = {
+                        Toast.makeText(context, "Following: $followingCount", Toast.LENGTH_SHORT).show()
+                    }
                 )
 
                 StatCard(
-                    count = 156,
+                    count = 156, // Posts count (can be updated later with real data)
                     label = "Posts",
                     onClick = { Toast.makeText(context, "Posts: 156", Toast.LENGTH_SHORT).show() }
                 )
@@ -375,10 +464,11 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                     ) {
                         Button(
                             onClick = {
-                                isFollowing = true
-                                followersCount++
-                                Toast.makeText(context, "Followed!", Toast.LENGTH_SHORT).show()
+                                if (!isLoadingFollow) {
+                                    handleFollow()
+                                }
                             },
+                            enabled = !isLoadingFollow,
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -390,22 +480,30 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                             ),
                             elevation = ButtonDefaults.buttonElevation(0.dp)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.follow_icon),
-                                    contentDescription = "Follow",
+                            if (isLoadingFollow) {
+                                CircularProgressIndicator(
                                     modifier = Modifier.size(24.dp),
-                                    tint = Color.White
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
                                 )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = "Follow",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            } else {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.follow_icon),
+                                        contentDescription = "Follow",
+                                        modifier = Modifier.size(24.dp),
+                                        tint = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = "Follow",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
@@ -487,8 +585,8 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                 }
             }
 
-            // MORE OPTIONS DIALOG - Only show for owner
-            if (showMoreDialog && isOwnProfile) {
+            // MORE OPTIONS DIALOG - Only show when viewing others' profile and following (to unfollow/block)
+            if (showMoreDialog && !isOwnProfile) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -511,10 +609,8 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        isFollowing = false
-                                        followersCount--
+                                        handleUnfollow()
                                         showMoreDialog = false
-                                        Toast.makeText(context, "Unfollowed", Toast.LENGTH_SHORT).show()
                                     }
                                     .padding(18.dp)
                             )
@@ -541,7 +637,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // CONTENT CARD - Made scrollable
+            // CONTENT CARD
             Card(
                 shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
                 modifier = Modifier.fillMaxSize(),
@@ -643,6 +739,28 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                             )
                                         }
                                     }
+                                }
+                            }
+
+                            // Only show video picker/upload option for own profile
+                            if (isOwnProfile) {
+                                Surface(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(16.dp)
+                                        .size(56.dp),
+                                    shape = CircleShape,
+                                    color = Color(0xFF2196F3),
+                                    shadowElevation = 12.dp
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.baseline_upload_24),
+                                        contentDescription = "Upload",
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .clickable { videoPickerLauncher.launch("video/*") }
+                                            .padding(16.dp)
+                                    )
                                 }
                             }
 
@@ -759,249 +877,251 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
             }
         }
 
-        // DRAWER
-        AnimatedVisibility(
-            visible = isDrawerOpen,
-            enter = slideInHorizontally(
-                initialOffsetX = { it },
-                animationSpec = tween(350, easing = FastOutSlowInEasing)
-            ) + fadeIn(),
-            exit = slideOutHorizontally(
-                targetOffsetX = { it },
-                animationSpec = tween(350, easing = FastOutSlowInEasing)
-            ) + fadeOut(),
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(10f)
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.6f))
-                        .clickable { isDrawerOpen = false }
-                )
+        // DRAWER - Only available for owner
+        if (isOwnProfile) {
+            AnimatedVisibility(
+                visible = isDrawerOpen,
+                enter = slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(350, easing = FastOutSlowInEasing)
+                ) + fadeIn(),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(350, easing = FastOutSlowInEasing)
+                ) + fadeOut(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(10f)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.6f))
+                            .clickable { isDrawerOpen = false }
+                    )
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(340.dp)
-                        .align(Alignment.CenterEnd)
-                        .shadow(24.dp)
-                        .background(
-                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                colors = listOf(
-                                    Color(0xFFFAFAFA),
-                                    Color.White
-                                )
-                            )
-                        )
-                ) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(140.dp)
-                                .background(
-                                    brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
-                                        colors = listOf(
-                                            Color(0xFF1E88E5),
-                                            Color(0xFF42A5F5)
-                                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(340.dp)
+                            .align(Alignment.CenterEnd)
+                            .shadow(24.dp)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xFFFAFAFA),
+                                        Color.White
                                     )
                                 )
-                        ) {
-                            Surface(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(16.dp)
-                                    .size(36.dp),
-                                shape = CircleShape,
-                                color = Color.White.copy(alpha = 0.2f)
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                                    contentDescription = "Close",
-                                    tint = Color.White,
-                                    modifier = Modifier
-                                        .graphicsLayer(rotationZ = 180f)
-                                        .clickable { isDrawerOpen = false }
-                                        .padding(8.dp)
-                                )
-                            }
-
-                            // Profile Section
-                            Row(
+                            )
+                    ) {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .align(Alignment.CenterStart)
-                                    .padding(start = 20.dp, end = 20.dp, bottom = 16.dp, top = 56.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .height(140.dp)
+                                    .background(
+                                        brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                            colors = listOf(
+                                                Color(0xFF1E88E5),
+                                                Color(0xFF42A5F5)
+                                            )
+                                        )
+                                    )
                             ) {
-                                Card(
+                                Surface(
                                     modifier = Modifier
-                                        .size(70.dp)
-                                        .border(3.dp, Color.White, CircleShape),
+                                        .align(Alignment.TopEnd)
+                                        .padding(16.dp)
+                                        .size(36.dp),
                                     shape = CircleShape,
-                                    elevation = CardDefaults.cardElevation(8.dp)
+                                    color = Color.White.copy(alpha = 0.2f)
                                 ) {
-                                    if (jobSeekerState?.profilePhoto != null) {
-                                        AsyncImage(
-                                            model = jobSeekerState?.profilePhoto,
-                                            contentDescription = "Profile",
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    } else {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.profileemptypic),
-                                            contentDescription = "Profile",
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.width(16.dp))
-
-                                Column(
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = jobSeekerState?.fullName ?: "User",
-                                        style = TextStyle(
-                                            fontSize = 20.sp,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = Color.White
-                                        ),
-                                        maxLines = 1
-                                    )
-
-                                    Spacer(modifier = Modifier.height(4.dp))
-
-                                    Text(
-                                        text = jobSeekerState?.profession ?: "No Profession",
-                                        style = TextStyle(
-                                            fontSize = 13.sp,
-                                            color = Color.White.copy(alpha = 0.9f),
-                                            fontWeight = FontWeight.Medium
-                                        ),
-                                        maxLines = 1
+                                    Icon(
+                                        painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                                        contentDescription = "Close",
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .graphicsLayer(rotationZ = 180f)
+                                            .clickable { isDrawerOpen = false }
+                                            .padding(8.dp)
                                     )
                                 }
-                            }
-                        }
 
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // MENU ITEMS
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .verticalScroll(rememberScrollState())
-                        ) {
-                            ModernDrawerMenuItem(
-                                icon = R.drawable.save_outline,
-                                text = "Saved Jobs",
-                                subtitle = "View bookmarked opportunities",
-                                iconColor = Color(0xFF4CAF50),
-                                onClick = {
-                                    isDrawerOpen = false
-                                    Toast.makeText(context, "Saved Jobs clicked", Toast.LENGTH_SHORT).show()
-                                }
-                            )
-
-                            ModernDrawerMenuItem(
-                                icon = R.drawable.appliedjob,
-                                text = "Applied Jobs",
-                                subtitle = "Track your applications",
-                                iconColor = Color(0xFF2196F3),
-                                onClick = {
-                                    isDrawerOpen = false
-                                    Toast.makeText(context, "Applied Jobs clicked", Toast.LENGTH_SHORT).show()
-                                }
-                            )
-
-                            ModernDrawerMenuItem(
-                                icon = R.drawable.feedback,
-                                text = "Feedback",
-                                subtitle = "Help you to improve",
-                                iconColor = Color(0xFF2196F3),
-                                onClick = {
-                                    isDrawerOpen = false
-                                    Toast.makeText(context, "Feedback clicked", Toast.LENGTH_SHORT).show()
-                                }
-                            )
-
-                            ModernDrawerMenuItem(
-                                icon = R.drawable.settings,
-                                text = "Settings",
-                                subtitle = "Manage preferences",
-                                iconColor = Color(0xFF9C27B0),
-                                onClick = {
-                                    showSettingsDialog = true
-                                }
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 20.dp),
-                                color = Color.Gray.copy(alpha = 0.2f)
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-                        }
-
-                        // LOGOUT BUTTON
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 24.dp)
-                                .clickable {
-                                    isDrawerOpen = false
-                                    repository.logout(currentUserId) { success, message ->
-                                        if (success) {
-                                            Toast
-                                                .makeText(context, "Logged out successfully", Toast.LENGTH_SHORT)
-                                                .show()
-                                            val intent = Intent(context, LoginActivity::class.java)
-                                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                            context.startActivity(intent)
-                                            activity.finish()
+                                // Profile Section
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .align(Alignment.CenterStart)
+                                        .padding(start = 20.dp, end = 20.dp, bottom = 16.dp, top = 56.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Card(
+                                        modifier = Modifier
+                                            .size(70.dp)
+                                            .border(3.dp, Color.White, CircleShape),
+                                        shape = CircleShape,
+                                        elevation = CardDefaults.cardElevation(8.dp)
+                                    ) {
+                                        if (jobSeekerState?.profilePhoto != null) {
+                                            AsyncImage(
+                                                model = jobSeekerState?.profilePhoto,
+                                                contentDescription = "Profile",
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
                                         } else {
-                                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                            Image(
+                                                painter = painterResource(id = R.drawable.profileemptypic),
+                                                contentDescription = "Profile",
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
                                         }
                                     }
-                                },
-                            shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFFFFEBEE)
-                            ),
-                            elevation = CardDefaults.cardElevation(4.dp)
-                        ) {
-                            Row(
+
+                                    Spacer(modifier = Modifier.width(16.dp))
+
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = jobSeekerState?.fullName ?: "User",
+                                            style = TextStyle(
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color.White
+                                            ),
+                                            maxLines = 1
+                                        )
+
+                                        Spacer(modifier = Modifier.height(4.dp))
+
+                                        Text(
+                                            text = jobSeekerState?.profession ?: "No Profession",
+                                            style = TextStyle(
+                                                fontSize = 13.sp,
+                                                color = Color.White.copy(alpha = 0.9f),
+                                                fontWeight = FontWeight.Medium
+                                            ),
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            // MENU ITEMS
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                ModernDrawerMenuItem(
+                                    icon = R.drawable.save_outline,
+                                    text = "Saved Jobs",
+                                    subtitle = "View bookmarked opportunities",
+                                    iconColor = Color(0xFF4CAF50),
+                                    onClick = {
+                                        isDrawerOpen = false
+                                        Toast.makeText(context, "Saved Jobs clicked", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+
+                                ModernDrawerMenuItem(
+                                    icon = R.drawable.appliedjob,
+                                    text = "Applied Jobs",
+                                    subtitle = "Track your applications",
+                                    iconColor = Color(0xFF2196F3),
+                                    onClick = {
+                                        isDrawerOpen = false
+                                        Toast.makeText(context, "Applied Jobs clicked", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+
+                                ModernDrawerMenuItem(
+                                    icon = R.drawable.feedback,
+                                    text = "Feedback",
+                                    subtitle = "Help you to improve",
+                                    iconColor = Color(0xFF2196F3),
+                                    onClick = {
+                                        isDrawerOpen = false
+                                        Toast.makeText(context, "Feedback clicked", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+
+                                ModernDrawerMenuItem(
+                                    icon = R.drawable.settings,
+                                    text = "Settings",
+                                    subtitle = "Manage preferences",
+                                    iconColor = Color(0xFF9C27B0),
+                                    onClick = {
+                                        showSettingsDialog = true
+                                    }
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 20.dp),
+                                    color = Color.Gray.copy(alpha = 0.2f)
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+
+                            // LOGOUT BUTTON
+                            Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(18.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                                    .padding(horizontal = 20.dp, vertical = 24.dp)
+                                    .clickable {
+                                        isDrawerOpen = false
+                                        repository.logout(currentUserId) { success, message ->
+                                            if (success) {
+                                                Toast
+                                                    .makeText(context, "Logged out successfully", Toast.LENGTH_SHORT)
+                                                    .show()
+                                                val intent = Intent(context, LoginActivity::class.java)
+                                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                                context.startActivity(intent)
+                                                activity.finish()
+                                            } else {
+                                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    },
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color(0xFFFFEBEE)
+                                ),
+                                elevation = CardDefaults.cardElevation(4.dp)
                             ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.baseline_logout_24),
-                                    contentDescription = "Logout",
-                                    tint = Color(0xFFD32F2F),
-                                    modifier = Modifier.size(26.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = "Logout",
-                                    style = TextStyle(
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFFD32F2F)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(18.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.baseline_logout_24),
+                                        contentDescription = "Logout",
+                                        tint = Color(0xFFD32F2F),
+                                        modifier = Modifier.size(26.dp)
                                     )
-                                )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "Logout",
+                                        style = TextStyle(
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFFD32F2F)
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
@@ -1010,7 +1130,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
         }
 
         // SETTINGS DIALOG
-        if (showSettingsDialog) {
+        if (showSettingsDialog && isOwnProfile) {
             SettingsDialog(
                 showSettingsDialog = showSettingsDialog,
                 onDismiss = { showSettingsDialog = false },
@@ -1031,7 +1151,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
         }
 
         // CHANGE PASSWORD DIALOG
-        if (showChangePasswordDialog) {
+        if (showChangePasswordDialog && isOwnProfile) {
             ChangePasswordDialog(
                 onDismiss = { showChangePasswordDialog = false },
                 repository = repository,
@@ -1040,7 +1160,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
         }
 
         // CONFIRM PASSWORD FOR DEACTIVATE DIALOG
-        if (showConfirmPasswordDialog) {
+        if (showConfirmPasswordDialog && isOwnProfile) {
             ConfirmPasswordForDeactivateDialog(
                 onDismiss = {
                     showConfirmPasswordDialog = false
@@ -1094,7 +1214,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                 context = context
             )
         }
-        if (showDeleteAccountDialog) {
+        if (showDeleteAccountDialog && isOwnProfile) {
             DeleteAccountConfirmationDialog(
                 onDismiss = { showDeleteAccountDialog = false },
                 onConfirm = { password ->
@@ -1144,6 +1264,160 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                     }
                 },
                 context = context
+            )
+        }
+    }
+}
+
+@Composable
+fun StatCard(count: Int, label: String, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .width(100.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White.copy(alpha = 0.9f),
+        shadowElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = formatCount(count),
+                style = TextStyle(
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1565C0)
+                )
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = label,
+                style = TextStyle(
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF1976D2).copy(alpha = 0.8f)
+                )
+            )
+        }
+    }
+}
+
+fun formatCount(count: Int): String {
+    return when {
+        count >= 1000000 -> "${count / 1000000}M"
+        count >= 1000 -> "${count / 1000}K"
+        else -> count.toString()
+    }
+}
+
+@Preview
+@Composable
+fun PreviewJobSeekerProfile() {
+    RojgarTheme {
+        JobSeekerProfileBody()
+    }
+}
+
+@Suppress("DEPRECATION")
+fun getRealPathFromURI(context: Context, uri: Uri): String? {
+    val projection = arrayOf(MediaStore.Video.Media.DATA)
+    val cursor = context.contentResolver.query(uri, projection, null, null, null)
+    cursor?.use {
+        val columnIndex = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
+        if (it.moveToFirst()) {
+            return it.getString(columnIndex)
+        }
+    }
+    return null
+}
+
+@Composable
+fun VideoPlayer(uri: Uri, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(uri))
+            prepare()
+        }
+    }
+
+    AndroidView(
+        factory = { PlayerView(context).apply { player = exoPlayer } },
+        modifier = modifier
+    )
+
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+}
+
+@Composable
+fun ModernDrawerMenuItem(
+    icon: Int,
+    text: String,
+    subtitle: String,
+    iconColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 6.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = iconColor.copy(alpha = 0.1f)
+            ) {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = text,
+                    tint = iconColor,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = text,
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF263238)
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        color = Color(0xFF78909C)
+                    )
+                )
+            }
+
+            Icon(
+                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                contentDescription = "Navigate",
+                tint = Color(0xFFBDBDBD),
+                modifier = Modifier
+                    .size(16.dp)
+                    .graphicsLayer(rotationZ = 180f)
             )
         }
     }
@@ -1270,158 +1544,6 @@ fun SettingsDialog(
                     onClick = onDeleteAccountClick
                 )
             }
-        }
-    }
-}
-@Composable
-fun StatCard(count: Int, label: String, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .width(100.dp),
-        shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.9f),
-        shadowElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = formatCount(count),
-                style = TextStyle(
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1565C0)
-                )
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = label,
-                style = TextStyle(
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF1976D2).copy(alpha = 0.8f)
-                )
-            )
-        }
-    }
-}
-
-fun formatCount(count: Int): String {
-    return when {
-        count >= 1000 -> "${count / 1000}.${(count % 1000) / 100}K"
-        else -> count.toString()
-    }
-}
-
-@Preview
-@Composable
-fun PreviewJobSeekerProfile() {
-    RojgarTheme {
-        JobSeekerProfileBody()
-    }
-}
-
-@Suppress("DEPRECATION")
-fun getRealPathFromURI(context: Context, uri: Uri): String? {
-    val projection = arrayOf(MediaStore.Video.Media.DATA)
-    val cursor = context.contentResolver.query(uri, projection, null, null, null)
-    cursor?.use {
-        val columnIndex = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
-        if (it.moveToFirst()) {
-            return it.getString(columnIndex)
-        }
-    }
-    return null
-}
-
-@Composable
-fun VideoPlayer(uri: Uri, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(uri))
-            prepare()
-        }
-    }
-
-    AndroidView(
-        factory = { PlayerView(context).apply { player = exoPlayer } },
-        modifier = modifier
-    )
-
-    DisposableEffect(Unit) {
-        onDispose {
-            exoPlayer.release()
-        }
-    }
-}
-
-@Composable
-fun ModernDrawerMenuItem(
-    icon: Int,
-    text: String,
-    subtitle: String,
-    iconColor: Color,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 6.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.Transparent
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = iconColor.copy(alpha = 0.1f)
-            ) {
-                Icon(
-                    painter = painterResource(id = icon),
-                    contentDescription = text,
-                    tint = iconColor,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = text,
-                    style = TextStyle(
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF263238)
-                    )
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    style = TextStyle(
-                        fontSize = 12.sp,
-                        color = Color(0xFF78909C)
-                    )
-                )
-            }
-
-            Icon(
-                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                contentDescription = "Navigate",
-                tint = Color(0xFFBDBDBD),
-                modifier = Modifier
-                    .size(16.dp)
-                    .graphicsLayer(rotationZ = 180f)
-            )
         }
     }
 }
