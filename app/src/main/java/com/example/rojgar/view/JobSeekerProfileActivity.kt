@@ -91,10 +91,6 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
     }
     val finalTargetJobSeekerId = targetJobSeekerId.ifEmpty { intentJobSeekerId }
 
-    val isOwnProfile = remember(currentUserId, finalTargetJobSeekerId) {
-        currentUserId == finalTargetJobSeekerId && finalTargetJobSeekerId.isNotEmpty()
-    }
-
     var selectedVideoUri by remember { mutableStateOf<Uri?>(null) }
     var videoThumbnail by remember { mutableStateOf<Bitmap?>(null) }
     var isFollowing by remember { mutableStateOf(false) }
@@ -158,6 +154,9 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
             jobSeekerViewModel.fetchCurrentJobSeeker()
         }
     }
+
+    // Check if viewing own profile or other's profile
+    val isOwnProfile = currentUserId == finalTargetJobSeekerId
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -364,88 +363,10 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ACTION BUTTONS
-            if (isOwnProfile) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
-                            context.startActivity(intent)
-                        },
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp)
-                            .shadow(8.dp, RoundedCornerShape(16.dp)),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2196F3),
-                            contentColor = Color.White
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(0.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.outline_edit_24),
-                                contentDescription = "Edit Profile",
-                                modifier = Modifier.size(24.dp),
-                                tint = Color.White
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Edit Profile",
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    Button(
-                        onClick = {
-                            val intent = Intent(context, CvViewActivity::class.java)
-                            context.startActivity(intent)
-                        },
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp)
-                            .shadow(8.dp, RoundedCornerShape(16.dp)),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50),
-                            contentColor = Color.White
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(0.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.document),
-                                contentDescription = "View CV",
-                                modifier = Modifier.size(24.dp),
-                                tint = Color.White
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "View CV",
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            } else {
-                // Other User's Profile - Follow/Message Options
+            // ACTION BUTTONS - Show follow options only when viewing others' profiles
+            if (!isOwnProfile) {
                 if (!isFollowing) {
-                    // Single Follow Button
+                    // Single Follow Button (for other users you're not following)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -489,7 +410,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                         }
                     }
                 } else {
-                    // Split into Message and Following buttons
+                    // Split into Message and Following buttons (for other users you're following)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -566,8 +487,8 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                 }
             }
 
-            // MORE OPTIONS DIALOG
-            if (showMoreDialog) {
+            // MORE OPTIONS DIALOG - Only show for owner
+            if (showMoreDialog && isOwnProfile) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -725,28 +646,6 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                 }
                             }
 
-                            // Upload button - Only for profile owner
-                            if (isOwnProfile) {
-                                Surface(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .padding(16.dp)
-                                        .size(56.dp),
-                                    shape = CircleShape,
-                                    color = Color(0xFF2196F3),
-                                    shadowElevation = 12.dp
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.baseline_upload_24),
-                                        contentDescription = "Upload",
-                                        tint = Color.White,
-                                        modifier = Modifier
-                                            .clickable { videoPickerLauncher.launch("video/*") }
-                                            .padding(16.dp)
-                                    )
-                                }
-                            }
-
                             // Play button
                             if (!isPlaying) {
                                 Surface(
@@ -782,141 +681,75 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        if (isOwnProfile) {
-                            // Profile Owner
-                            Button(
-                                onClick = {
-                                    val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
-                                    context.startActivity(intent)
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFE3F2FD),
-                                    contentColor = Color(0xFF1976D2)
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(56.dp),
-                                elevation = ButtonDefaults.buttonElevation(0.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.outline_edit_24),
-                                        contentDescription = "Edit Details",
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        "Edit Details",
-                                        fontSize = 17.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                        // View Details button
+                        Button(
+                            onClick = {
+                                val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java).apply {
+                                    putExtra("JOB_SEEKER_ID", finalTargetJobSeekerId)
                                 }
+                                context.startActivity(intent)
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFE3F2FD),
+                                contentColor = Color(0xFF1976D2)
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            elevation = ButtonDefaults.buttonElevation(0.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.round_info_outline_24),
+                                    contentDescription = "View Details",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Details",
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
+                        }
 
-                            Button(
-                                onClick = {
-                                    val intent = Intent(context, CvViewActivity::class.java)
-                                    context.startActivity(intent)
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF2196F3),
-                                    contentColor = Color.White
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(56.dp)
-                                    .shadow(12.dp, RoundedCornerShape(16.dp)),
-                                elevation = ButtonDefaults.buttonElevation(0.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.document),
-                                        contentDescription = "View CV",
-                                        modifier = Modifier.size(24.dp),
-                                        tint = Color.White
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        "View CV",
-                                        fontSize = 17.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                        // View CV button
+                        Button(
+                            onClick = {
+                                val intent = Intent(context, CvViewActivity::class.java).apply {
+                                    putExtra("JOB_SEEKER_ID", finalTargetJobSeekerId)
                                 }
-                            }
-                        } else {
-                            // Other User's Profile - View only options
-                            Button(
-                                onClick = {
-                                    // Just show details, no editing
-                                    Toast.makeText(context, "Viewing ${jobSeekerState?.fullName}'s details", Toast.LENGTH_SHORT).show()
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFE3F2FD),
-                                    contentColor = Color(0xFF1976D2)
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(56.dp),
-                                elevation = ButtonDefaults.buttonElevation(0.dp)
+                                context.startActivity(intent)
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2196F3),
+                                contentColor = Color.White
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp)
+                                .shadow(12.dp, RoundedCornerShape(16.dp)),
+                            elevation = ButtonDefaults.buttonElevation(0.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.round_info_outline_24),
-                                        contentDescription = "View Details",
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        "View Details",
-                                        fontSize = 17.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-
-                            Button(
-                                onClick = {
-                                    val intent = Intent(context, CvViewActivity::class.java).apply {
-                                        putExtra("JOB_SEEKER_ID", finalTargetJobSeekerId)
-                                    }
-                                    context.startActivity(intent)
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF2196F3),
-                                    contentColor = Color.White
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(56.dp)
-                                    .shadow(12.dp, RoundedCornerShape(16.dp)),
-                                elevation = ButtonDefaults.buttonElevation(0.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.document),
-                                        contentDescription = "View CV",
-                                        modifier = Modifier.size(24.dp),
-                                        tint = Color.White
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        "View CV",
-                                        fontSize = 17.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                Icon(
+                                    painter = painterResource(R.drawable.document),
+                                    contentDescription = "View CV",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = Color.White
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "View CV",
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     }
