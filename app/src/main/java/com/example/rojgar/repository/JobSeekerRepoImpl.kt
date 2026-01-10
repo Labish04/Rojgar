@@ -9,8 +9,6 @@ import android.provider.OpenableColumns
 import androidx.compose.runtime.mutableStateListOf
 import com.cloudinary.Cloudinary
 import com.cloudinary.utils.ObjectUtils
-import com.example.rojgar.model.CompanyModel
-import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
@@ -25,11 +23,9 @@ import java.util.concurrent.Executors
 
 class JobSeekerRepoImpl : JobSeekerRepo {
 
-    val auth : FirebaseAuth = FirebaseAuth.getInstance()
-
-    val database : FirebaseDatabase = FirebaseDatabase.getInstance()
-
-    val ref : DatabaseReference = database.getReference("JobSeekers")
+    val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    val database: FirebaseDatabase = FirebaseDatabase.getInstance()
+    val ref: DatabaseReference = database.getReference("JobSeekers")
 
     private val cloudinary = Cloudinary(
         mapOf(
@@ -39,7 +35,6 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         )
     )
 
-
     override fun register(
         email: String,
         password: String,
@@ -47,14 +42,13 @@ class JobSeekerRepoImpl : JobSeekerRepo {
     ) {
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener {
-                if (it.isSuccessful){
+                if (it.isSuccessful) {
                     callback(
                         true, "Registration Successful",
                         "${auth.currentUser?.uid}"
                     )
-                }
-                else {
-                    callback(false, "${it.exception?.message}","")
+                } else {
+                    callback(false, "${it.exception?.message}", "")
                 }
             }
     }
@@ -66,10 +60,9 @@ class JobSeekerRepoImpl : JobSeekerRepo {
     ) {
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener {
-                if (it.isSuccessful){
+                if (it.isSuccessful) {
                     callback(true, "Login Successful")
-                }
-                else {
+                } else {
                     callback(false, "${it.exception?.message}")
                 }
             }
@@ -80,11 +73,12 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         model: JobSeekerModel,
         callback: (Boolean, String) -> Unit
     ) {
-        ref.child(jobSeekerId).setValue(model).addOnCompleteListener {
-            if (it.isSuccessful){
-                callback(true,"Registration Successful")
-            }
-            else{
+        // Ensure isActive is set to true for new accounts
+        val updatedModel = model.copy(isActive = true)
+        ref.child(jobSeekerId).setValue(updatedModel).addOnCompleteListener {
+            if (it.isSuccessful) {
+                callback(true, "Registration Successful")
+            } else {
                 callback(false, "${it.exception?.message}")
             }
         }
@@ -98,42 +92,45 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         jobSeekerId: String,
         callback: (Boolean, String, JobSeekerModel?) -> Unit
     ) {
-        ref.child(jobSeekerId).addListenerForSingleValueEvent(object : ValueEventListener{
+        ref.child(jobSeekerId).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()){
+                if (snapshot.exists()) {
                     val jobSeeker = snapshot.getValue(JobSeekerModel::class.java)
                     if (jobSeeker != null) {
-                        callback(true, "Profile fetched", jobSeeker)
+                        // Ensure the jobSeekerId is set from the Firebase key
+                        val jobSeekerWithId = jobSeeker.copy(jobSeekerId = snapshot.key ?: jobSeekerId)
+                        callback(true, "Profile fetched", jobSeekerWithId)
+                    } else {
+                        callback(false, "Job seeker data is null", null)
                     }
+                } else {
+                    callback(false, "Job seeker not found", null)
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
                 callback(false, error.message, null)
             }
-
         })
     }
 
     override fun getAllJobSeeker(callback: (Boolean, String, List<JobSeekerModel>?) -> Unit) {
-        ref.addValueEventListener(object : ValueEventListener{
+        ref.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()){
-                    var allJobSeekers = mutableStateListOf<JobSeekerModel>()
-                    for (data in snapshot.children){
+                if (snapshot.exists()) {
+                    val allJobSeekers = mutableStateListOf<JobSeekerModel>()
+                    for (data in snapshot.children) {
                         try {
-                            var jobSeeker = data.getValue(JobSeekerModel::class.java)
-                            if (jobSeeker != null){
+                            val jobSeeker = data.getValue(JobSeekerModel::class.java)
+                            if (jobSeeker != null) {
                                 // Set the jobSeekerId to the key of the Firebase node
                                 val firebaseKey = data.key
                                 if (firebaseKey != null && firebaseKey.isNotEmpty()) {
                                     val jobSeekerWithId = jobSeeker.copy(jobSeekerId = firebaseKey)
                                     allJobSeekers.add(jobSeekerWithId)
                                 }
-                                // Skip job seekers with null or empty Firebase keys
                             }
                         } catch (e: Exception) {
-                            // Skip malformed data
                             continue
                         }
                     }
@@ -144,9 +141,8 @@ class JobSeekerRepoImpl : JobSeekerRepo {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                callback(false,error.message,emptyList())
+                callback(false, error.message, emptyList())
             }
-
         })
     }
 
@@ -160,6 +156,121 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         } catch (e: Exception) {
             callback(false, e.message.toString())
         }
+    }
+
+    override fun deactivateAccount(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(jobseekerId).child("isActive").setValue(false)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Also sign out the user
+                    auth.signOut()
+                    callback(true, "Account deactivated successfully")
+                } else {
+                    callback(false, task.exception?.message ?: "Failed to deactivate account")
+                }
+            }
+    }
+
+    override fun deleteAccount(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(jobseekerId).removeValue()
+            .addOnCompleteListener { dbTask ->
+                if (dbTask.isSuccessful) {
+                    // Then delete the Firebase Auth user
+                    val user = auth.currentUser
+                    if (user != null) {
+                        user.delete()
+                            .addOnCompleteListener { authTask ->
+                                if (authTask.isSuccessful) {
+                                    callback(true, "Account deleted permanently")
+                                } else {
+                                    callback(false, authTask.exception?.message ?: "Failed to delete authentication")
+                                }
+                            }
+                    } else {
+                        callback(false, "User not authenticated")
+                    }
+                } else {
+                    callback(false, dbTask.exception?.message ?: "Failed to delete account data")
+                }
+            }
+    }
+
+    override fun reactivateAccount(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(jobseekerId).child("isActive").setValue(true)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    callback(true, "Account reactivated successfully")
+                } else {
+                    callback(false, task.exception?.message ?: "Failed to reactivate account")
+                }
+            }
+    }
+
+
+    override fun checkAccountStatus(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        ref.child(jobseekerId).child("isActive").get()
+            .addOnSuccessListener { snapshot ->
+                val isActive = snapshot.getValue(Boolean::class.java) ?: true
+                if (isActive) {
+                    callback(true, "Account is active")
+                } else {
+                    callback(false, "Account is deactivated")
+                }
+            }
+            .addOnFailureListener { exception ->
+                callback(false, "Error checking account status: ${exception.message}")
+            }
+    }
+
+    override fun checkAccountStatusByEmail(
+        email: String,
+        callback: (Boolean, String?, String) -> Unit
+    ) {
+        ref.orderByChild("email").equalTo(email)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        // Get the first matching job seeker (email should be unique)
+                        val children = snapshot.children
+                        if (children.iterator().hasNext()) {
+                            val jobSeekerSnapshot = children.iterator().next()
+                            val jobSeekerId = jobSeekerSnapshot.key
+                            val jobSeeker = jobSeekerSnapshot.getValue(JobSeekerModel::class.java)
+
+                            if (jobSeeker != null && jobSeekerId != null) {
+                                val isActive = jobSeeker.isActive
+                                if (isActive) {
+                                    callback(true, jobSeekerId, "Account is active")
+                                } else {
+                                    callback(false, jobSeekerId, "Account is deactivated")
+                                }
+                            } else {
+                                callback(false, null, "Job seeker data not found")
+                            }
+                        } else {
+                            callback(false, null, "No job seeker found with this email")
+                        }
+                    } else {
+                        callback(false, null, "Email not found in job seekers")
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    callback(false, null, "Error: ${error.message}")
+                }
+            })
     }
 
     override fun forgetPassword(
@@ -205,7 +316,6 @@ class JobSeekerRepoImpl : JobSeekerRepo {
             }
     }
 
-
     override fun followJobSeeker(
         currentUserId: String,
         targetJobSeekerId: String,
@@ -250,7 +360,8 @@ class JobSeekerRepoImpl : JobSeekerRepo {
                 override fun onCancelled(error: DatabaseError) {
                     callback(false, error.message)
                 }
-            })
+            }
+        )
     }
 
     override fun unfollowJobSeeker(
@@ -346,7 +457,12 @@ class JobSeekerRepoImpl : JobSeekerRepo {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
                     val jobSeeker = snapshot.getValue(JobSeekerModel::class.java)
-                    callback(true, "Job seeker details fetched", jobSeeker)
+                    if (jobSeeker != null) {
+                        val jobSeekerWithId = jobSeeker.copy(jobSeekerId = snapshot.key ?: jobSeekerId)
+                        callback(true, "Job seeker details fetched", jobSeekerWithId)
+                    } else {
+                        callback(false, "Job seeker data is null", null)
+                    }
                 } else {
                     callback(false, "Job seeker not found", null)
                 }
@@ -356,6 +472,40 @@ class JobSeekerRepoImpl : JobSeekerRepo {
                 callback(false, error.message, null)
             }
         })
+    }
+
+    // NEW METHOD: Get job seeker by email
+    override fun getJobSeekerByEmail(
+        email: String,
+        callback: (Boolean, String, JobSeekerModel?) -> Unit
+    ) {
+        ref.orderByChild("email").equalTo(email)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        val children = snapshot.children
+                        if (children.iterator().hasNext()) {
+                            val jobSeekerSnapshot = children.iterator().next()
+                            val jobSeeker = jobSeekerSnapshot.getValue(JobSeekerModel::class.java)
+                            if (jobSeeker != null) {
+                                val jobSeekerId = jobSeekerSnapshot.key ?: ""
+                                val jobSeekerWithId = jobSeeker.copy(jobSeekerId = jobSeekerId)
+                                callback(true, "Job seeker found", jobSeekerWithId)
+                            } else {
+                                callback(false, "Job seeker data is null", null)
+                            }
+                        } else {
+                            callback(false, "No job seeker found with this email", null)
+                        }
+                    } else {
+                        callback(false, "Email not found", null)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    callback(false, error.message, null)
+                }
+            })
     }
 
     override fun uploadProfileImage(
@@ -409,6 +559,6 @@ class JobSeekerRepoImpl : JobSeekerRepo {
                 }
             }
         }
-        return fileName    }
-
+        return fileName
+    }
 }

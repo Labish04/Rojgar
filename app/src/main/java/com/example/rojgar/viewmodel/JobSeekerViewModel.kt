@@ -8,7 +8,7 @@ import com.example.rojgar.model.JobSeekerModel
 import com.example.rojgar.repository.JobSeekerRepo
 import com.google.firebase.auth.FirebaseUser
 
-class JobSeekerViewModel (val repo: JobSeekerRepo) {
+class JobSeekerViewModel(val repo: JobSeekerRepo) {
 
     private val _jobSeeker = MutableLiveData<JobSeekerModel?>()
     val jobSeeker: LiveData<JobSeekerModel?> = _jobSeeker
@@ -70,13 +70,48 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
     ) {
         repo.forgetPassword(email, callback)
     }
+
+    fun deactivateAccount(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.deactivateAccount(jobseekerId, callback)
+    }
+
+
+    fun deleteAccount(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.deleteAccount(jobseekerId, callback)
+    }
+    fun reactivateAccount(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.reactivateAccount(jobseekerId, callback)
+    }
+
+    fun checkAccountStatus(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.checkAccountStatus(jobseekerId, callback)
+    }
+
+    fun checkAccountStatusByEmail(
+        email: String,
+        callback: (Boolean, String?, String) -> Unit
+    ) {
+        repo.checkAccountStatusByEmail(email, callback)
+    }
+
     fun changePassword(
         currentPassword: String,
         newPassword: String,
         callback: (Boolean, String) -> Unit
-    ){
+    ) {
         repo.changePassword(currentPassword, newPassword, callback)
-
     }
 
     fun updateProfile(
@@ -132,7 +167,7 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
         context: Context,
         imageUri: Uri,
         callback: (String?) -> Unit
-    ){
+    ) {
         repo.uploadProfileImage(context, imageUri, callback)
     }
 
@@ -141,10 +176,16 @@ class JobSeekerViewModel (val repo: JobSeekerRepo) {
             if (success && fetchedJobSeeker != null) {
                 _jobSeeker.postValue(fetchedJobSeeker)
             } else {
-                // Handle error
                 _jobSeeker.postValue(null)
             }
         }
     }
 
+    // NEW METHOD: Get job seeker by email
+    fun getJobSeekerByEmail(
+        email: String,
+        callback: (Boolean, String, JobSeekerModel?) -> Unit
+    ) {
+        repo.getJobSeekerByEmail(email, callback)
+    }
 }

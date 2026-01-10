@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -28,7 +26,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -38,10 +40,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.rojgar.R
+import com.example.rojgar.repository.CompanyRepoImpl
 import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.RojgarTheme
-import com.example.rojgar.ui.theme.White
+import com.example.rojgar.viewmodel.CompanyViewModel
 
 class JobSeekerDashboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,8 +61,11 @@ class JobSeekerDashboardActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobSeekerDashboardBody() {
+
     val context = LocalContext.current
     val activity = context as Activity
+
+    val companyViewModel: CompanyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
 
     data class NavItem(
         val label: String,
@@ -76,17 +82,17 @@ fun JobSeekerDashboardBody() {
             unselectedIcon = R.drawable.home
         ),
         NavItem(
-            label = "Message",
+            label = "Post",
             selectedIcon = R.drawable.jobpost_filled,
             unselectedIcon = R.drawable.jobpost
         ),
         NavItem(
-            label = "Post",
+            label = "Map",
             selectedIcon = R.drawable.map_filled,
             unselectedIcon = R.drawable.map
         ),
         NavItem(
-            label = "Map",
+            label = "Profile",
             selectedIcon = R.drawable.profile_filled,
             unselectedIcon = R.drawable.profile
         )
@@ -94,8 +100,6 @@ fun JobSeekerDashboardBody() {
 
 
     Scaffold(
-
-
 
         topBar = {
             val showTopBar = selectedIndex in listOf(0, 1)
@@ -185,6 +189,7 @@ fun JobSeekerDashboardBody() {
                                     modifier = Modifier.size(25.dp)
                                 )
                             },
+                            label = { Text(item.label) },
                             selected = selectedIndex == index,
                             onClick = { selectedIndex = index }
                         )
@@ -202,7 +207,7 @@ fun JobSeekerDashboardBody() {
             when (selectedIndex) {
                 0 -> JobSeekerHomeScreenBody()
                 1 -> JobSeekerViewPostBody()
-                2 -> Text("Map Screen")
+                2 -> MapScreen(viewModel = companyViewModel, context = context)
                 3 -> JobSeekerProfileBody()
             }
         }

@@ -3,46 +3,47 @@ package com.example.rojgar.repository
 import android.content.Context
 import android.net.Uri
 import com.example.rojgar.model.CompanyModel
+import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.auth.FirebaseUser
 
 interface CompanyRepo {
     fun register(
-        email : String,
-        password : String,
-        callback : (Boolean, String, String) ->Unit
+        email: String,
+        password: String,
+        callback: (Boolean, String, String) -> Unit
     )
 
     fun login(
-        email : String,
-        password : String,
-        callback : (Boolean, String) ->Unit
+        email: String,
+        password: String,
+        callback: (Boolean, String) -> Unit
     )
 
     fun addCompanyToDatabase(
-        companyId : String,
-        model : CompanyModel,
-        callback : (Boolean, String) ->Unit
+        companyId: String,
+        model: CompanyModel,
+        callback: (Boolean, String) -> Unit
     )
 
-    fun getCurrentCompany() : FirebaseUser?
+    fun getCurrentCompany(): FirebaseUser?
 
     fun getCompanyById(
-        companyId : String,
-        callback : (Boolean, String, CompanyModel?) ->Unit
+        companyId: String,
+        callback: (Boolean, String, CompanyModel?) -> Unit
     )
 
     fun getAllCompany(
-        callback : (Boolean, String, List<CompanyModel>?) ->Unit
+        callback: (Boolean, String, List<CompanyModel>?) -> Unit
     )
 
     fun logout(
-        companyId : String,
-        callback : (Boolean, String) ->Unit
+        companyId: String,
+        callback: (Boolean, String) -> Unit
     )
 
     fun forgetPassword(
-        email : String,
-        callback : (Boolean, String) ->Unit
+        email: String,
+        callback: (Boolean, String) -> Unit
     )
 
     fun getCompanyDetails(
@@ -67,9 +68,37 @@ interface CompanyRepo {
         imageUri: Uri,
         callback: (String?) -> Unit
     )
+
     fun getFileNameFromUri(context: Context, imageUri: Uri): String?
 
+    fun deleteAccount(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    )
+    fun deactivateAccount(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    )
 
+    fun reactivateAccount(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    )
 
+    fun checkAccountStatus(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    )
 
+    fun checkAccountStatusByEmail(
+        email: String,
+        callback: (Boolean, String?, String) -> Unit
+    )
+
+    fun updateCompanyProfile(
+        model: CompanyModel,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun getLatLngFromAddress(context: Context, address: String): LatLng?
 }

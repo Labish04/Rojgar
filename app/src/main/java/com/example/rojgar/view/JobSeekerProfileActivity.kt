@@ -28,10 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.rojgar.ui.theme.Blue
-import com.example.rojgar.ui.theme.DarkBlue
 import com.example.rojgar.ui.theme.RojgarTheme
-import com.example.rojgar.ui.theme.SkyBlue
 import android.net.Uri
 import android.provider.MediaStore
 import android.graphics.Bitmap
@@ -50,18 +47,17 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.example.rojgar.R
 import com.example.rojgar.repository.JobSeekerRepoImpl
-import com.example.rojgar.ui.theme.Purple
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.zIndex
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import coil.compose.AsyncImage
@@ -90,13 +86,11 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
     val jobSeekerState by jobSeekerViewModel.jobSeeker.observeAsState(initial = null)
     val currentUserId = repository.getCurrentJobSeeker()?.uid ?: ""
 
-    // Get target job seeker ID from intent
     val intentJobSeekerId = remember {
         (activity as? JobSeekerProfileActivity)?.intent?.getStringExtra("JOB_SEEKER_ID") ?: ""
     }
     val finalTargetJobSeekerId = targetJobSeekerId.ifEmpty { intentJobSeekerId }
 
-    // Check if current user is viewing their own profile
     val isOwnProfile = remember(currentUserId, finalTargetJobSeekerId) {
         currentUserId == finalTargetJobSeekerId && finalTargetJobSeekerId.isNotEmpty()
     }
@@ -114,6 +108,11 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
 
+    var showConfirmPasswordDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+
+
+
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -130,12 +129,32 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
         }
     }
 
+    fun shareProfile(context: Context, jobSeekerId: String, fullName: String, profession: String) {
+        val shareText = """
+        Check out ${fullName}'s profile on Rojgar!
+        
+        Profession: $profession
+        
+        View full profile: https://rojgar.app/profile/$jobSeekerId
+        
+        Download Rojgar App to connect with talented professionals!
+    """.trimIndent()
+
+        val shareIntent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_TEXT, shareText)
+            putExtra(Intent.EXTRA_SUBJECT, "${fullName}'s Professional Profile")
+            type = "text/plain"
+        }
+
+        val chooserIntent = Intent.createChooser(shareIntent, "Share Profile via")
+        context.startActivity(chooserIntent)
+    }
+
     LaunchedEffect(finalTargetJobSeekerId) {
         if (finalTargetJobSeekerId.isNotEmpty()) {
-            // Fetch target job seeker's data
             jobSeekerViewModel.fetchJobSeekerById(finalTargetJobSeekerId)
         } else {
-            // Fallback to current user if no target specified
             jobSeekerViewModel.fetchCurrentJobSeeker()
         }
     }
@@ -154,7 +173,6 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                     )
                 )
         ) {
-            // TOP BAR - Light Blue Theme
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -191,21 +209,42 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                             color = Color(0xFF1565C0)
                         )
                     )
-
-                    Surface(
-                        modifier = Modifier.size(48.dp),
-                        shape = CircleShape,
-                        color = Color.White,
-                        shadowElevation = 4.dp
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.outline_more_vert_24),
-                            contentDescription = "Menu",
-                            tint = Color(0xFF1976D2),
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(
+                            onClick = {
+                                shareProfile(
+                                    context = context,
+                                    jobSeekerId = finalTargetJobSeekerId.ifEmpty { currentUserId },
+                                    fullName = jobSeekerState?.fullName ?: "User",
+                                    profession = jobSeekerState?.profession ?: "Professional"
+                                )
+                            },
                             modifier = Modifier
-                                .clickable { isDrawerOpen = true }
-                                .padding(14.dp)
-                        )
+                                .shadow(4.dp, CircleShape)
+                                .background(Color.White.copy(alpha = 0.95f), CircleShape)
+                                .size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share",
+                                tint = Color(0xFF1976D2)
+                            )
+                        }
+                        Surface(
+                            modifier = Modifier.size(48.dp),
+                            shape = CircleShape,
+                            color = Color.White,
+                            shadowElevation = 4.dp
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.outline_more_vert_24),
+                                contentDescription = "Menu",
+                                tint = Color(0xFF1976D2),
+                                modifier = Modifier
+                                    .clickable { isDrawerOpen = true }
+                                    .padding(16.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -298,7 +337,6 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // STATS
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -326,9 +364,8 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ACTION BUTTONS - Different UI based on ownership
+            // ACTION BUTTONS
             if (isOwnProfile) {
-                // Own Profile - Edit Options
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -741,13 +778,12 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // BOTTOM ACTION BUTTONS
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         if (isOwnProfile) {
-                            // Profile Owner - Edit options
+                            // Profile Owner
                             Button(
                                 onClick = {
                                     val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
@@ -1142,128 +1178,23 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
         // SETTINGS DIALOG
         if (showSettingsDialog) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(20f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.7f))
-                        .clickable { showSettingsDialog = false }
-                )
-
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .fillMaxWidth(0.85f)
-                        .wrapContentHeight(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White
-                    ),
-                    elevation = CardDefaults.cardElevation(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Settings",
-                                style = TextStyle(
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1565C0)
-                                )
-                            )
-
-                            Surface(
-                                modifier = Modifier.size(32.dp),
-                                shape = CircleShape,
-                                color = Color(0xFFF5F5F5)
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                                    contentDescription = "Close",
-                                    tint = Color(0xFF546E7A),
-                                    modifier = Modifier
-                                        .clickable { showSettingsDialog = false }
-                                        .padding(8.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // SETTINGS OPTIONS
-                        SettingsOption(
-                            icon = R.drawable.outline_lock_24,
-                            title = "Change Password",
-                            subtitle = "Update your password",
-                            iconColor = Color(0xFF4CAF50),
-                            onClick = {
-                                showSettingsDialog = false
-                                showChangePasswordDialog = true
-                            }
-                        )
-
-                        var isDarkMode by remember { mutableStateOf(false) }
-                        SettingsOptionWithSwitch(
-                            icon = R.drawable.darkmode,
-                            title = "Dark Mode",
-                            subtitle = if (isDarkMode) "Dark theme enabled" else "Light theme enabled",
-                            iconColor = Color(0xFF9C27B0),
-                            isChecked = isDarkMode,
-                            onCheckedChange = { isDarkMode = it }
-                        )
-
-                        var isPrivateProfile by remember { mutableStateOf(false) }
-                        SettingsOptionWithSwitch(
-                            icon = R.drawable.privateprofile,
-                            title = "Private Profile",
-                            subtitle = if (isPrivateProfile) "Profile is private" else "Profile is public",
-                            iconColor = Color(0xFF2196F3),
-                            isChecked = isPrivateProfile,
-                            onCheckedChange = { isPrivateProfile = it }
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        SettingsOption(
-                            icon = R.drawable.deactivateaccount,
-                            title = "Deactivate Account",
-                            subtitle = "Temporarily disable your account",
-                            iconColor = Color(0xFFFF9800),
-                            onClick = {
-                                showSettingsDialog = false
-                                Toast.makeText(context, "Deactivate Account", Toast.LENGTH_SHORT).show()
-                            }
-                        )
-
-                        SettingsOption(
-                            icon = R.drawable.deleteaccount,
-                            title = "Delete Account",
-                            subtitle = "Permanently remove your account",
-                            iconColor = Color(0xFFF44336),
-                            onClick = {
-                                showSettingsDialog = false
-                                Toast.makeText(context, "Delete Account", Toast.LENGTH_SHORT).show()
-                            }
-                        )
-                    }
-                }
-            }
+            SettingsDialog(
+                showSettingsDialog = showSettingsDialog,
+                onDismiss = { showSettingsDialog = false },
+                onDeactivateClick = {
+                    showSettingsDialog = false
+                    showConfirmPasswordDialog = true
+                },
+                onChangePasswordClick = {
+                    showSettingsDialog = false
+                    showChangePasswordDialog = true
+                },
+                onDeleteAccountClick = {
+                    showSettingsDialog = false
+                    showDeleteAccountDialog = true
+                },
+                context = context
+            )
         }
 
         // CHANGE PASSWORD DIALOG
@@ -1274,9 +1205,241 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                 context = context
             )
         }
+
+        // CONFIRM PASSWORD FOR DEACTIVATE DIALOG
+        if (showConfirmPasswordDialog) {
+            ConfirmPasswordForDeactivateDialog(
+                onDismiss = {
+                    showConfirmPasswordDialog = false
+                },
+                onConfirm = { password ->
+                    // Verify password first
+                    val currentUser = repository.getCurrentJobSeeker()
+                    if (currentUser != null && currentUser.email != null) {
+                        val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(
+                            currentUser.email!!,
+                            password
+                        )
+
+                        currentUser.reauthenticate(credential)
+                            .addOnSuccessListener {
+                                // Password is correct, proceed with deactivation
+                                jobSeekerViewModel.deactivateAccount(currentUserId) { success, message ->
+                                    if (success) {
+                                        Toast.makeText(
+                                            context,
+                                            "Account deactivated successfully",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+
+                                        // Navigate to login screen
+                                        val intent = Intent(context, LoginActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        context.startActivity(intent)
+                                        activity.finish()
+                                    } else {
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    }
+                                    showConfirmPasswordDialog = false
+                                }
+                            }
+                            .addOnFailureListener { exception ->
+                                Toast.makeText(
+                                    context,
+                                    "Incorrect password. Please try again.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Unable to verify user. Please try again.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                context = context
+            )
+        }
+        if (showDeleteAccountDialog) {
+            DeleteAccountConfirmationDialog(
+                onDismiss = { showDeleteAccountDialog = false },
+                onConfirm = { password ->
+                    // Verify password first
+                    val currentUser = repository.getCurrentJobSeeker()
+                    if (currentUser != null && currentUser.email != null) {
+                        val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(
+                            currentUser.email!!,
+                            password
+                        )
+
+                        currentUser.reauthenticate(credential)
+                            .addOnSuccessListener {
+                                // Password is correct, proceed with deletion
+                                jobSeekerViewModel.deleteAccount(currentUserId) { success, message ->
+                                    if (success) {
+                                        Toast.makeText(
+                                            context,
+                                            "Account deleted permanently",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+
+                                        // Navigate to login screen
+                                        val intent = Intent(context, LoginActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        context.startActivity(intent)
+                                        activity.finish()
+                                    } else {
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    }
+                                    showDeleteAccountDialog = false
+                                }
+                            }
+                            .addOnFailureListener { exception ->
+                                Toast.makeText(
+                                    context,
+                                    "Incorrect password. Please try again.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Unable to verify user. Please try again.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                context = context
+            )
+        }
     }
 }
 
+@Composable
+fun SettingsDialog(
+    showSettingsDialog: Boolean,
+    onDismiss: () -> Unit,
+    onDeactivateClick: () -> Unit,
+    onChangePasswordClick: () -> Unit,
+    onDeleteAccountClick: () -> Unit,
+    context: Context
+) {
+    var isDarkMode by remember { mutableStateOf(false) }
+    var isPrivateProfile by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(20f)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable { onDismiss() }
+        )
+
+        Card(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.85f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Settings",
+                        style = TextStyle(
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1565C0)
+                        )
+                    )
+
+                    Surface(
+                        modifier = Modifier.size(32.dp),
+                        shape = CircleShape,
+                        color = Color(0xFFF5F5F5)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = "Close",
+                            tint = Color(0xFF546E7A),
+                            modifier = Modifier
+                                .clickable { onDismiss() }
+                                .padding(8.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // SETTINGS OPTIONS
+                SettingsOption(
+                    icon = R.drawable.outline_lock_24,
+                    title = "Change Password",
+                    subtitle = "Update your password",
+                    iconColor = Color(0xFF4CAF50),
+                    onClick = onChangePasswordClick
+                )
+
+                SettingsOptionWithSwitch(
+                    icon = R.drawable.darkmode,
+                    title = "Dark Mode",
+                    subtitle = if (isDarkMode) "Dark theme enabled" else "Light theme enabled",
+                    iconColor = Color(0xFF9C27B0),
+                    isChecked = isDarkMode,
+                    onCheckedChange = { isDarkMode = it }
+                )
+
+                SettingsOptionWithSwitch(
+                    icon = R.drawable.privateprofile,
+                    title = "Private Profile",
+                    subtitle = if (isPrivateProfile) "Profile is private" else "Profile is public",
+                    iconColor = Color(0xFF2196F3),
+                    isChecked = isPrivateProfile,
+                    onCheckedChange = { isPrivateProfile = it }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsOption(
+                    icon = R.drawable.deactivateaccount,
+                    title = "Deactivate Account",
+                    subtitle = "Temporarily disable your account",
+                    iconColor = Color(0xFFFF9800),
+                    onClick = onDeactivateClick
+                )
+
+                SettingsOption(
+                    icon = R.drawable.deleteaccount,
+                    title = "Delete Account",
+                    subtitle = "Permanently remove your account",
+                    iconColor = Color(0xFFF44336),
+                    onClick = onDeleteAccountClick
+                )
+            }
+        }
+    }
+}
 @Composable
 fun StatCard(count: Int, label: String, onClick: () -> Unit) {
     Surface(
@@ -1987,7 +2150,6 @@ fun ChangePasswordDialog(
 
                 Spacer(modifier = Modifier.height(28.dp))
 
-                // Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -2059,6 +2221,413 @@ fun ChangePasswordDialog(
                             }
                             Text(
                                 text = if (isLoading) "Updating..." else "Update",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ConfirmPasswordForDeactivateDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+    context: Context
+) {
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(40f) // Increased zIndex to ensure it's on top
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable { onDismiss() }
+        )
+
+        Card(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.9f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Confirm Password",
+                        style = TextStyle(
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFF44336)
+                        )
+                    )
+
+                    Surface(
+                        modifier = Modifier.size(32.dp),
+                        shape = CircleShape,
+                        color = Color(0xFFF5F5F5)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = "Close",
+                            tint = Color(0xFF546E7A),
+                            modifier = Modifier
+                                .clickable { onDismiss() }
+                                .padding(8.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Please enter your password to deactivate your account. This action will temporarily disable your account.",
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        color = Color(0xFF546E7A),
+                        lineHeight = 20.sp
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    visualTransformation = if (passwordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.outline_lock_24),
+                            contentDescription = null,
+                            tint = Color(0xFF2196F3)
+                        )
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                painter = painterResource(
+                                    id = if (passwordVisible)
+                                        R.drawable.baseline_visibility_24
+                                    else
+                                        R.drawable.baseline_visibility_off_24
+                                ),
+                                contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                                tint = Color(0xFF2196F3)
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF5F5F5),
+                        unfocusedContainerColor = Color(0xFFF5F5F5),
+                        focusedIndicatorColor = Color(0xFF2196F3),
+                        unfocusedIndicatorColor = Color(0xFFBDBDBD)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = { onDismiss() },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE0E0E0),
+                            contentColor = Color(0xFF424242)
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
+                    ) {
+                        Text(
+                            "Cancel",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            if (password.isEmpty()) {
+                                Toast.makeText(
+                                    context,
+                                    "Please enter your password",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                onConfirm(password)
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF44336),
+                            contentColor = Color.White
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
+                    ) {
+                        Text(
+                            "Deactivate",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DeleteAccountConfirmationDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+    context: Context
+) {
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(50f)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.75f))
+                .clickable { onDismiss() }
+        )
+
+        Card(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.9f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(20.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .size(80.dp)
+                        .background(
+                            Color(0xFFF44336).copy(alpha = 0.1f),
+                            CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.round_info_outline_24),
+                        contentDescription = "Warning",
+                        tint = Color(0xFFF44336),
+                        modifier = Modifier.size(48.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = "Delete Account Permanently?",
+                    style = TextStyle(
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFF44336),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFFFF5F5)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "⚠️ Warning: This action cannot be undone!",
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFF44336)
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "• All your data will be permanently deleted\n• Your profile will be removed\n• You cannot recover this account\n• All your applications will be lost",
+                            style = TextStyle(
+                                fontSize = 13.sp,
+                                color = Color(0xFF546E7A),
+                                lineHeight = 22.sp
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Password Confirmation
+                Text(
+                    text = "Enter your password to confirm",
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF263238)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    placeholder = { Text("Password", color = Color(0xFFBDBDBD)) },
+                    visualTransformation = if (passwordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.outline_lock_24),
+                            contentDescription = null,
+                            tint = Color(0xFFF44336),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                painter = painterResource(
+                                    id = if (passwordVisible)
+                                        R.drawable.baseline_visibility_24
+                                    else
+                                        R.drawable.baseline_visibility_off_24
+                                ),
+                                contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                                tint = Color(0xFF78909C),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF8F9FA),
+                        unfocusedContainerColor = Color(0xFFF8F9FA),
+                        focusedIndicatorColor = Color(0xFFF44336),
+                        unfocusedIndicatorColor = Color(0xFFE0E0E0)
+                    ),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Cancel Button
+                    Button(
+                        onClick = { onDismiss() },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF5F5F5),
+                            contentColor = Color(0xFF546E7A)
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        elevation = ButtonDefaults.buttonElevation(0.dp)
+                    ) {
+                        Text(
+                            "Cancel",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // Delete Button
+                    Button(
+                        onClick = {
+                            if (password.isEmpty()) {
+                                Toast.makeText(
+                                    context,
+                                    "Please enter your password",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                onConfirm(password)
+                            }
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF44336),
+                            contentColor = Color.White
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .shadow(8.dp, RoundedCornerShape(16.dp)),
+                        elevation = ButtonDefaults.buttonElevation(0.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.deleteaccount),
+                                contentDescription = "Delete",
+                                modifier = Modifier.size(20.dp),
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Delete",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
                             )

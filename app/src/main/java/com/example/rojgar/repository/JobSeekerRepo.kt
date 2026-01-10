@@ -1,49 +1,73 @@
 package com.example.rojgar.repository
+
 import android.content.Context
 import android.net.Uri
-import com.example.rojgar.model.CompanyModel
-import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.JobSeekerModel
 import com.google.firebase.auth.FirebaseUser
 
 interface JobSeekerRepo {
     fun register(
-        email : String,
-        password : String,
-        callback : (Boolean, String, String) ->Unit
+        email: String,
+        password: String,
+        callback: (Boolean, String, String) -> Unit
     )
 
     fun login(
-        email : String,
-        password : String,
-        callback : (Boolean, String) ->Unit
+        email: String,
+        password: String,
+        callback: (Boolean, String) -> Unit
     )
 
     fun addJobSeekerToDatabase(
-        jobSeekerId : String,
-        model : JobSeekerModel,
-        callback : (Boolean, String) ->Unit
+        jobSeekerId: String,
+        model: JobSeekerModel,
+        callback: (Boolean, String) -> Unit
     )
 
-    fun getCurrentJobSeeker() : FirebaseUser?
+    fun getCurrentJobSeeker(): FirebaseUser?
 
     fun getJobSeekerById(
-        jobSeekerId : String,
-        callback : (Boolean, String, JobSeekerModel?) ->Unit
+        jobSeekerId: String,
+        callback: (Boolean, String, JobSeekerModel?) -> Unit
     )
 
     fun getAllJobSeeker(
-        callback : (Boolean, String, List<JobSeekerModel>?) ->Unit
+        callback: (Boolean, String, List<JobSeekerModel>?) -> Unit
     )
 
     fun logout(
-        jobSeekerId : String,
-        callback : (Boolean, String) ->Unit
+        jobSeekerId: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun deactivateAccount(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun reactivateAccount(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    )
+    fun deleteAccount(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+
+    fun checkAccountStatus(
+        jobseekerId: String,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun checkAccountStatusByEmail(
+        email: String,
+        callback: (Boolean, String?, String) -> Unit
     )
 
     fun forgetPassword(
-        email : String,
-        callback : (Boolean, String) ->Unit
+        email: String,
+        callback: (Boolean, String) -> Unit
     )
 
     fun changePassword(
@@ -88,5 +112,9 @@ interface JobSeekerRepo {
         callback: (Boolean, String, JobSeekerModel?) -> Unit
     )
 
-
+    // NEW METHOD: Get job seeker by email
+    fun getJobSeekerByEmail(
+        email: String,
+        callback: (Boolean, String, JobSeekerModel?) -> Unit
+    )
 }
