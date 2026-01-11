@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,7 +72,7 @@ import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobSeekerViewModel
-import android.util.Log
+import com.example.rojgar.utils.RememberMeManager
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -85,6 +86,7 @@ import androidx.compose.animation.animateColorAsState
 class LoginActivity : ComponentActivity() {
 
     private var selectedUserType: String = "JOBSEEKER"
+    private lateinit var rememberMeManager: RememberMeManager
 
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -256,8 +258,12 @@ class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        rememberMeManager = RememberMeManager(this)
+
         setContent {
             LoginBody(
+                rememberMeManager = rememberMeManager,
                 onGoogleSignInClick = { userType -> startGoogleSignIn(userType) }
             )
         }
@@ -266,6 +272,7 @@ class LoginActivity : ComponentActivity() {
 
 @Composable
 fun LoginBody(
+    rememberMeManager: RememberMeManager? = null,
     onGoogleSignInClick: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -282,6 +289,17 @@ fun LoginBody(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
+
+    // Load saved credentials when the screen loads
+    LaunchedEffect(Unit) {
+        rememberMeManager?.let { manager ->
+            if (manager.isRememberMeEnabled()) {
+                email = manager.getSavedEmail() ?: ""
+                password = manager.getSavedPassword() ?: ""
+                rememberMe = true
+            }
+        }
+    }
 
     Scaffold { padding ->
         Column(
@@ -434,6 +452,9 @@ fun LoginBody(
                                         "JOBSEEKER" -> {
                                             jobSeekerViewModel.login(email, password) { success, message ->
                                                 if (success) {
+                                                    // Save credentials if Remember Me is checked
+                                                    rememberMeManager?.saveCredentials(email, password, rememberMe)
+
                                                     val currentUser = jobSeekerViewModel.getCurrentJobSeeker()
                                                     if (currentUser != null) {
                                                         jobSeekerViewModel.checkAccountStatus(currentUser.uid) { isActive, statusMessage ->
@@ -457,6 +478,9 @@ fun LoginBody(
                                         "COMPANY" -> {
                                             companyViewModel.login(email, password) { success, message ->
                                                 if (success) {
+                                                    // Save credentials if Remember Me is checked
+                                                    rememberMeManager?.saveCredentials(email, password, rememberMe)
+
                                                     val currentUser = companyViewModel.getCurrentCompany()
                                                     if (currentUser != null) {
                                                         companyViewModel.checkAccountStatus(currentUser.uid) { isActive, statusMessage ->
@@ -730,6 +754,7 @@ fun LoginTextField(
         )
     )
 }
+
 @Composable
 fun ReactivationDialog(
     onDismiss: () -> Unit,
@@ -931,6 +956,7 @@ fun ReactivationDialog(
 fun GreetingPreview2() {
     LoginBody()
 }
+
 @Composable
 fun GoogleSignInTypeDialog(
     onDismiss: () -> Unit,
@@ -986,7 +1012,6 @@ fun GoogleSignInTypeDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Title
                 Text(
                     text = "Sign in with Google",
                     style = TextStyle(
@@ -1000,7 +1025,6 @@ fun GoogleSignInTypeDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Subtitle
                 Text(
                     text = "Choose how you want to continue",
                     style = TextStyle(
@@ -1014,12 +1038,10 @@ fun GoogleSignInTypeDialog(
 
                 Spacer(modifier = Modifier.height(28.dp))
 
-                // User Type Selection Cards
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // JobSeeker Option
                     ModernUserTypeCard(
                         title = "Job Seeker",
                         description = "Looking for job opportunities",
@@ -1030,7 +1052,6 @@ fun GoogleSignInTypeDialog(
                         onClick = { selectedType = "JOBSEEKER" }
                     )
 
-                    // Company Option
                     ModernUserTypeCard(
                         title = "Company",
                         description = "Hiring top talent",
@@ -1044,7 +1065,6 @@ fun GoogleSignInTypeDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Info Box
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1075,12 +1095,10 @@ fun GoogleSignInTypeDialog(
 
                 Spacer(modifier = Modifier.height(28.dp))
 
-                // Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Cancel Button
                     TextButton(
                         onClick = onDismiss,
                         modifier = Modifier
@@ -1099,7 +1117,6 @@ fun GoogleSignInTypeDialog(
                         )
                     }
 
-                    // Continue Button
                     Button(
                         onClick = { onUserTypeSelected(selectedType) },
                         modifier = Modifier
@@ -1192,7 +1209,6 @@ fun ModernUserTypeCard(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Icon
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -1214,7 +1230,6 @@ fun ModernUserTypeCard(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Text Content
             Column(
                 modifier = Modifier.weight(1f)
             ) {
