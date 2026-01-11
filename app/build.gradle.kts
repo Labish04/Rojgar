@@ -43,6 +43,12 @@ android {
 }
 
 dependencies {
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    implementation("androidx.credentials:credentials:1.2.2")
+    implementation("androidx.credentials:credentials-play-services-auth:1.2.2")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
     implementation("com.google.maps.android:maps-compose:4.3.3")
     implementation("com.google.android.gms:play-services-maps:19.0.0")
 
@@ -54,7 +60,6 @@ dependencies {
         exclude(group = "com.android.support", module = "support-compat")
     }
 
-    // It's a good practice to also ensure zim is clean, though it's less likely the cause
     implementation("im.zego:zim:2.14.0") {
         exclude(group = "com.android.support", module = "support-compat")
     }

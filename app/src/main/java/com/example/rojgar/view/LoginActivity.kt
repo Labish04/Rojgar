@@ -69,23 +69,151 @@ import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobSeekerViewModel
+import android.util.Log
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.CustomCredential
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.tasks.await
+import java.security.MessageDigest
+import java.util.UUID
 
 class LoginActivity : ComponentActivity() {
+
+    private val googleSignInLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                account?.idToken?.let { idToken ->
+                    handleGoogleSignIn(idToken)
+                }
+            } catch (e: ApiException) {
+                Log.e("GoogleAuth", "Google sign in failed", e)
+                Toast.makeText(this, "Google sign in failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        } else {
+            Toast.makeText(this, "Sign in cancelled", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun handleGoogleSignIn(idToken: String) {
+        val auth = FirebaseAuth.getInstance()
+        val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
+
+        auth.signInWithCredential(firebaseCredential)
+            .addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
+                    val user = auth.currentUser
+                    if (user != null) {
+                        checkIfUserExistsAndProceed(user.uid, user.email ?: "")
+                    }
+                } else {
+                    Toast.makeText(this, "Authentication failed: ${task.exception?.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+    }
+
+    private fun checkIfUserExistsAndProceed(uid: String, email: String) {
+        val database = FirebaseDatabase.getInstance()
+        val jobSeekerRef = database.getReference("JobSeekers").child(uid)
+
+        jobSeekerRef.get().addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                val isActive = snapshot.child("isActive").getValue(Boolean::class.java) ?: true
+
+                if (isActive) {
+                    Toast.makeText(this, "Login Successful as JobSeeker", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this, JobSeekerDashboardActivity::class.java))
+                    finish()
+                } else {
+                    Toast.makeText(this, "Account is deactivated. Please contact support.", Toast.LENGTH_LONG).show()
+                    FirebaseAuth.getInstance().signOut()
+                }
+            } else {
+                createNewJobSeekerAccount(uid, email)
+            }
+        }.addOnFailureListener { e ->
+            Log.e("GoogleAuth", "Database error", e)
+            Toast.makeText(this, "Error checking user: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun createNewJobSeekerAccount(uid: String, email: String) {
+        val database = FirebaseDatabase.getInstance()
+        val jobSeekerRef = database.getReference("JobSeekers").child(uid)
+
+        val userName = email.substringBefore("@")
+        val jobSeekerData = hashMapOf(
+            "uid" to uid,
+            "userName" to userName,
+            "email" to email,
+            "userType" to "JOBSEEKER",
+            "isActive" to true,
+            "createdAt" to System.currentTimeMillis(),
+            "authProvider" to "google"
+        )
+
+        jobSeekerRef.setValue(jobSeekerData)
+            .addOnSuccessListener {
+                Toast.makeText(this, "Account created successfully!", Toast.LENGTH_SHORT).show()
+                startActivity(Intent(this, JobSeekerDashboardActivity::class.java))
+                finish()
+            }
+            .addOnFailureListener { e ->
+                Log.e("GoogleAuth", "Failed to create account", e)
+                Toast.makeText(this, "Failed to create account: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+    }
+
+    fun startGoogleSignIn() {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+
+        val googleSignInClient = GoogleSignIn.getClient(this, gso)
+        googleSignInClient.signOut().addOnCompleteListener {
+            val signInIntent = googleSignInClient.signInIntent
+            googleSignInLauncher.launch(signInIntent)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            LoginBody()
+            LoginBody(
+                onGoogleSignInClick = { startGoogleSignIn() }
+            )
         }
     }
 }
 
 @Composable
-fun LoginBody() {
+fun LoginBody(
+    onGoogleSignInClick: () -> Unit = {}
+) {
 
     val context = LocalContext.current
-    val activity = context as Activity
+    val activity = context as? Activity
 
+    val scope = rememberCoroutineScope()
+    val auth = remember { FirebaseAuth.getInstance() }
     val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
 
@@ -259,7 +387,7 @@ fun LoginBody() {
                                                                 Toast.makeText(context, "Login Successful as JobSeeker", Toast.LENGTH_SHORT).show()
                                                                 val intent = Intent(context, JobSeekerDashboardActivity::class.java)
                                                                 context.startActivity(intent)
-                                                                activity.finish()
+                                                                activity?.finish()
                                                             }
                                                         }
                                                     }
@@ -273,19 +401,16 @@ fun LoginBody() {
                                                 if (success) {
                                                     val currentUser = companyViewModel.getCurrentCompany()
                                                     if (currentUser != null) {
-                                                        // Check if company account is deactivated
                                                         companyViewModel.checkAccountStatus(currentUser.uid) { isActive, statusMessage ->
                                                             if (!isActive && statusMessage == "Account is deactivated") {
-                                                                // Account is deactivated, show reactivation dialog
                                                                 pendingReactivationUserId = currentUser.uid
                                                                 pendingUserType = "COMPANY"
                                                                 showReactivationDialog = true
                                                             } else {
-                                                                // Account is active, proceed to dashboard
                                                                 Toast.makeText(context, "Login Successful as Company", Toast.LENGTH_SHORT).show()
                                                                 val intent = Intent(context, CompanyDashboardActivity::class.java)
                                                                 context.startActivity(intent)
-                                                                activity.finish()
+                                                                activity?.finish()
                                                             }
                                                         }
                                                     }
@@ -375,7 +500,9 @@ fun LoginBody() {
                 horizontalArrangement = Arrangement.Center
             ) {
                 Button(
-                    onClick = {},
+                    onClick = {
+                        (activity as? LoginActivity)?.startGoogleSignIn()
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Purple
                     ),
@@ -394,14 +521,14 @@ fun LoginBody() {
                             painter = painterResource(R.drawable.google),
                             contentDescription = null,
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(30.dp)
                                 .padding(horizontal = 10.dp)
                         )
                         Text(
                             "Login with Google",
                             style = TextStyle(
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp
+                                fontSize = 18.sp
                             )
                         )
                     }
@@ -430,14 +557,12 @@ fun LoginBody() {
         }
     }
 
-    // Modern Reactivation Dialog
     if (showReactivationDialog) {
         ReactivationDialog(
             onDismiss = {
                 showReactivationDialog = false
                 pendingReactivationUserId = null
                 pendingUserType = null
-                // Logout based on user type
                 when (pendingUserType) {
                     "JOBSEEKER" -> jobSeekerViewModel.logout("") { _, _ -> }
                     "COMPANY" -> companyViewModel.logout("") { _, _ -> }
@@ -459,7 +584,7 @@ fun LoginBody() {
 
                                     val intent = Intent(context, JobSeekerDashboardActivity::class.java)
                                     context.startActivity(intent)
-                                    activity.finish()
+                                    activity?.finish()
                                 } else {
                                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                                     showReactivationDialog = false
@@ -479,7 +604,7 @@ fun LoginBody() {
 
                                     val intent = Intent(context, CompanyDashboardActivity::class.java)
                                     context.startActivity(intent)
-                                    activity.finish()
+                                    activity?.finish()
                                 } else {
                                     Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                                     showReactivationDialog = false
@@ -549,7 +674,6 @@ fun ReactivationDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    // Modern blue color palette
     val primaryBlue = Color(0xFF2563EB)
     val lightBlue = Color(0xFF60A5FA)
     val darkBlue = Color(0xFF1E40AF)
