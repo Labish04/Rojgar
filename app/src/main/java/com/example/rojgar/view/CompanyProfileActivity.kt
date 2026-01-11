@@ -264,17 +264,37 @@ fun CompanyProfileBody(
         }
     }
 
-    LaunchedEffect(company.value, currentUserId, companyId) {
+    LaunchedEffect(company.value, currentUserId, companyId, isOwnProfile) {
         company.value?.let { targetCompany ->
-            if (currentUserId.isNotEmpty() && companyId.isNotEmpty() && !isOwnProfile) {
-                followViewModel.checkFollowStatus(currentUserId, companyId)
-                followViewModel.getFollowersCount(companyId)
-                followViewModel.getFollowingCount(companyId)
+            // For own profile, use the company's ID from the fetched data
+            val profileIdToLoad = if (isOwnProfile) {
+                targetCompany.companyId
+            } else {
+                companyId
+            }
+
+            if (profileIdToLoad.isNotEmpty()) {
+                // Only check follow status if viewing someone else's profile
+                if (!isOwnProfile && currentUserId.isNotEmpty() && currentUserType.isNotEmpty()) {
+                    followViewModel.checkFollowStatus(currentUserId, profileIdToLoad)
+                }
+
+                // Always load followers and following counts
+                followViewModel.getFollowersCount(profileIdToLoad)
+                followViewModel.getFollowingCount(profileIdToLoad)
             }
         }
     }
 
-    LaunchedEffect(followersCountState, followingCountState) {
+    // Refresh counts when follow status changes (for other profiles)
+    LaunchedEffect(isFollowingState) {
+        if (!isOwnProfile && company.value != null && currentUserId.isNotEmpty()) {
+            val profileIdToLoad = companyId
+            if (profileIdToLoad.isNotEmpty()) {
+                followViewModel.getFollowersCount(profileIdToLoad)
+                followViewModel.getFollowingCount(profileIdToLoad)
+            }
+        }
     }
 
     Scaffold(
@@ -599,21 +619,27 @@ fun CompanyProfileBody(
                         modifier = Modifier.weight(1f)
                     )
                     EnhancedStatCard(
-                        label = "Following",
-                        value = when {
-                            followingCountState > 0 -> formatNumber(followingCountState)
-                            else -> "0"
+                        label = "Followers",
+                        value = if (isOwnProfile) {
+                            // For own profile, show your followers count
+                            formatNumber(followersCountState)
+                        } else {
+                            // For other profiles, show their followers count
+                            formatNumber(followersCountState)
                         },
-                        icon = Icons.Default.Person,
+                        icon = Icons.Default.Face,
                         modifier = Modifier.weight(1f)
                     )
                     EnhancedStatCard(
-                        label = "Followers",
-                        value = when {
-                            followersCountState > 0 -> formatNumber(followersCountState)
-                            else -> "0"
+                        label = "Following",
+                        value = if (isOwnProfile) {
+                            // For own profile, show the count of who you're following
+                            formatNumber(followingCountState)
+                        } else {
+                            // For other profiles, show who they're following
+                            formatNumber(followingCountState)
                         },
-                        icon = Icons.Default.Face,
+                        icon = Icons.Default.Person,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -636,6 +662,8 @@ fun CompanyProfileBody(
                                             followingType = "Company",
                                             onComplete = { success, message ->
                                                 if (success) {
+                                                    // Refresh counts after unfollowing
+                                                    followViewModel.getFollowersCount(companyId)
                                                     Toast.makeText(
                                                         context,
                                                         "Unfollowed!",
@@ -658,6 +686,8 @@ fun CompanyProfileBody(
                                             followingType = "Company",
                                             onComplete = { success, message ->
                                                 if (success) {
+                                                    // Refresh counts after following
+                                                    followViewModel.getFollowersCount(companyId)
                                                     Toast.makeText(
                                                         context,
                                                         "Followed!",
@@ -686,9 +716,7 @@ fun CompanyProfileBody(
                                 .height(52.dp)
                                 .shadow(8.dp, RoundedCornerShape(16.dp)),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isFollowingState) Color(0xFF10B981) else Color(
-                                    0xFF6366F1
-                                )
+                                containerColor = if (isFollowingState) Color(0xFF10B981) else Color(0xFF6366F1)
                             ),
                             shape = RoundedCornerShape(16.dp)
                         ) {
@@ -2228,10 +2256,24 @@ fun RemovableSpecialtyChip(
     }
 }
 
-private fun formatNumber(count: Int): String {
+fun formatNumber(count: Int): String {
     return when {
-        count >= 1000000 -> "${String.format("%.1f", count / 1000000.0)}M"
-        count >= 1000 -> "${String.format("%.1f", count / 1000.0)}K"
+        count >= 1000000 -> {
+            val millions = count / 1000000.0
+            if (millions % 1 == 0.0) {
+                "${count / 1000000}M"
+            } else {
+                "%.1fM".format(millions)
+            }
+        }
+        count >= 1000 -> {
+            val thousands = count / 1000.0
+            if (thousands % 1 == 0.0) {
+                "${count / 1000}K"
+            } else {
+                "%.1fK".format(thousands)
+            }
+        }
         else -> count.toString()
     }
 }

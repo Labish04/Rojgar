@@ -153,6 +153,25 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
         context.startActivity(chooserIntent)
     }
 
+    LaunchedEffect(isFollowing) {
+        val profileIdToLoad = if (finalTargetJobSeekerId.isNotEmpty()) {
+            finalTargetJobSeekerId
+        } else {
+            currentUserId
+        }
+
+        if (profileIdToLoad.isNotEmpty()) {
+            // Refresh counts when follow status changes
+            followRepository.getFollowersCount(profileIdToLoad) { count ->
+                followersCount = count
+            }
+
+            followRepository.getFollowingCount(profileIdToLoad) { count ->
+                followingCount = count
+            }
+        }
+    }
+
     // Load job seeker data
     LaunchedEffect(finalTargetJobSeekerId) {
         if (finalTargetJobSeekerId.isNotEmpty()) {
@@ -164,22 +183,29 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
     // Load follow data
     LaunchedEffect(finalTargetJobSeekerId, currentUserId) {
-        if (finalTargetJobSeekerId.isNotEmpty() && currentUserId.isNotEmpty()) {
+        // Determine which profile ID to use for loading counts
+        val profileIdToLoad = if (finalTargetJobSeekerId.isNotEmpty()) {
+            finalTargetJobSeekerId
+        } else {
+            currentUserId
+        }
+
+        if (profileIdToLoad.isNotEmpty()) {
             // Check follow status if not own profile
-            if (!isOwnProfile) {
+            if (!isOwnProfile && currentUserId.isNotEmpty()) {
                 isLoadingFollow = true
-                followRepository.isFollowing(currentUserId, finalTargetJobSeekerId) { following ->
+                followRepository.isFollowing(currentUserId, profileIdToLoad) { following ->
                     isFollowing = following
                     isLoadingFollow = false
                 }
             }
 
             // Get followers and following counts
-            followRepository.getFollowersCount(finalTargetJobSeekerId) { count ->
+            followRepository.getFollowersCount(profileIdToLoad) { count ->
                 followersCount = count
             }
 
-            followRepository.getFollowingCount(finalTargetJobSeekerId) { count ->
+            followRepository.getFollowingCount(profileIdToLoad) { count ->
                 followingCount = count
             }
         }
@@ -558,8 +584,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                 .height(56.dp)
                                 .shadow(8.dp, RoundedCornerShape(16.dp)),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.White,
-                                contentColor = Color(0xFF1976D2)
+                                containerColor = if (isFollowing) Color(0xFF10B981) else Color(0xFF6366F1)
                             ),
                             elevation = ButtonDefaults.buttonElevation(0.dp)
                         ) {
@@ -571,7 +596,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                     painter = painterResource(id = R.drawable.following_icon),
                                     contentDescription = "Following",
                                     modifier = Modifier.size(24.dp),
-                                    tint = Color(0xFF1976D2)
+                                    tint = Color(0xFFFFFFFF)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
@@ -1306,8 +1331,22 @@ fun StatCard(count: Int, label: String, onClick: () -> Unit) {
 
 fun formatCount(count: Int): String {
     return when {
-        count >= 1000000 -> "${count / 1000000}M"
-        count >= 1000 -> "${count / 1000}K"
+        count >= 1000000 -> {
+            val millions = count / 1000000.0
+            if (millions % 1 == 0.0) {
+                "${count / 1000000}M"
+            } else {
+                "%.1fM".format(millions)
+            }
+        }
+        count >= 1000 -> {
+            val thousands = count / 1000.0
+            if (thousands % 1 == 0.0) {
+                "${count / 1000}K"
+            } else {
+                "%.1fK".format(thousands)
+            }
+        }
         else -> count.toString()
     }
 }
@@ -2593,3 +2632,4 @@ fun DeleteAccountConfirmationDialog(
         }
     }
 }
+
