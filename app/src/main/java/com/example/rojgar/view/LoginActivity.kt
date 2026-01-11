@@ -34,6 +34,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -70,27 +72,19 @@ import com.example.rojgar.ui.theme.White
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobSeekerViewModel
 import android.util.Log
-import androidx.credentials.CredentialManager
-import androidx.credentials.GetCredentialRequest
-import androidx.credentials.CustomCredential
-import androidx.credentials.exceptions.GetCredentialException
-import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import androidx.activity.result.contract.ActivityResultContracts
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.tasks.await
-import java.security.MessageDigest
-import java.util.UUID
+import androidx.compose.animation.animateColorAsState
 
 class LoginActivity : ComponentActivity() {
+
+    private var selectedUserType: String = "JOBSEEKER"
 
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -99,11 +93,17 @@ class LoginActivity : ComponentActivity() {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
-                account?.idToken?.let { idToken ->
-                    handleGoogleSignIn(idToken)
+                account?.let {
+                    val idToken = it.idToken
+                    val fullName = it.displayName ?: ""
+                    val email = it.email ?: ""
+                    val photoUrl = it.photoUrl?.toString() ?: ""
+
+                    idToken?.let { token ->
+                        handleGoogleSignIn(token, fullName, email, photoUrl)
+                    }
                 }
             } catch (e: ApiException) {
-                Log.e("GoogleAuth", "Google sign in failed", e)
                 Toast.makeText(this, "Google sign in failed: ${e.message}", Toast.LENGTH_LONG).show()
             }
         } else {
@@ -111,7 +111,7 @@ class LoginActivity : ComponentActivity() {
         }
     }
 
-    private fun handleGoogleSignIn(idToken: String) {
+    private fun handleGoogleSignIn(idToken: String, fullName: String, email: String, photoUrl: String) {
         val auth = FirebaseAuth.getInstance()
         val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
 
@@ -120,7 +120,12 @@ class LoginActivity : ComponentActivity() {
                 if (task.isSuccessful) {
                     val user = auth.currentUser
                     if (user != null) {
-                        checkIfUserExistsAndProceed(user.uid, user.email ?: "")
+                        checkIfUserExistsAndProceed(
+                            uid = user.uid,
+                            email = email,
+                            fullName = fullName,
+                            photoUrl = photoUrl
+                        )
                     }
                 } else {
                     Toast.makeText(this, "Authentication failed: ${task.exception?.message}", Toast.LENGTH_LONG).show()
@@ -128,40 +133,65 @@ class LoginActivity : ComponentActivity() {
             }
     }
 
-    private fun checkIfUserExistsAndProceed(uid: String, email: String) {
+    private fun checkIfUserExistsAndProceed(uid: String, email: String, fullName: String, photoUrl: String) {
         val database = FirebaseDatabase.getInstance()
-        val jobSeekerRef = database.getReference("JobSeekers").child(uid)
 
-        jobSeekerRef.get().addOnSuccessListener { snapshot ->
-            if (snapshot.exists()) {
-                val isActive = snapshot.child("isActive").getValue(Boolean::class.java) ?: true
+        if (selectedUserType == "JOBSEEKER") {
+            val jobSeekerRef = database.getReference("JobSeekers").child(uid)
 
-                if (isActive) {
-                    Toast.makeText(this, "Login Successful as JobSeeker", Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(this, JobSeekerDashboardActivity::class.java))
-                    finish()
+            jobSeekerRef.get().addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    val isActive = snapshot.child("isActive").getValue(Boolean::class.java) ?: true
+
+                    if (isActive) {
+                        Toast.makeText(this, "Login Successful as JobSeeker", Toast.LENGTH_SHORT).show()
+                        startActivity(Intent(this, JobSeekerDashboardActivity::class.java))
+                        finish()
+                    } else {
+                        Toast.makeText(this, "Account is deactivated. Please contact support.", Toast.LENGTH_LONG).show()
+                        FirebaseAuth.getInstance().signOut()
+                    }
                 } else {
-                    Toast.makeText(this, "Account is deactivated. Please contact support.", Toast.LENGTH_LONG).show()
-                    FirebaseAuth.getInstance().signOut()
+                    createNewJobSeekerAccount(uid, email, fullName, photoUrl)
                 }
-            } else {
-                createNewJobSeekerAccount(uid, email)
+            }.addOnFailureListener { e ->
+                Toast.makeText(this, "Error checking user: ${e.message}", Toast.LENGTH_LONG).show()
             }
-        }.addOnFailureListener { e ->
-            Log.e("GoogleAuth", "Database error", e)
-            Toast.makeText(this, "Error checking user: ${e.message}", Toast.LENGTH_LONG).show()
+        } else {
+            val companyRef = database.getReference("Companies").child(uid)
+
+            companyRef.get().addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    val isActive = snapshot.child("isActive").getValue(Boolean::class.java) ?: true
+
+                    if (isActive) {
+                        Toast.makeText(this, "Login Successful as Company", Toast.LENGTH_SHORT).show()
+                        startActivity(Intent(this, CompanyDashboardActivity::class.java))
+                        finish()
+                    } else {
+                        Toast.makeText(this, "Account is deactivated. Please contact support.", Toast.LENGTH_LONG).show()
+                        FirebaseAuth.getInstance().signOut()
+                    }
+                } else {
+                    createNewCompanyAccount(uid, email, fullName, photoUrl)
+                }
+            }.addOnFailureListener { e ->
+                Toast.makeText(this, "Error checking company: ${e.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
-    private fun createNewJobSeekerAccount(uid: String, email: String) {
+    private fun createNewJobSeekerAccount(uid: String, email: String, fullName: String, photoUrl: String) {
         val database = FirebaseDatabase.getInstance()
         val jobSeekerRef = database.getReference("JobSeekers").child(uid)
 
-        val userName = email.substringBefore("@")
+        val userName = if (fullName.isNotEmpty()) fullName else email.substringBefore("@")
         val jobSeekerData = hashMapOf(
             "uid" to uid,
             "userName" to userName,
+            "fullName" to fullName,
             "email" to email,
+            "photoUrl" to photoUrl,
             "userType" to "JOBSEEKER",
             "isActive" to true,
             "createdAt" to System.currentTimeMillis(),
@@ -170,20 +200,50 @@ class LoginActivity : ComponentActivity() {
 
         jobSeekerRef.setValue(jobSeekerData)
             .addOnSuccessListener {
-                Toast.makeText(this, "Account created successfully!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "JobSeeker account created successfully!", Toast.LENGTH_SHORT).show()
                 startActivity(Intent(this, JobSeekerDashboardActivity::class.java))
                 finish()
             }
             .addOnFailureListener { e ->
-                Log.e("GoogleAuth", "Failed to create account", e)
                 Toast.makeText(this, "Failed to create account: ${e.message}", Toast.LENGTH_LONG).show()
             }
     }
 
-    fun startGoogleSignIn() {
+    private fun createNewCompanyAccount(uid: String, email: String, fullName: String, photoUrl: String) {
+        val database = FirebaseDatabase.getInstance()
+        val companyRef = database.getReference("Companies").child(uid)
+
+        val companyName = if (fullName.isNotEmpty()) fullName else email.substringBefore("@")
+        val companyData = hashMapOf(
+            "uid" to uid,
+            "companyName" to companyName,
+            "fullName" to fullName,
+            "email" to email,
+            "photoUrl" to photoUrl,
+            "userType" to "COMPANY",
+            "isActive" to true,
+            "createdAt" to System.currentTimeMillis(),
+            "authProvider" to "google"
+        )
+
+        companyRef.setValue(companyData)
+            .addOnSuccessListener {
+                Toast.makeText(this, "Company account created successfully!", Toast.LENGTH_SHORT).show()
+                startActivity(Intent(this, CompanyDashboardActivity::class.java))
+                finish()
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Failed to create company account: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+    }
+
+    fun startGoogleSignIn(userType: String) {
+        selectedUserType = userType
+
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
+            .requestProfile()
             .build()
 
         val googleSignInClient = GoogleSignIn.getClient(this, gso)
@@ -198,7 +258,7 @@ class LoginActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             LoginBody(
-                onGoogleSignInClick = { startGoogleSignIn() }
+                onGoogleSignInClick = { userType -> startGoogleSignIn(userType) }
             )
         }
     }
@@ -206,20 +266,18 @@ class LoginActivity : ComponentActivity() {
 
 @Composable
 fun LoginBody(
-    onGoogleSignInClick: () -> Unit = {}
+    onGoogleSignInClick: (String) -> Unit = {}
 ) {
-
     val context = LocalContext.current
     val activity = context as? Activity
 
-    val scope = rememberCoroutineScope()
-    val auth = remember { FirebaseAuth.getInstance() }
     val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
 
     var showReactivationDialog by remember { mutableStateOf(false) }
     var pendingReactivationUserId by remember { mutableStateOf<String?>(null) }
     var pendingUserType by remember { mutableStateOf<String?>(null) }
+    var showGoogleSignInDialog by remember { mutableStateOf(false) }
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -501,7 +559,7 @@ fun LoginBody(
             ) {
                 Button(
                     onClick = {
-                        (activity as? LoginActivity)?.startGoogleSignIn()
+                        showGoogleSignInDialog = true
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Purple
@@ -540,12 +598,6 @@ fun LoginBody(
             Column(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text("You can only login with google as a JobSeeker.")
-                }
                 Image(
                     painter = painterResource(R.drawable.design2),
                     contentDescription = null,
@@ -616,6 +668,16 @@ fun LoginBody(
             }
         )
     }
+
+    if (showGoogleSignInDialog) {
+        GoogleSignInTypeDialog(
+            onDismiss = { showGoogleSignInDialog = false },
+            onUserTypeSelected = { userType ->
+                showGoogleSignInDialog = false
+                (activity as? LoginActivity)?.startGoogleSignIn(userType)
+            }
+        )
+    }
 }
 
 @Composable
@@ -668,7 +730,6 @@ fun LoginTextField(
         )
     )
 }
-
 @Composable
 fun ReactivationDialog(
     onDismiss: () -> Unit,
@@ -869,4 +930,323 @@ fun ReactivationDialog(
 @Composable
 fun GreetingPreview2() {
     LoginBody()
+}
+@Composable
+fun GoogleSignInTypeDialog(
+    onDismiss: () -> Unit,
+    onUserTypeSelected: (String) -> Unit
+) {
+    var selectedType by remember { mutableStateOf("JOBSEEKER") }
+
+    val primaryBlue = Color(0xFF1A73E8)
+    val lightBlue = Color(0xFF4285F4)
+    val darkBlue = Color(0xFF174EA6)
+    val surfaceBlue = Color(0xFFE8F0FE)
+    val accentBlue = Color(0xFF1967D2)
+    val textGray = Color(0xFF5F6368)
+    val dividerColor = Color(0xFFDADCE0)
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 12.dp
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 32.dp, bottom = 28.dp, start = 24.dp, end = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(surfaceBlue),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.google),
+                        contentDescription = "Google",
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Title
+                Text(
+                    text = "Sign in with Google",
+                    style = TextStyle(
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.W500,
+                        color = Color(0xFF202124),
+                        letterSpacing = 0.sp
+                    ),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Subtitle
+                Text(
+                    text = "Choose how you want to continue",
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = textGray,
+                        letterSpacing = 0.2.sp
+                    ),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // User Type Selection Cards
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // JobSeeker Option
+                    ModernUserTypeCard(
+                        title = "Job Seeker",
+                        description = "Looking for job opportunities",
+                        icon = R.drawable.profileemptypic,
+                        isSelected = selectedType == "JOBSEEKER",
+                        primaryBlue = primaryBlue,
+                        surfaceBlue = surfaceBlue,
+                        onClick = { selectedType = "JOBSEEKER" }
+                    )
+
+                    // Company Option
+                    ModernUserTypeCard(
+                        title = "Company",
+                        description = "Hiring top talent",
+                        icon = R.drawable.profileemptypic,
+                        isSelected = selectedType == "COMPANY",
+                        primaryBlue = primaryBlue,
+                        surfaceBlue = surfaceBlue,
+                        onClick = { selectedType = "COMPANY" }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Info Box
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(surfaceBlue)
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.baseline_visibility_24),
+                        contentDescription = null,
+                        tint = accentBlue,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .padding(top = 2.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "You'll be able to access all features immediately after sign in.",
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            color = Color(0xFF202124),
+                            lineHeight = 18.sp,
+                            letterSpacing = 0.2.sp
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Cancel Button
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            style = TextStyle(
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.W500,
+                                color = primaryBlue,
+                                letterSpacing = 0.1.sp
+                            )
+                        )
+                    }
+
+                    // Continue Button
+                    Button(
+                        onClick = { onUserTypeSelected(selectedType) },
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = primaryBlue
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 2.dp,
+                            pressedElevation = 6.dp
+                        )
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.google),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Continue",
+                                style = TextStyle(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.W500,
+                                    color = Color.White,
+                                    letterSpacing = 0.1.sp
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernUserTypeCard(
+    title: String,
+    description: String,
+    icon: Int,
+    isSelected: Boolean,
+    primaryBlue: Color,
+    surfaceBlue: Color,
+    onClick: () -> Unit
+) {
+    val borderColor = if (isSelected) primaryBlue else Color(0xFFDADCE0)
+    val backgroundColor = if (isSelected) surfaceBlue else Color.White
+    val titleColor = if (isSelected) primaryBlue else Color(0xFF202124)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (isSelected) 2.dp else 1.dp,
+            color = borderColor
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 2.dp else 0.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RadioButton(
+                selected = isSelected,
+                onClick = onClick,
+                modifier = Modifier.size(24.dp),
+                colors = RadioButtonDefaults.colors(
+                    selectedColor = primaryBlue,
+                    unselectedColor = Color(0xFF5F6368)
+                )
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Icon
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isSelected)
+                            primaryBlue.copy(alpha = 0.12f)
+                        else
+                            Color(0xFFF1F3F4)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = icon),
+                    contentDescription = title,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Text Content
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = title,
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.W500,
+                        color = titleColor,
+                        letterSpacing = 0.1.sp
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = description,
+                    style = TextStyle(
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = Color(0xFF5F6368),
+                        letterSpacing = 0.2.sp
+                    )
+                )
+            }
+
+            if (isSelected) {
+                Icon(
+                    painter = painterResource(id = R.drawable.baseline_visibility_24),
+                    contentDescription = "Selected",
+                    tint = primaryBlue,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+    }
 }
