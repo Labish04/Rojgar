@@ -279,11 +279,11 @@ fun CompanyProfileBody(
 
     Scaffold(
         containerColor = Color(0xFFF8FAFC)
-    ) { paddingValues ->
+    ) { padding->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding()
                 .verticalScroll(rememberScrollState())
         ) {
             Box(
@@ -547,21 +547,6 @@ fun CompanyProfileBody(
                         letterSpacing = (-0.5).sp
                     )
 
-                    Surface(
-                        shape = CircleShape,
-                        color = Color(0xFF3B82F6),
-                        shadowElevation = 4.dp
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = "Verified",
-                            tint = Color.White,
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .size(20.dp)
-                        )
-                    }
-
                     // Premium Badge
                     Surface(
                         shape = RoundedCornerShape(12.dp),
@@ -580,7 +565,7 @@ fun CompanyProfileBody(
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = "Premium",
+                                text = "Verified",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFD97706)
@@ -593,7 +578,7 @@ fun CompanyProfileBody(
 
                 // Enhanced Tagline
                 Text(
-                    text = "Leading Technology Solutions Provider",
+                    text = company.value?.companyTagline ?: "Loading...",
                     fontSize = 15.sp,
                     color = Color(0xFF6B7280),
                     fontWeight = FontWeight.Medium,
@@ -614,15 +599,21 @@ fun CompanyProfileBody(
                         modifier = Modifier.weight(1f)
                     )
                     EnhancedStatCard(
-                        label = "Employees",
-                        value = "250+",
-                        icon = Icons.Default.Face,
+                        label = "Following",
+                        value = when {
+                            followingCountState > 0 -> formatNumber(followingCountState)
+                            else -> "0"
+                        },
+                        icon = Icons.Default.Person,
                         modifier = Modifier.weight(1f)
                     )
                     EnhancedStatCard(
-                        label = "Founded",
-                        value = company.value?.companyEstablishedDate?.take(4) ?: "2015",
-                        icon = Icons.Default.DateRange,
+                        label = "Followers",
+                        value = when {
+                            followersCountState > 0 -> formatNumber(followersCountState)
+                            else -> "0"
+                        },
+                        icon = Icons.Default.Face,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -754,7 +745,7 @@ fun CompanyProfileBody(
                 // About Section with gradient accent
                 EnhancedInfoSection(title = "About Company") {
                     Text(
-                        text = "Labish is a pioneering technology company dedicated to delivering innovative solutions that transform businesses. With a team of experienced professionals, we specialize in software development, cloud solutions, and digital transformation.",
+                        text = company.value?.companyInformation?:"",
                         fontSize = 15.sp,
                         color = Color(0xFF374151),
                         lineHeight = 24.sp,
@@ -770,12 +761,12 @@ fun CompanyProfileBody(
                         EnhancedDetailRow(
                             icon = Icons.Default.Email,
                             label = "Industry",
-                            value = "Information Technology",
+                            value = company.value?.companyIndustry?:"",
                             gradient = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
                         )
                         EnhancedDetailRow(
                             icon = Icons.Default.LocationOn,
-                            label = "Headquarters",
+                            label = "Headquarter",
                             value = company.value?.companyLocation ?: "",
                             gradient = listOf(Color(0xFFEC4899), Color(0xFFF43F5E))
                         )
@@ -793,8 +784,14 @@ fun CompanyProfileBody(
                         )
                         EnhancedDetailRow(
                             icon = Icons.Default.PlayArrow,
+                            label = "Founded",
+                            value = company.value?.companyEstablishedDate?.take(4) ?: "2015",
+                            gradient = listOf(Color(0xFF05C2B2), Color(0xFF25E4EB))
+                        )
+                        EnhancedDetailRow(
+                            icon = Icons.Default.PlayArrow,
                             label = "Website",
-                            value = "www.labish.com",
+                            value = company.value?.companyWebsite ?: "",
                             gradient = listOf(Color(0xFF3B82F6), Color(0xFF2563EB))
                         )
                     }
@@ -804,19 +801,40 @@ fun CompanyProfileBody(
 
                 // Specialties with gradient chips
                 EnhancedInfoSection(title = "Core Specialties") {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        listOf(
-                            "Software Development" to listOf(Color(0xFF6366F1), Color(0xFF8B5CF6)),
-                            "Cloud Solutions" to listOf(Color(0xFF3B82F6), Color(0xFF2563EB)),
-                            "AI & ML" to listOf(Color(0xFFEC4899), Color(0xFFF43F5E)),
-                            "Mobile Apps" to listOf(Color(0xFF10B981), Color(0xFF059669)),
-                            "Web Development" to listOf(Color(0xFFF59E0B), Color(0xFFEAB308)),
-                            "Consulting" to listOf(Color(0xFF8B5CF6), Color(0xFFA855F7))
-                        ).forEach { (specialty, gradient) ->
-                            GradientSpecialtyChip(text = specialty, gradient = gradient)
+                    val specialties = company.value?.companySpecialties ?: emptyList()
+
+                    if (specialties.isEmpty()) {
+                        // Show placeholder when no specialties are available
+                        Text(
+                            text = "No specialties added yet",
+                            fontSize = 14.sp,
+                            color = Color(0xFF9CA3AF),
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    } else {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            // Predefined gradient colors that cycle through
+                            val gradientColors = listOf(
+                                listOf(Color(0xFF6366F1), Color(0xFF8B5CF6)),
+                                listOf(Color(0xFF3B82F6), Color(0xFF2563EB)),
+                                listOf(Color(0xFFEC4899), Color(0xFFF43F5E)),
+                                listOf(Color(0xFF10B981), Color(0xFF059669)),
+                                listOf(Color(0xFFF59E0B), Color(0xFFEAB308)),
+                                listOf(Color(0xFF8B5CF6), Color(0xFFA855F7)),
+                                listOf(Color(0xFF06B6D4), Color(0xFF0891B2)),
+                                listOf(Color(0xFFEF4444), Color(0xFFDC2626)),
+                                listOf(Color(0xFF14B8A6), Color(0xFF0D9488)),
+                                listOf(Color(0xFFF97316), Color(0xFFEA580C))
+                            )
+
+                            specialties.forEachIndexed { index, specialty ->
+                                val gradient = gradientColors[index % gradientColors.size]
+                                GradientSpecialtyChip(text = specialty, gradient = gradient)
+                            }
                         }
                     }
                 }
@@ -1753,23 +1771,19 @@ fun EditCompanyProfileDialog(
     context: Context
 ) {
     var companyName by remember { mutableStateOf(company?.companyName ?: "") }
-    var tagline by remember { mutableStateOf("Leading Technology Solutions Provider") }
-    var aboutCompany by remember { mutableStateOf("Labish is a pioneering technology company dedicated to delivering innovative solutions that transform businesses. With a team of experienced professionals, we specialize in software development, cloud solutions, and digital transformation.") }
-    var industry by remember { mutableStateOf("Information Technology") }
+    var tagline by remember { mutableStateOf(company?.companyTagline ?: "") }
+    var aboutCompany by remember { mutableStateOf(company?.companyInformation?:"") }
+    var industry by remember { mutableStateOf(company?.companyIndustry ?: "") }
     var location by remember { mutableStateOf(company?.companyLocation ?: "") }
     var phone by remember { mutableStateOf(company?.companyContactNumber ?: "") }
     var email by remember { mutableStateOf(company?.companyEmail ?: "") }
-    var website by remember { mutableStateOf("www.labish.com") }
+    var website by remember { mutableStateOf(company?.companyWebsite ?: "") }
+    var founded by remember { mutableStateOf(company?.companyEstablishedDate ?: "") }
 
     // Core Specialties
     var specialties by remember {
         mutableStateOf(listOf(
-            "Software Development",
-            "Cloud Solutions",
-            "AI & ML",
-            "Mobile Apps",
-            "Web Development",
-            "Consulting"
+            *(company?.companySpecialties?.toTypedArray() ?: emptyArray())
         ))
     }
     var newSpecialty by remember { mutableStateOf("") }
@@ -1923,6 +1937,15 @@ fun EditCompanyProfileDialog(
                         enabled = true
                     )
 
+                    // Founded
+                    EditTextField(
+                        label = "Founded",
+                        value = founded,
+                        onValueChange = { founded = it },
+                        icon = Icons.Default.Done,
+                        enabled = true
+                    )
+
                     // Website
                     EditTextField(
                         label = "Website",
@@ -2036,14 +2059,26 @@ fun EditCompanyProfileDialog(
                             // Create updated company model
                             val updatedCompany = company?.copy(
                                 companyName = companyName,
+                                companyTagline = tagline,
+                                companyInformation = aboutCompany,
+                                companyIndustry = industry,
                                 companyLocation = location,
                                 companyContactNumber = phone,
-                                companyEmail = email
+                                companyEmail = email,
+                                companyEstablishedDate = founded,
+                                companyWebsite = website,
+                                companySpecialties = specialties
                             ) ?: CompanyModel(
                                 companyName = companyName,
+                                companyTagline = tagline,
+                                companyInformation = aboutCompany,
+                                companyIndustry = industry,
                                 companyLocation = location,
                                 companyContactNumber = phone,
-                                companyEmail = email
+                                companyEmail = email,
+                                companyEstablishedDate = founded,
+                                companyWebsite = website,
+                                companySpecialties = specialties
                             )
 
                             onSave(updatedCompany)
@@ -2190,5 +2225,13 @@ fun RemovableSpecialtyChip(
                     .clickable { onRemove() }
             )
         }
+    }
+}
+
+private fun formatNumber(count: Int): String {
+    return when {
+        count >= 1000000 -> "${String.format("%.1f", count / 1000000.0)}M"
+        count >= 1000 -> "${String.format("%.1f", count / 1000.0)}K"
+        else -> count.toString()
     }
 }
