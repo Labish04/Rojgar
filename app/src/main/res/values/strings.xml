@@ -18,4 +18,5 @@
     <string name="title_activity_create_group">CreateGroupActivity</string>
     <string name="title_activity_company_review">CompanyReviewActivity</string>
     <string name="title_activity_map">MapActivity</string>
+    <string name="title_activity_followers_list">FollowersListActivity</string>
 </resources>

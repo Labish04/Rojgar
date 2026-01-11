@@ -30,27 +30,27 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
-data class Follower(
+data class User(
     val id: Int,
     val name: String,
     val username: String,
     val bio: String,
-    var isFollowingBack: Boolean = false
+    var isFollowing: Boolean = true
 )
 
-class FollowersListActivity : ComponentActivity() {
+class FollowingListActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            FollowersListBody()
+            FollowingListBody()
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FollowersListBody() {
+fun FollowingListBody() {
     // Premium color palette
     val primaryBlue = Color(0xFF0EA5E9)
     val secondaryBlue = Color(0xFF38BDF8)
@@ -63,28 +63,28 @@ fun FollowersListBody() {
     var searchQuery by remember { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
 
-    val allFollowers = remember {
+    val allUsers = remember {
         listOf(
-            Follower(1, "Amit Khanna", "@amit_tech", "Software Engineer | Coding Enthusiast 💻", true),
-            Follower(2, "Sneha Iyer", "@sneha_design", "Graphic Designer | Creative Soul 🎨", false),
-            Follower(3, "Rahul Desai", "@rahul_builds", "Mobile Developer | Flutter Expert 📱", true),
-            Follower(4, "Kavya Nair", "@kavya_data", "Data Analyst | Machine Learning 🤖", false),
-            Follower(5, "Karan Malhotra", "@karan_web", "Frontend Developer | React Pro ⚛️", true),
-            Follower(6, "Anjali Kapoor", "@anjali_pm", "Product Manager | Tech Innovator 🚀", false),
-            Follower(7, "Manish Rao", "@manish_cloud", "Cloud Architect | AWS Certified ☁️", true),
-            Follower(8, "Riya Singh", "@riya_ux", "UX Researcher | User Advocate 🔍", false),
-            Follower(9, "Varun Sharma", "@varun_ios", "iOS Developer | Swift Enthusiast 🍎", true),
-            Follower(10, "Pooja Reddy", "@pooja_ai", "AI Engineer | Deep Learning Expert 🧠", false)
+            User(1, "Aisha Sharma", "@aisha_dev", "Android Developer | Tech Enthusiast ✨"),
+            User(2, "Rajesh Kumar", "@raj_designs", "UI/UX Designer | Creative Mind 🎨"),
+            User(3, "Priya Patel", "@priya_code", "Full Stack Developer | Open Source 💻"),
+            User(4, "Arjun Singh", "@arjun_tech", "Software Engineer | AI/ML 🤖"),
+            User(5, "Neha Gupta", "@neha_builds", "Mobile App Developer | Kotlin Lover 📱"),
+            User(6, "Vikram Joshi", "@vikram_dev", "Backend Engineer | Cloud Expert ☁️"),
+            User(7, "Sanya Reddy", "@sanya_creates", "Product Designer | Innovation 🚀"),
+            User(8, "Kabir Mehta", "@kabir_codes", "Frontend Developer | React Native 💙"),
+            User(9, "Diya Verma", "@diya_tech", "Data Scientist | Python Expert 📊"),
+            User(10, "Rohan Shah", "@rohan_builds", "DevOps Engineer | Kubernetes Pro ⚙️")
         )
     }
 
-    var followers by remember { mutableStateOf(allFollowers) }
+    var users by remember { mutableStateOf(allUsers) }
 
-    val filteredFollowers = remember(searchQuery, followers) {
+    val filteredUsers = remember(searchQuery, users) {
         if (searchQuery.isEmpty()) {
-            followers
+            users
         } else {
-            followers.filter {
+            users.filter {
                 it.name.contains(searchQuery, ignoreCase = true) ||
                         it.username.contains(searchQuery, ignoreCase = true) ||
                         it.bio.contains(searchQuery, ignoreCase = true)
@@ -106,12 +106,12 @@ fun FollowersListBody() {
                     ) { searching ->
                         if (!searching) {
                             Text(
-                                "Followers",
+                                "Following",
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
                             )
                         } else {
-                            FollowersSearchBar(
+                            SearchBar(
                                 query = searchQuery,
                                 onQueryChange = { searchQuery = it },
                                 onClear = { searchQuery = "" }
@@ -161,31 +161,32 @@ fun FollowersListBody() {
                 .padding(padding)
         ) {
             AnimatedContent(
-                targetState = filteredFollowers.isEmpty() && searchQuery.isNotEmpty(),
+                targetState = filteredUsers.isEmpty() && searchQuery.isNotEmpty(),
                 transitionSpec = {
                     fadeIn(tween(400)) togetherWith fadeOut(tween(400))
                 },
                 label = "emptyState"
             ) { isEmpty ->
                 if (isEmpty) {
-                    FollowersEmptySearchState()
+                    EmptySearchState()
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        itemsIndexed(filteredFollowers) { index, follower ->
-                            FollowerCard(
-                                follower = follower,
+                        itemsIndexed(filteredUsers) { index, user ->
+                            UserCard(
+                                user = user,
                                 index = index,
                                 primaryBlue = primaryBlue,
                                 secondaryBlue = secondaryBlue,
                                 accentBlue = accentBlue,
+                                darkBlue = darkBlue,
                                 cardBg = cardBg,
-                                onFollowBackToggle = {
-                                    followers = followers.map {
-                                        if (it.id == follower.id) it.copy(isFollowingBack = !it.isFollowingBack)
+                                onFollowToggle = {
+                                    users = users.map {
+                                        if (it.id == user.id) it.copy(isFollowing = !it.isFollowing)
                                         else it
                                     }
                                 }
@@ -198,9 +199,8 @@ fun FollowersListBody() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FollowersSearchBar(
+fun SearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onClear: () -> Unit
@@ -209,15 +209,14 @@ fun FollowersSearchBar(
         value = query,
         onValueChange = onQueryChange,
         modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text("Search followers...", color = Color.White.copy(alpha = 0.7f)) },
+        placeholder = { Text("Search users...", color = Color.White.copy(alpha = 0.7f)) },
         colors = TextFieldDefaults.colors(
             focusedTextColor = Color.White,
             unfocusedTextColor = Color.White,
             focusedContainerColor = Color.Transparent,
             unfocusedContainerColor = Color.Transparent,
             focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            cursorColor = Color.White
+            unfocusedIndicatorColor = Color.Transparent
         ),
         singleLine = true,
         trailingIcon = {
@@ -231,7 +230,7 @@ fun FollowersSearchBar(
 }
 
 @Composable
-fun FollowersEmptySearchState() {
+fun EmptySearchState() {
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -245,7 +244,7 @@ fun FollowersEmptySearchState() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "No followers found",
+            "No users found",
             style = MaterialTheme.typography.titleLarge,
             color = Color.Gray
         )
@@ -258,14 +257,15 @@ fun FollowersEmptySearchState() {
 }
 
 @Composable
-fun FollowerCard(
-    follower: Follower,
+fun UserCard(
+    user: User,
     index: Int,
     primaryBlue: Color,
     secondaryBlue: Color,
     accentBlue: Color,
+    darkBlue: Color,
     cardBg: Color,
-    onFollowBackToggle: () -> Unit
+    onFollowToggle: () -> Unit
 ) {
     var visible by remember { mutableStateOf(false) }
 
@@ -329,29 +329,29 @@ fun FollowerCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Enhanced Avatar
-                    FollowerEnhancedAvatar(primaryBlue, secondaryBlue, accentBlue, follower.name)
+                    EnhancedAvatar(primaryBlue, secondaryBlue, accentBlue, user.name)
 
                     Spacer(modifier = Modifier.width(16.dp))
 
-                    // Follower info
+                    // User info
                     Column(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = follower.name,
+                            text = user.name,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF1E293B)
                         )
                         Text(
-                            text = follower.username,
+                            text = user.username,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium,
                             color = primaryBlue
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = follower.bio,
+                            text = user.bio,
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color(0xFF64748B),
                             lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
@@ -360,11 +360,12 @@ fun FollowerCard(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // Follow Back button
-                    FollowBackButton(
-                        isFollowingBack = follower.isFollowingBack,
+                    // Enhanced Follow button
+                    EnhancedFollowButton(
+                        isFollowing = user.isFollowing,
                         primaryBlue = primaryBlue,
-                        onClick = onFollowBackToggle
+                        darkBlue = darkBlue,
+                        onClick = onFollowToggle
                     )
                 }
             }
@@ -373,12 +374,24 @@ fun FollowerCard(
 }
 
 @Composable
-fun FollowerEnhancedAvatar(
+fun EnhancedAvatar(
     primaryBlue: Color,
     secondaryBlue: Color,
     accentBlue: Color,
     name: String
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "avatar")
+
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(8000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
     Box(
         modifier = Modifier.size(70.dp),
         contentAlignment = Alignment.Center
@@ -431,9 +444,10 @@ fun FollowerEnhancedAvatar(
 }
 
 @Composable
-fun FollowBackButton(
-    isFollowingBack: Boolean,
+fun EnhancedFollowButton(
+    isFollowing: Boolean,
     primaryBlue: Color,
+    darkBlue: Color,
     onClick: () -> Unit
 ) {
     var clicked by remember { mutableStateOf(false) }
@@ -448,7 +462,7 @@ fun FollowBackButton(
     )
 
     val buttonColor by animateColorAsState(
-        targetValue = if (isFollowingBack) primaryBlue else Color(0xFFE2E8F0),
+        targetValue = if (isFollowing) primaryBlue else Color(0xFFE2E8F0),
         animationSpec = tween(300),
         label = "buttonColor"
     )
@@ -472,14 +486,14 @@ fun FollowBackButton(
             containerColor = buttonColor
         ),
         shape = RoundedCornerShape(14.dp),
-        contentPadding = PaddingValues(horizontal = 20.dp),
+        contentPadding = PaddingValues(horizontal = 24.dp),
         elevation = ButtonDefaults.buttonElevation(
             defaultElevation = 4.dp,
             pressedElevation = 2.dp
         )
     ) {
         AnimatedContent(
-            targetState = isFollowingBack,
+            targetState = isFollowing,
             transitionSpec = {
                 (fadeIn(tween(200)) + scaleIn(tween(200))) togetherWith
                         (fadeOut(tween(200)) + scaleOut(tween(200)))
@@ -487,10 +501,10 @@ fun FollowBackButton(
             label = "buttonText"
         ) { following ->
             Text(
-                text = if (following) "Following" else "Follow Back",
+                text = if (following) "Following" else "Follow",
                 fontWeight = FontWeight.Bold,
                 color = if (following) Color.White else primaryBlue,
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyLarge
             )
         }
     }
@@ -498,6 +512,6 @@ fun FollowBackButton(
 
 @Preview(showBackground = true)
 @Composable
-fun PreviewFollowersList() {
-    FollowersListBody()
+fun PreviewFollowingList() {
+    FollowingListBody()
 }
