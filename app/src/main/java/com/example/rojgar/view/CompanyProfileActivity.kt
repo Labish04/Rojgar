@@ -31,7 +31,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -54,6 +53,8 @@ import com.example.rojgar.viewmodel.FollowViewModel
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.graphics.graphicsLayer
 
 class CompanyProfileActivity : ComponentActivity() {
     lateinit var imageUtils: ImageUtils
@@ -121,52 +122,62 @@ fun CompanyProfileBody(
     onPickCoverImage: () -> Unit,
     onPickProfileImage: () -> Unit
 ) {
+    // 1. Context and Activity
     val context = LocalContext.current
     val activity = context as Activity
+
+    // 2. Repositories (initialize first)
+    val repository = remember { CompanyRepoImpl() }
+    val jobSeekerRepository = remember { JobSeekerRepoImpl() }
+
+    // 3. ViewModels
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
     val followViewModel = remember { FollowViewModel(FollowRepoImpl()) }
 
+    // 4. LiveData observers from ViewModels
     val company = companyViewModel.companyDetails.observeAsState(initial = null)
     val isFollowingState by followViewModel.isFollowing.observeAsState(initial = false)
-
     val followersCountState by followViewModel.followersCount.observeAsState(initial = 0)
     val followingCountState by followViewModel.followingCount.observeAsState(initial = 0)
+    val followersList by followViewModel.followers.observeAsState(initial = emptyList())
 
-    val currentCompany = remember { CompanyRepoImpl().getCurrentCompany() }
-    val currentJobSeeker = remember { JobSeekerRepoImpl().getCurrentJobSeeker() }
+    // 5. Current User identification (JobSeeker checked FIRST)
+    val currentJobSeeker = remember { jobSeekerRepository.getCurrentJobSeeker() }
+    val currentCompany = remember {
+        if (currentJobSeeker == null) repository.getCurrentCompany() else null
+    }
 
-    var isFollowing by remember { mutableStateOf(false) }
+    // 6. Current User ID (JobSeeker checked FIRST)
+    val currentUserId = remember {
+        if (currentJobSeeker != null) currentJobSeeker.uid
+        else if (currentCompany != null) currentCompany.uid
+        else ""
+    }
+
+    // 7. Current User Type (JobSeeker checked FIRST)
+    val currentUserType = remember {
+        when {
+            currentJobSeeker != null -> "JobSeeker"
+            currentCompany != null -> "Company"
+            else -> ""
+        }
+    }
+
+    // 8. Upload state variables
     var isUploadingCover by remember { mutableStateOf(false) }
     var isUploadingProfile by remember { mutableStateOf(false) }
 
-    // Track displayed URLs
+    // 9. Display URL tracking
     var displayedCoverUrl by remember { mutableStateOf("") }
     var displayedProfileUrl by remember { mutableStateOf("") }
 
+    // 10. UI state variables (dialogs, drawers)
     var isDrawerOpen by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showConfirmPasswordDialog by remember { mutableStateOf(false) }
-
     var showEditProfileDialog by remember { mutableStateOf(false) }
-
-    val repository = remember { CompanyRepoImpl() }
-    val jobSeekerRepository = remember { JobSeekerRepoImpl() }
-
-    val currentUserId = remember {
-        if (currentCompany != null) currentCompany.uid
-        else if (currentJobSeeker != null) currentJobSeeker.uid
-        else ""
-    }
-
-    val currentUserType = remember {
-        when {
-            currentCompany != null -> "Company"
-            currentJobSeeker != null -> "JobSeeker"
-            else -> ""
-        }
-    }
 
     fun shareCompanyProfile(context: Context, company: CompanyModel?) {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -282,6 +293,8 @@ fun CompanyProfileBody(
                 // Always load followers and following counts
                 followViewModel.getFollowersCount(profileIdToLoad)
                 followViewModel.getFollowingCount(profileIdToLoad)
+                // Load followers list
+                followViewModel.getFollowers(profileIdToLoad)
             }
         }
     }
@@ -628,7 +641,16 @@ fun CompanyProfileBody(
                             formatNumber(followersCountState)
                         },
                         icon = Icons.Default.Face,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                // Open followers list activity
+                                val intent = Intent(context, FollowersListActivity::class.java)
+                                intent.putExtra("USER_ID", if (isOwnProfile) company.value?.companyId ?: "" else companyId)
+                                intent.putExtra("USER_TYPE", "Company")
+                                intent.putExtra("IS_OWN_PROFILE", isOwnProfile)
+                                context.startActivity(intent)
+                            }
                     )
                     EnhancedStatCard(
                         label = "Following",

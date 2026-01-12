@@ -3,6 +3,8 @@ package com.example.rojgar.view
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -15,9 +17,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,17 +29,35 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.example.rojgar.R
+import com.example.rojgar.model.CompanyModel
+import com.example.rojgar.model.JobSeekerModel
+import com.example.rojgar.repository.CompanyRepoImpl
+import com.example.rojgar.repository.FollowRepoImpl
+import com.example.rojgar.repository.JobSeekerRepoImpl
+import com.example.rojgar.viewmodel.CompanyViewModel
+import com.example.rojgar.viewmodel.FollowViewModel
+import com.example.rojgar.viewmodel.FollowViewModelFactory
+import com.example.rojgar.viewmodel.JobSeekerViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
-data class Follower(
-    val id: Int,
+data class FollowerUi(
+    val id: String,
     val name: String,
-    val username: String,
-    val bio: String,
-    var isFollowingBack: Boolean = false
+    val profession: String,
+    val followerType: String,
+    val profileImageUrl: String?,
+    var isFollowingBack: Boolean = false,
+    val isLoaded: Boolean = true  // Track if data is loaded
 )
 
 class FollowersListActivity : ComponentActivity() {
@@ -51,11 +73,15 @@ class FollowersListActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FollowersListBody() {
+    val context = LocalContext.current
+    val followViewModel: FollowViewModel = viewModel(factory = FollowViewModelFactory(FollowRepoImpl()))
+    val jobSeekerRepo = remember { JobSeekerRepoImpl() }
+    val companyRepo = remember { CompanyRepoImpl() }
+
     // Premium color palette
     val primaryBlue = Color(0xFF0EA5E9)
     val secondaryBlue = Color(0xFF38BDF8)
     val accentBlue = Color(0xFF7DD3FC)
-    val darkBlue = Color(0xFF0284C7)
     val bgGradientStart = Color(0xFFF0F9FF)
     val bgGradientEnd = Color(0xFFE0F2FE)
     val cardBg = Color(0xFFFFFFFF)
@@ -63,31 +89,129 @@ fun FollowersListBody() {
     var searchQuery by remember { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
 
-    val allFollowers = remember {
-        listOf(
-            Follower(1, "Amit Khanna", "@amit_tech", "Software Engineer | Coding Enthusiast 💻", true),
-            Follower(2, "Sneha Iyer", "@sneha_design", "Graphic Designer | Creative Soul 🎨", false),
-            Follower(3, "Rahul Desai", "@rahul_builds", "Mobile Developer | Flutter Expert 📱", true),
-            Follower(4, "Kavya Nair", "@kavya_data", "Data Analyst | Machine Learning 🤖", false),
-            Follower(5, "Karan Malhotra", "@karan_web", "Frontend Developer | React Pro ⚛️", true),
-            Follower(6, "Anjali Kapoor", "@anjali_pm", "Product Manager | Tech Innovator 🚀", false),
-            Follower(7, "Manish Rao", "@manish_cloud", "Cloud Architect | AWS Certified ☁️", true),
-            Follower(8, "Riya Singh", "@riya_ux", "UX Researcher | User Advocate 🔍", false),
-            Follower(9, "Varun Sharma", "@varun_ios", "iOS Developer | Swift Enthusiast 🍎", true),
-            Follower(10, "Pooja Reddy", "@pooja_ai", "AI Engineer | Deep Learning Expert 🧠", false)
-        )
+    // Get intent extras
+    val activity = context as? ComponentActivity
+    val userId = activity?.intent?.getStringExtra("USER_ID") ?: ""
+    val userType = activity?.intent?.getStringExtra("USER_TYPE") ?: "Company"
+    val isOwnProfile = activity?.intent?.getBooleanExtra("IS_OWN_PROFILE", false) ?: false
+
+    // Using mutableStateListOf for reactive updates
+    var followerDetails by remember { mutableStateOf<List<FollowerUi>>(emptyList()) }
+    var isLoadingDetails by remember { mutableStateOf(false) }
+
+    // Load followers
+    LaunchedEffect(userId) {
+        if (userId.isNotEmpty()) {
+            followViewModel.getFollowers(userId)
+        }
     }
 
-    var followers by remember { mutableStateOf(allFollowers) }
+    val followersList by followViewModel.followers.observeAsState(initial = emptyList())
+    val loadingState by followViewModel.loading.observeAsState(initial = false)
 
-    val filteredFollowers = remember(searchQuery, followers) {
+    // Fetch details for each follower - FIXED VERSION
+    LaunchedEffect(followersList) {
+        if (followersList.isEmpty()) {
+            followerDetails = emptyList()
+            return@LaunchedEffect
+        }
+
+        isLoadingDetails = true
+        val loadedFollowers = mutableListOf<FollowerUi>()
+        var loadedCount = 0
+        val totalCount = followersList.size
+
+        android.util.Log.d("FollowersList", "Starting to load ${followersList.size} followers")
+
+        followersList.forEach { follow ->
+            android.util.Log.d("FollowersList", "Processing follower - ID: ${follow.followerId}, Type: ${follow.followerType}")
+            if (follow.followerType == "JobSeeker") {
+                jobSeekerRepo.getJobSeekerById(follow.followerId) { success, _, model ->
+                    if (success && model != null) {
+                        loadedFollowers.add(FollowerUi(
+                            id = follow.followerId,
+                            name = model.fullName.takeIf { !it.isNullOrBlank() } ?: "Job Seeker",
+                            profession = model.profession?.takeIf { it.isNotBlank() }
+                                ?: model.profession?.takeIf { it.isNotBlank() }
+                                ?: "Looking for opportunities",
+                            followerType = follow.followerType,
+                            profileImageUrl = model.profilePhoto?.takeIf { it.isNotBlank() },
+                            isFollowingBack = false,
+                            isLoaded = true
+                        ))
+                    } else {
+                        // Add placeholder for failed load
+                        loadedFollowers.add(FollowerUi(
+                            id = follow.followerId,
+                            name = "Job Seeker",
+                            profession = "Profile unavailable",
+                            followerType = follow.followerType,
+                            profileImageUrl = null,
+                            isFollowingBack = false,
+                            isLoaded = true
+                        ))
+                    }
+
+                    loadedCount++
+                    if (loadedCount == totalCount) {
+                        followerDetails = loadedFollowers.sortedBy { it.name }
+                        isLoadingDetails = false
+                    }
+                }
+            } else if (follow.followerType == "Company") {
+                companyRepo.getCompanyById(follow.followerId) { success, message, model ->
+                    android.util.Log.d("FollowersList", "Company fetch - ID: ${follow.followerId}, Success: $success, Message: $message, Model: $model")
+
+                    if (success && model != null) {
+                        loadedFollowers.add(FollowerUi(
+                            id = follow.followerId,
+                            name = model.companyName.takeIf { !it.isNullOrBlank() } ?: "Company",
+                            profession = model.companyTagline?.takeIf { it.isNotBlank() }
+                                ?: model.companyLocation?.takeIf { it.isNotBlank() }
+                                ?: model.companyIndustry?.takeIf { it.isNotBlank() }
+                                ?: "Company",
+                            followerType = follow.followerType,
+                            profileImageUrl = model.companyProfileImage?.takeIf { it.isNotBlank() },
+                            isFollowingBack = false,
+                            isLoaded = true
+                        ))
+                    } else {
+                        // Add placeholder for failed load with error details
+                        loadedFollowers.add(FollowerUi(
+                            id = follow.followerId,
+                            name = "Company",
+                            profession = "Profile unavailable${if (message.isNotEmpty()) ": $message" else ""}",
+                            followerType = follow.followerType,
+                            profileImageUrl = null,
+                            isFollowingBack = false,
+                            isLoaded = true
+                        ))
+                    }
+
+                    loadedCount++
+                    if (loadedCount == totalCount) {
+                        followerDetails = loadedFollowers.sortedBy { it.name }
+                        isLoadingDetails = false
+                    }
+                }
+            } else {
+                // Unknown follower type
+                loadedCount++
+                if (loadedCount == totalCount) {
+                    followerDetails = loadedFollowers.sortedBy { it.name }
+                    isLoadingDetails = false
+                }
+            }
+        }
+    }
+
+    val filteredFollowers = remember(searchQuery, followerDetails) {
         if (searchQuery.isEmpty()) {
-            followers
+            followerDetails
         } else {
-            followers.filter {
+            followerDetails.filter {
                 it.name.contains(searchQuery, ignoreCase = true) ||
-                        it.username.contains(searchQuery, ignoreCase = true) ||
-                        it.bio.contains(searchQuery, ignoreCase = true)
+                        it.profession.contains(searchQuery, ignoreCase = true)
             }
         }
     }
@@ -120,7 +244,7 @@ fun FollowersListBody() {
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { }) {
+                    IconButton(onClick = { (context as? ComponentActivity)?.finish() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -160,16 +284,33 @@ fun FollowersListBody() {
                 )
                 .padding(padding)
         ) {
-            AnimatedContent(
-                targetState = filteredFollowers.isEmpty() && searchQuery.isNotEmpty(),
-                transitionSpec = {
-                    fadeIn(tween(400)) togetherWith fadeOut(tween(400))
-                },
-                label = "emptyState"
-            ) { isEmpty ->
-                if (isEmpty) {
+            when {
+                loadingState || isLoadingDetails -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(color = primaryBlue)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "Loading followers...",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+                filteredFollowers.isEmpty() && searchQuery.isNotEmpty() -> {
                     FollowersEmptySearchState()
-                } else {
+                }
+                filteredFollowers.isEmpty() -> {
+                    FollowersEmptyState()
+                }
+                else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
@@ -184,10 +325,7 @@ fun FollowersListBody() {
                                 accentBlue = accentBlue,
                                 cardBg = cardBg,
                                 onFollowBackToggle = {
-                                    followers = followers.map {
-                                        if (it.id == follower.id) it.copy(isFollowingBack = !it.isFollowingBack)
-                                        else it
-                                    }
+                                    // TODO: Implement follow back logic
                                 }
                             )
                         }
@@ -258,8 +396,35 @@ fun FollowersEmptySearchState() {
 }
 
 @Composable
+fun FollowersEmptyState() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            Icons.Default.Person,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = Color.LightGray
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            "No followers yet",
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.Gray
+        )
+        Text(
+            "When someone follows this profile, they'll appear here",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.LightGray
+        )
+    }
+}
+
+@Composable
 fun FollowerCard(
-    follower: Follower,
+    follower: FollowerUi,
     index: Int,
     primaryBlue: Color,
     secondaryBlue: Color,
@@ -329,7 +494,14 @@ fun FollowerCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Enhanced Avatar
-                    FollowerEnhancedAvatar(primaryBlue, secondaryBlue, accentBlue, follower.name)
+                    FollowerEnhancedAvatar(
+                        primaryBlue = primaryBlue,
+                        secondaryBlue = secondaryBlue,
+                        accentBlue = accentBlue,
+                        name = follower.name,
+                        profileImageUrl = follower.profileImageUrl,
+                        followerType = follower.followerType
+                    )
 
                     Spacer(modifier = Modifier.width(16.dp))
 
@@ -343,29 +515,25 @@ fun FollowerCard(
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF1E293B)
                         )
-                        Text(
-                            text = follower.username,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
-                            color = primaryBlue
-                        )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = follower.bio,
+                            text = follower.profession,
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color(0xFF64748B),
-                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
+                            lineHeight = 20.sp,
+                            maxLines = 2
                         )
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // Follow Back button
-                    FollowBackButton(
-                        isFollowingBack = follower.isFollowingBack,
-                        primaryBlue = primaryBlue,
-                        onClick = onFollowBackToggle
-                    )
+                    Button(
+                        onClick = onFollowBackToggle,
+                        colors = ButtonDefaults.buttonColors(containerColor = primaryBlue),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("View")
+                    }
                 }
             }
         }
@@ -377,7 +545,9 @@ fun FollowerEnhancedAvatar(
     primaryBlue: Color,
     secondaryBlue: Color,
     accentBlue: Color,
-    name: String
+    name: String,
+    profileImageUrl: String?,
+    followerType: String
 ) {
     Box(
         modifier = Modifier.size(70.dp),
@@ -408,90 +578,35 @@ fun FollowerEnhancedAvatar(
                 .background(Color.White),
             contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(primaryBlue, secondaryBlue)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = name.first().toString().uppercase(),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+            if (!profileImageUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = profileImageUrl,
+                    contentDescription = name,
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(primaryBlue, secondaryBlue)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (name.isNotEmpty()) name.first().toString().uppercase() else "?",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
             }
-        }
-    }
-}
-
-@Composable
-fun FollowBackButton(
-    isFollowingBack: Boolean,
-    primaryBlue: Color,
-    onClick: () -> Unit
-) {
-    var clicked by remember { mutableStateOf(false) }
-
-    val scale by animateFloatAsState(
-        targetValue = if (clicked) 0.85f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessHigh
-        ),
-        label = "buttonScale"
-    )
-
-    val buttonColor by animateColorAsState(
-        targetValue = if (isFollowingBack) primaryBlue else Color(0xFFE2E8F0),
-        animationSpec = tween(300),
-        label = "buttonColor"
-    )
-
-    LaunchedEffect(clicked) {
-        if (clicked) {
-            delay(150)
-            clicked = false
-        }
-    }
-
-    Button(
-        onClick = {
-            clicked = true
-            onClick()
-        },
-        modifier = Modifier
-            .scale(scale)
-            .height(44.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = buttonColor
-        ),
-        shape = RoundedCornerShape(14.dp),
-        contentPadding = PaddingValues(horizontal = 20.dp),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 4.dp,
-            pressedElevation = 2.dp
-        )
-    ) {
-        AnimatedContent(
-            targetState = isFollowingBack,
-            transitionSpec = {
-                (fadeIn(tween(200)) + scaleIn(tween(200))) togetherWith
-                        (fadeOut(tween(200)) + scaleOut(tween(200)))
-            },
-            label = "buttonText"
-        ) { following ->
-            Text(
-                text = if (following) "Following" else "Follow Back",
-                fontWeight = FontWeight.Bold,
-                color = if (following) Color.White else primaryBlue,
-                style = MaterialTheme.typography.bodyMedium
-            )
         }
     }
 }
