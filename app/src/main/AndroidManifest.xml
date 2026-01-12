@@ -28,6 +28,17 @@
         tools:replace="android:fullBackupContent"
         tools:targetApi="31">
         <activity
+            android:name=".view.CompanyHelpAndSupportActivity"
+            android:exported="true"
+            android:label="@string/title_activity_company_help_and_support"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".view.NotificationActivity"
             android:exported="true"
             android:label="@string/title_activity_company_review"
@@ -48,8 +59,7 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-        <!-- ZEGO configuration -->
+        </activity> <!-- ZEGO configuration -->
         <meta-data
             android:name="im.zego.zim.enable_optimize_quality"
             android:value="false" />
