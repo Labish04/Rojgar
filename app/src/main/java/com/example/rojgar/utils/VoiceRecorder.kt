@@ -13,7 +13,6 @@ class VoiceRecorder(private val context: Context) {
 
     fun startRecording(onError: (String) -> Unit): File? {
         try {
-            // Create output file
             val fileName = "voice_${System.currentTimeMillis()}.m4a"
             outputFile = File(context.cacheDir, fileName)
 

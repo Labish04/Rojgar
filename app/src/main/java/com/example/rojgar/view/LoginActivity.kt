@@ -80,8 +80,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.animation.animateColorAsState
+
 
 class LoginActivity : ComponentActivity() {
 
@@ -213,7 +212,7 @@ class LoginActivity : ComponentActivity() {
 
     private fun createNewCompanyAccount(uid: String, email: String, fullName: String, photoUrl: String) {
         val database = FirebaseDatabase.getInstance()
-        val companyRef = database.getReference("Companies").child(uid)
+        val companyRef = database.getReference("Companys").child(uid)
 
         val companyName = if (fullName.isNotEmpty()) fullName else email.substringBefore("@")
         val companyData = hashMapOf(

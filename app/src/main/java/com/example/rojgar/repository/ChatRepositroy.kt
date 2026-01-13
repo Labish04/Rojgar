@@ -1,8 +1,11 @@
 // File: ChatRepository.kt
 package com.example.rojgar.repository
 
+import android.content.Context
+import android.net.Uri
 import com.example.rojgar.model.ChatMessage
 import com.example.rojgar.model.ChatRoom
+import java.io.File
 
 interface ChatRepository {
     // Chat Room Operations
@@ -74,4 +77,23 @@ interface ChatRepository {
         chatId: String,
         onTypingStatusChanged: (String, Boolean) -> Unit
     )
+
+    fun uploadVoiceMessage(
+        audioFile: File,
+        onProgress: (Double) -> Unit,
+        onSuccess: (String) -> Unit,
+        onFailure: (String) -> Unit
+    )
+
+    fun getVoiceMessageDuration(audioFile: File): Long
+
+    fun uploadMediaFile(
+        context: Context,
+        mediaUri: Uri,
+        mediaType: String, // "image", "video", "document"
+        onProgress: (Double) -> Unit,
+        onSuccess: (String) -> Unit,
+        onFailure: (String) -> Unit
+    )
+
 }
