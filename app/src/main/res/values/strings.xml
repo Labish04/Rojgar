@@ -19,4 +19,5 @@
     <string name="title_activity_company_review">CompanyReviewActivity</string>
     <string name="title_activity_map">MapActivity</string>
     <string name="title_activity_followers_list">FollowersListActivity</string>
+    <string name="title_activity_admin_dashboard">AdminDashboardActivity</string>
 </resources>

@@ -15,8 +15,8 @@ class ChatViewModel(private val chatRepository: ChatRepository) : ViewModel() {
     private val _chatRooms = MutableLiveData<List<ChatRoom>>()
     val chatRooms: LiveData<List<ChatRoom>> = _chatRooms
 
-    private val _messages = MutableLiveData<List<ChatMessage>>()
-    val messages: LiveData<List<ChatMessage>> = _messages
+    private val _messages = MutableLiveData<List<ChatMessage>?>()
+    val messages: LiveData<List<ChatMessage>> = _messages as LiveData<List<ChatMessage>>
 
     private val _currentChatRoom = MutableLiveData<ChatRoom?>(null)
     val currentChatRoom: LiveData<ChatRoom?> = _currentChatRoom
