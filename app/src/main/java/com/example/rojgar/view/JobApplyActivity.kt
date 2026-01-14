@@ -76,7 +76,7 @@ fun JobApplyBody(postId: String, companyId: String) {
     var userName by remember { mutableStateOf("") }
     var userPhone by remember { mutableStateOf("") }
     var userProfile by remember { mutableStateOf("") }
-
+    val companies = companyViewModel.companyDetails.observeAsState(initial = null)
     // Get current user from Firebase Auth
     val currentUser = FirebaseAuth.getInstance().currentUser
 
@@ -361,11 +361,12 @@ fun JobDescriptionContent(jobPost: JobModel) {
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        jobPost.categories.take(3).forEach { category ->
+                        jobPost.categories.forEach { category ->
                             Surface(
                                 shape = RoundedCornerShape(20.dp),
                                 color = Color(0xFF00BCD4).copy(alpha = 0.1f)
@@ -691,32 +692,401 @@ fun AboutCompanyContent(company: CompanyModel?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                if (company == null) {
-                    Text("Company information not available", color = Color.Gray)
-                } else {
+        if (company == null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(40.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "🏢", fontSize = 48.sp)
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "About ${company.companyName}",
-                        fontSize = 20.sp,
+                        text = "Company Not Found",
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Company details will be displayed here",
+                        text = "Company information is not available",
                         fontSize = 14.sp,
                         color = Color.Gray
                     )
                 }
             }
+        } else {
+            // Company Header Card with Logo and Cover
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    // Cover Photo Background
+                    if (company.companyCoverPhoto.isNotEmpty()) {
+                        Image(
+                            painter = rememberAsyncImagePainter(company.companyCoverPhoto),
+                            contentDescription = "Company Cover",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp)
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color(0xFF00BCD4),
+                                            Color(0xFF00ACC1)
+                                        )
+                                    )
+                                )
+                        )
+                    }
+
+                    // Company Logo and Name
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 70.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Logo with border
+                        Surface(
+                            modifier = Modifier.size(100.dp),
+                            shape = CircleShape,
+                            color = Color.White,
+                            shadowElevation = 8.dp
+                        ) {
+                            if (company.companyProfileImage.isNotEmpty()) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(company.companyProfileImage),
+                                    contentDescription = "Company Logo",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(4.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = company.companyName.firstOrNull()?.toString() ?: "C",
+                                        fontSize = 36.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF00BCD4)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Company Name
+                        Text(
+                            text = company.companyName,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+
+                        // Company Tagline
+                        if (company.companyTagline.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = company.companyTagline,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(horizontal = 24.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+                    }
+                }
+            }
+
+            // Company Information Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFF00BCD4).copy(alpha = 0.1f),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(text = "ℹ️", fontSize = 20.sp)
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "About Company",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Divider(color = Color(0xFFE0E0E0), thickness = 1.dp)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = company.companyInformation.ifEmpty { "No information available" },
+                        fontSize = 14.sp,
+                        color = Color.DarkGray,
+                        lineHeight = 22.sp
+                    )
+                }
+            }
+
+            // Company Details Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (company.companyIndustry.isNotEmpty()) {
+                    InfoCard(
+                        modifier = Modifier.weight(1f),
+                        label = "INDUSTRY",
+                        value = company.companyIndustry,
+                        icon = R.drawable.jobcategoryicon,
+                        backgroundColor = Color(0xFFE3F2FD),
+                        iconTint = Color(0xFF2196F3)
+                    )
+                }
+                if (company.companyEstablishedDate.isNotEmpty()) {
+                    InfoCard(
+                        modifier = Modifier.weight(1f),
+                        label = "ESTABLISHED",
+                        value = company.companyEstablishedDate,
+                        icon = R.drawable.experience_filled,
+                        backgroundColor = Color(0xFFFFF3E0),
+                        iconTint = Color(0xFFFF9800)
+                    )
+                }
+            }
+
+            // Location Card
+            if (company.companyLocation.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                            modifier = Modifier.size(50.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(text = "📍", fontSize = 24.sp)
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "LOCATION",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Gray,
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = company.companyLocation,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Contact Information Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFF9C27B0).copy(alpha = 0.1f),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(text = "📞", fontSize = 20.sp)
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Contact Information",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Divider(color = Color(0xFFE0E0E0), thickness = 1.dp)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Email
+                    if (company.companyEmail.isNotEmpty()) {
+                        ContactInfoRow(
+                            icon = "✉️",
+                            label = "Email",
+                            value = company.companyEmail
+                        )
+                    }
+
+                    // Phone
+                    if (company.companyContactNumber.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        ContactInfoRow(
+                            icon = "📱",
+                            label = "Phone",
+                            value = company.companyContactNumber
+                        )
+                    }
+
+                    // Website
+                    if (company.companyWebsite.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        ContactInfoRow(
+                            icon = "🌐",
+                            label = "Website",
+                            value = company.companyWebsite
+                        )
+                    }
+                }
+            }
+
+            // Specialties Card
+            if (company.companySpecialties.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = CircleShape,
+                                color = Color(0xFFFF9800).copy(alpha = 0.1f),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.skills_filledicon),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = Color(0xFFFF9800)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Specialties",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Divider(color = Color(0xFFE0E0E0), thickness = 1.dp)
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            company.companySpecialties.forEach { specialty ->
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color(0xFFFF9800).copy(alpha = 0.1f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(text = "•", fontSize = 16.sp, color = Color(0xFFFF9800))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = specialty,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color.Black
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ContactInfoRow(icon: String, label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = icon,
+            fontSize = 20.sp,
+            modifier = Modifier.size(32.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = value,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.Black
+            )
         }
     }
 }
@@ -793,3 +1163,4 @@ fun ApplyNowButton(onApplyClick: () -> Unit) {
 fun JobApplyPreview() {
     JobApplyBody(postId = "", companyId = "")
 }
+
