@@ -457,7 +457,21 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                     count = followersCount,
                     label = "Followers",
                     onClick = {
-                        Toast.makeText(context, "Followers: $followersCount", Toast.LENGTH_SHORT).show()
+                        val profileIdToLoad = if (finalTargetJobSeekerId.isNotEmpty()) {
+                            finalTargetJobSeekerId
+                        } else {
+                            currentUserId
+                        }
+
+                        if (profileIdToLoad.isNotEmpty()) {
+                            val intent = Intent(context, FollowersListActivity::class.java)
+                            intent.putExtra("USER_ID", profileIdToLoad)
+                            intent.putExtra("USER_TYPE", "JobSeeker")
+                            intent.putExtra("IS_OWN_PROFILE", isOwnProfile)
+                            context.startActivity(intent)
+                        } else {
+                            Toast.makeText(context, "Unable to load followers", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 )
 
@@ -465,7 +479,21 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                     count = followingCount,
                     label = "Following",
                     onClick = {
-                        Toast.makeText(context, "Following: $followingCount", Toast.LENGTH_SHORT).show()
+                        val profileIdToLoad = if (finalTargetJobSeekerId.isNotEmpty()) {
+                            finalTargetJobSeekerId
+                        } else {
+                            currentUserId
+                        }
+
+                        if (profileIdToLoad.isNotEmpty()) {
+                            val intent = Intent(context, FollowingListActivity::class.java)
+                            intent.putExtra("USER_ID", profileIdToLoad)
+                            intent.putExtra("USER_TYPE", "JobSeeker")
+                            intent.putExtra("IS_OWN_PROFILE", isOwnProfile)
+                            context.startActivity(intent)
+                        } else {
+                            Toast.makeText(context, "Unable to load followers", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 )
 

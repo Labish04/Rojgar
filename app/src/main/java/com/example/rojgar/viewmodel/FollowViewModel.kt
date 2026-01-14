@@ -36,6 +36,19 @@ class FollowViewModel(private val followRepo: FollowRepo) : ViewModel() {
         }
     }
 
+    // NEW METHOD: Check follow status with callback (for multiple checks)
+    fun isFollowing(
+        followerId: String,
+        followingId: String,
+        callback: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            followRepo.isFollowing(followerId, followingId) { isFollowing ->
+                callback(isFollowing)
+            }
+        }
+    }
+
     fun follow(
         followerId: String,
         followerType: String,
