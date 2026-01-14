@@ -22,6 +22,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.model.*
@@ -670,6 +671,16 @@ fun AnimatedConversionFunnel(metrics: ConversionMetrics) {
                 delay = 200
             )
 
+            // Rejected stage
+            FunnelStage(
+                label = "Rejected",
+                value = metrics.totalRejected,
+                total = metrics.totalApplications,
+                percentage = if (metrics.totalApplications > 0) (metrics.totalRejected.toFloat() / metrics.totalApplications * 100) else 0f,
+                color = DangerRed,
+                delay = 300
+            )
+
             FunnelStage(
                 label = "Hired",
                 value = metrics.totalHired,
@@ -689,16 +700,32 @@ fun AnimatedConversionFunnel(metrics: ConversionMetrics) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                ConversionRateCard(
-                    label = "Shortlist Rate",
-                    percentage = metrics.shortlistRate,
-                    color = InfoCyan
-                )
-                ConversionRateCard(
-                    label = "Hire Rate",
-                    percentage = metrics.conversionRate,
-                    color = SuccessGreen
-                )
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Box(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        ConversionRateCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            label = "Shortlist Rate",
+                            percentage = metrics.shortlistRate,
+                            color = InfoCyan
+                        )
+                    }
+                    Box(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                        ConversionRateCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            label = "Hire Rate",
+                            percentage = metrics.conversionRate,
+                            color = SuccessGreen
+                        )
+                    }
+                    Box(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+                        ConversionRateCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            label = "Rejection Rate",
+                            percentage = if (metrics.totalApplications > 0) (metrics.totalRejected.toFloat() / metrics.totalApplications * 100) else 0f,
+                            color = DangerRed
+                        )
+                    }
+                }
             }
         }
     }
@@ -777,29 +804,38 @@ fun FunnelStage(
 }
 
 @Composable
-fun ConversionRateCard(label: String, percentage: Float, color: Color) {
+fun ConversionRateCard(
+    modifier: Modifier = Modifier,
+    label: String,
+    percentage: Float,
+    color: Color
+) {
     Card(
-        modifier = Modifier.width(140.dp),
+        modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = CardBgLight)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
                 text = "%.1f%%".format(percentage),
-                fontSize = 28.sp,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = color
+                color = color,
+                textAlign = TextAlign.Center,
+                maxLines = 1
             )
             Text(
                 text = label,
                 fontSize = 12.sp,
-                color = TextSecondary
+                color = TextSecondary,
+                textAlign = TextAlign.Center,
+                maxLines = 1
             )
         }
     }
@@ -1079,10 +1115,15 @@ fun DetailedJobPerformanceSection(jobs: List<JobAnalyticsMetrics>) {
 
 @Composable
 fun DetailedJobCard(job: JobAnalyticsMetrics) {
+    // determine if job deadline expired to tint the card
+    val daysLeftCountForCard = parseDaysLeft(job.deadline)
+    val isExpiredCard = daysLeftCountForCard != null && daysLeftCountForCard < 0
+    val cardContainer = if (isExpiredCard) DangerRed.copy(alpha = 0.06f) else CardBg
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        colors = CardDefaults.cardColors(containerColor = cardContainer)
     ) {
         Column(
             modifier = Modifier
@@ -1128,32 +1169,54 @@ fun DetailedJobCard(job: JobAnalyticsMetrics) {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                JobMetricItem(
-                    label = "Applications",
-                    value = job.totalApplications.toString(),
-                    icon = "📨",
-                    color = PrimaryBlue
-                )
-                JobMetricItem(
-                    label = "Shortlisted",
-                    value = job.shortlisted.toString(),
-                    icon = "⭐",
-                    color = InfoCyan
-                )
-                JobMetricItem(
-                    label = "Hired",
-                    value = job.hired.toString(),
-                    icon = "✅",
-                    color = SuccessGreen
-                )
-                JobMetricItem(
-                    label = "Time",
-                    value = getDaysLeft(job.deadline),
-                    icon = "⏱️",
-                    color = WarningOrange
-                )
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    JobMetricItem(
+                        label = "Applications",
+                        value = job.totalApplications.toString(),
+                        icon = "📨",
+                        color = PrimaryBlue
+                    )
+                }
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    JobMetricItem(
+                        label = "Shortlisted",
+                        value = job.shortlisted.toString(),
+                        icon = "⭐",
+                        color = InfoCyan
+                    )
+                }
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    JobMetricItem(
+                        label = "Rejected",
+                        value = job.rejected.toString(),
+                        icon = "❌",
+                        color = DangerRed
+                    )
+                }
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    JobMetricItem(
+                        label = "Hired",
+                        value = job.hired.toString(),
+                        icon = "✅",
+                        color = SuccessGreen
+                    )
+                }
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    val daysLeftCount = parseDaysLeft(job.deadline)
+                    val daysLeftValue = when {
+                        daysLeftCount == null -> "N/A"
+                        daysLeftCount < 0 -> "Expired"
+                        else -> daysLeftCount.toString()
+                    }
+                    JobMetricItem(
+                        label = "Days left",
+                        value = daysLeftValue,
+                        icon = "📅",
+                        color = WarningOrange
+                    )
+                }
             }
         }
     }
@@ -1168,8 +1231,9 @@ fun JobMetricItem(
     subtitle: String? = null
 ) {
     Column(
+        modifier = Modifier.height(72.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.Center
     ) {
         Box(
             modifier = Modifier
@@ -1189,13 +1253,39 @@ fun JobMetricItem(
                 color = TextSecondary
             )
         }
+        // Special compact rendering for time-like values (e.g., "15 days left", "Expired", "No deadline")
+        val isTimeValue = value.contains("day", ignoreCase = true) || value.equals("expired", ignoreCase = true) || value.equals("no deadline", ignoreCase = true)
 
-        Text(
-            text = value,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextPrimary
-        )
+        if (isTimeValue) {
+            // Split into primary and secondary parts if possible
+            val parts = value.split(" ", limit = 2)
+            val primary = parts.getOrNull(0) ?: value
+            val secondary = parts.getOrNull(1) ?: ""
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = primary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                if (secondary.isNotBlank()) {
+                    Text(
+                        text = secondary,
+                        fontSize = 10.sp,
+                        color = TextSecondary
+                    )
+                }
+            }
+        } else {
+            Text(
+                text = value,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+        }
+
         Text(
             text = label,
             fontSize = 11.sp,
@@ -1425,4 +1515,24 @@ fun getDaysLeft(deadline: String): String {
     } catch (e: Exception) {
         "Invalid date"
     }
+}
+
+// returns number of days left (can be negative if expired), or null if cannot parse
+fun parseDaysLeft(deadline: String): Int? {
+    if (deadline.isBlank()) return null
+    // try epoch millis
+    deadline.toLongOrNull()?.let { epoch ->
+        return ((epoch - System.currentTimeMillis()) / (1000 * 60 * 60 * 24)).toInt()
+    }
+
+    // try dd/MM/yyyy HH:mm and a couple common formats
+    val patterns = listOf("dd/MM/yyyy HH:mm", "dd/MM/yyyy", "yyyy-MM-dd'T'HH:mm:ss'Z'", "yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd HH:mm:ss")
+    for (pattern in patterns) {
+        try {
+            val sdf = SimpleDateFormat(pattern, Locale.getDefault())
+            val date = sdf.parse(deadline) ?: continue
+            return ((date.time - System.currentTimeMillis()) / (1000 * 60 * 60 * 24)).toInt()
+        } catch (_: Exception) { /* try next */ }
+    }
+    return null
 }

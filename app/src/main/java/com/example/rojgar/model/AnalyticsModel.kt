@@ -8,6 +8,7 @@ data class JobAnalyticsMetrics(
     val saves: Int = 0,
     val shortlisted: Int = 0,
     val hired: Int = 0,
+    val rejected: Int = 0,
     val conversionRate: Float = 0f,
     val timeToHire: Int = 0, // days
     val postedDate: Long = System.currentTimeMillis(),
@@ -24,6 +25,7 @@ data class JobAnalyticsMetrics(
             "saves" to saves,
             "shortlisted" to shortlisted,
             "hired" to hired,
+            "rejected" to rejected,
             "conversionRate" to conversionRate,
             "timeToHire" to timeToHire,
             "postedDate" to postedDate,
@@ -38,6 +40,7 @@ data class ConversionMetrics(
     val totalApplications: Int = 0,
     val totalShortlisted: Int = 0,
     val totalHired: Int = 0,
+    val totalRejected: Int = 0,
     val conversionRate: Float = 0f, // applications to hired
     val shortlistRate: Float = 0f // applications to shortlisted
 ) {
@@ -46,6 +49,7 @@ data class ConversionMetrics(
             "totalApplications" to totalApplications,
             "totalShortlisted" to totalShortlisted,
             "totalHired" to totalHired,
+            "totalRejected" to totalRejected,
             "conversionRate" to conversionRate,
             "shortlistRate" to shortlistRate
         )

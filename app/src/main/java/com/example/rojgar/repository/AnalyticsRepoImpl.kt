@@ -119,6 +119,7 @@ class AnalyticsRepoImpl : AnalyticsRepo {
                                     var totalApplications = 0
                                     var shortlisted = 0
                                     var hired = 0
+                                    var rejected = 0
                                     var totalTimeToHire = 0
                                     var hireCount = 0
 
@@ -137,6 +138,8 @@ class AnalyticsRepoImpl : AnalyticsRepo {
                                                 hireCount++
                                                 totalTimeToHire += ((hireDate - appliedDate) / (1000 * 60 * 60 * 24)).toInt()
                                             }
+                                            // Treat "rejected" or "declined" as rejected
+                                            "rejected", "declined" -> rejected++
                                         }
                                     }
 
@@ -150,7 +153,7 @@ class AnalyticsRepoImpl : AnalyticsRepo {
 
                                     synchronized(jobMetricsList) {
                                         jobMetricsList.add(
-                                            JobAnalyticsMetrics(
+                                        JobAnalyticsMetrics(
                                                 jobId = jobId,
                                                 jobTitle = jobTitle,
                                                 totalApplications = totalApplications,
@@ -158,6 +161,7 @@ class AnalyticsRepoImpl : AnalyticsRepo {
                                                 saves = 0, // To be implemented with event tracking
                                                 shortlisted = shortlisted,
                                                 hired = hired,
+                                                rejected = rejected,
                                                 conversionRate = conversionRate.toFloat(),
                                                 timeToHire = timeToHire,
                                                 postedDate = postedDate,
@@ -202,10 +206,12 @@ class AnalyticsRepoImpl : AnalyticsRepo {
                 var totalShortlisted = 0
                 var totalHired = 0
 
+                var totalRejected = 0
                 for (job in jobMetrics) {
                     totalApplications += job.totalApplications
                     totalShortlisted += job.shortlisted
                     totalHired += job.hired
+                    totalRejected += job.rejected
                 }
 
                 val conversionRate = if (totalApplications > 0) {
@@ -224,6 +230,7 @@ class AnalyticsRepoImpl : AnalyticsRepo {
                     totalApplications = totalApplications,
                     totalShortlisted = totalShortlisted,
                     totalHired = totalHired,
+                    totalRejected = totalRejected,
                     conversionRate = conversionRate,
                     shortlistRate = shortlistRate
                 )
