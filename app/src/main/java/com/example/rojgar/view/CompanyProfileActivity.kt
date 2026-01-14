@@ -141,6 +141,9 @@ fun CompanyProfileBody(
     val followingCountState by followViewModel.followingCount.observeAsState(initial = 0)
     val followersList by followViewModel.followers.observeAsState(initial = emptyList())
 
+    val actualCompanyId = if (isOwnProfile) company.value?.companyId ?: "" else companyId
+
+
     // 5. Current User identification (JobSeeker checked FIRST)
     val currentJobSeeker = remember { jobSeekerRepository.getCurrentJobSeeker() }
     val currentCompany = remember {
@@ -791,6 +794,28 @@ fun CompanyProfileBody(
                 }
 
                 Spacer(modifier = Modifier.height(28.dp))
+
+                // Review Panel
+                ReviewPanel(
+                    companyId = actualCompanyId,
+                    context = context,
+                    onClick = {
+                        if (isOwnProfile) {
+                            val intent = Intent(context, CompanyReviewActivity::class.java)
+                            intent.putExtra("COMPANY_ID", actualCompanyId)  // Use the same ID!
+                            intent.putExtra("COMPANY_NAME", company.value?.companyName ?: "Company")
+                            context.startActivity(intent)
+                        } else {
+                            val intent = Intent(context, JobSeekerReviewActivity::class.java)
+                            intent.putExtra("COMPANY_ID", actualCompanyId)  // Use the same ID!
+                            intent.putExtra("COMPANY_NAME", company.value?.companyName ?: "Company")
+                            context.startActivity(intent)
+                        }
+                    }
+                )
+
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // About Section with gradient accent
                 EnhancedInfoSection(title = "About Company") {
@@ -1811,7 +1836,6 @@ fun CompanySettingsOptionWithSwitch(
     }
 }
 
-// Add this composable function to your CompanyProfileActivity.kt file
 
 @Composable
 fun EditCompanyProfileDialog(
@@ -2297,5 +2321,97 @@ fun formatNumber(count: Int): String {
             }
         }
         else -> count.toString()
+    }
+}
+
+@Composable
+fun ReviewPanel(
+    companyId: String,
+    context: Context,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(20.dp))
+            .clickable {
+                onClick()
+
+            },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFFE0F2FE), // Light blue
+                            Color(0xFFF3E5F5)  // Light purple
+                        )
+                    )
+                )
+                .padding(20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .shadow(4.dp, RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color(0xFFFFD700), // Gold
+                                        Color(0xFFFFA500)  // Orange
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Reviews",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "Reviews & Ratings",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1F2937),
+                            letterSpacing = (-0.3).sp
+                        )
+                        Text(
+                            text = "See what others are saying",
+                            fontSize = 14.sp,
+                            color = Color(0xFF6B7280),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = Icons.Default.ArrowForward,
+                    contentDescription = "Navigate to Reviews",
+                    tint = Color(0xFF6366F1),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
     }
 }
