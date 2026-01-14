@@ -1,5 +1,6 @@
 package com.example.rojgar.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -9,6 +10,10 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class ReviewViewModel(private val repo: ReviewRepo) : ViewModel() {
+
+    companion object {
+        private const val TAG = "ReviewViewModel"
+    }
 
     // Loading state
     private val _loading = MutableLiveData<Boolean>(false)
@@ -44,12 +49,16 @@ class ReviewViewModel(private val repo: ReviewRepo) : ViewModel() {
             _toastMessage.value = message
             if (success) {
                 _userReview.value = review
-                loadReviews(review.companyId) // Reload reviews after adding
+                // No need to manually reload, real-time listener will update
             }
         }
     }
 
     fun fetchJobSeekerUsername(jobSeekerId: String) {
+        if (_jobSeekerUsernames.value?.containsKey(jobSeekerId) == true) {
+            return
+        }
+
         repo.getJobSeekerUsername(jobSeekerId) { success, _, username ->
             if (success && username != null) {
                 val currentMap = _jobSeekerUsernames.value?.toMutableMap() ?: mutableMapOf()
@@ -70,7 +79,6 @@ class ReviewViewModel(private val repo: ReviewRepo) : ViewModel() {
             _toastMessage.value = message
             if (success) {
                 _userReview.value = review
-                loadReviews(review.companyId) // Reload reviews after updating
             }
         }
     }
@@ -82,31 +90,47 @@ class ReviewViewModel(private val repo: ReviewRepo) : ViewModel() {
             _toastMessage.value = message
             if (success) {
                 _userReview.value = null
-                loadReviews(companyId) // Reload reviews after deleting
             }
         }
     }
 
     fun loadReviews(companyId: String) {
+        Log.d(TAG, "Loading reviews for company: $companyId")
         _loading.value = true
         repo.getReviewsByCompanyId(companyId) { success, message, reviews ->
             _loading.value = false
+            Log.d(TAG, "Reviews loaded: success=$success, count=${reviews?.size ?: 0}")
             if (success && reviews != null) {
                 _reviews.value = reviews
                 calculateAverageRating(reviews)
+
+                // Fetch usernames for all reviewers
+                reviews.forEach { review ->
+                    if (getJobSeekerUsername(review.userId) == null) {
+                        fetchJobSeekerUsername(review.userId)
+                    }
+                }
             } else {
                 _toastMessage.value = message
+                Log.e(TAG, "Failed to load reviews: $message")
             }
         }
     }
 
     fun setupRealTimeUpdates(companyId: String, currentUserId: String) {
-        // Remove existing listener if any
-        reviewListenerId?.let { repo.removeReviewListener(it) }
+        Log.d(TAG, "Setting up real-time updates for company: $companyId, user: $currentUserId")
 
+        // Remove existing listener if any
+        reviewListenerId?.let {
+            Log.d(TAG, "Removing existing listener: $it")
+            repo.removeReviewListener(it)
+        }
+
+        // Setup real-time listener
         reviewListenerId = repo.addReviewListener(
             companyId = companyId,
             onDataChange = { reviews ->
+                Log.d(TAG, "Real-time update received: ${reviews.size} reviews")
                 _reviews.value = reviews
                 calculateAverageRating(reviews)
 
@@ -118,16 +142,22 @@ class ReviewViewModel(private val repo: ReviewRepo) : ViewModel() {
                 }
 
                 // Update current user review
-                _userReview.value = reviews.find { it.userId == currentUserId }
+                val userReviewFound = reviews.find { it.userId == currentUserId }
+                _userReview.value = userReviewFound
+                Log.d(TAG, "User review found: ${userReviewFound != null}")
             },
             onError = { error ->
-                _toastMessage.value = error
+                Log.e(TAG, "Real-time updates error: $error")
+                _toastMessage.value = "Real-time updates error: $error"
             }
         )
+        Log.d(TAG, "Real-time listener ID: $reviewListenerId")
     }
 
     fun checkUserReview(userId: String, companyId: String) {
-        repo.checkUserAlreadyReviewed(userId, companyId) { success, _, review ->
+        Log.d(TAG, "Checking user review: userId=$userId, companyId=$companyId")
+        repo.checkUserAlreadyReviewed(userId, companyId) { success, message, review ->
+            Log.d(TAG, "User review check result: success=$success, hasReview=${review != null}")
             _userReview.value = if (success) review else null
         }
     }
@@ -139,6 +169,7 @@ class ReviewViewModel(private val repo: ReviewRepo) : ViewModel() {
             0.0
         }
         _averageRating.value = average
+        Log.d(TAG, "Average rating calculated: $average from ${reviews.size} reviews")
     }
 
     fun formatTimeAgo(timestamp: Long): String {
@@ -184,9 +215,11 @@ class ReviewViewModel(private val repo: ReviewRepo) : ViewModel() {
 
     override fun onCleared() {
         super.onCleared()
+        Log.d(TAG, "ViewModel cleared, removing listener")
         // Clean up listeners when ViewModel is destroyed
         reviewListenerId?.let { repo.removeReviewListener(it) }
     }
+
 }
 
 class ReviewViewModelFactory(private val repo: ReviewRepo) : androidx.lifecycle.ViewModelProvider.Factory {
