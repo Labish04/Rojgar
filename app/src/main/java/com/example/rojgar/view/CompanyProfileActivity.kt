@@ -1,5 +1,8 @@
 package com.example.rojgar.view
 
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -32,9 +35,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
 import com.example.rojgar.model.CompanyModel
@@ -44,6 +50,11 @@ import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.utils.ImageUtils
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.FollowViewModel
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.graphics.graphicsLayer
 
 class CompanyProfileActivity : ComponentActivity() {
     lateinit var imageUtils: ImageUtils
@@ -111,48 +122,89 @@ fun CompanyProfileBody(
     onPickCoverImage: () -> Unit,
     onPickProfileImage: () -> Unit
 ) {
+    // 1. Context and Activity
     val context = LocalContext.current
+    val activity = context as Activity
+
+    // 2. Repositories (initialize first)
+    val repository = remember { CompanyRepoImpl() }
+    val jobSeekerRepository = remember { JobSeekerRepoImpl() }
+
+    // 3. ViewModels
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
     val followViewModel = remember { FollowViewModel(FollowRepoImpl()) }
 
+    // 4. LiveData observers from ViewModels
     val company = companyViewModel.companyDetails.observeAsState(initial = null)
     val isFollowingState by followViewModel.isFollowing.observeAsState(initial = false)
-
     val followersCountState by followViewModel.followersCount.observeAsState(initial = 0)
     val followingCountState by followViewModel.followingCount.observeAsState(initial = 0)
+    val followersList by followViewModel.followers.observeAsState(initial = emptyList())
 
-    val currentCompany = remember { CompanyRepoImpl().getCurrentCompany() }
-    val currentJobSeeker = remember { JobSeekerRepoImpl().getCurrentJobSeeker() }
+    // 5. Current User identification (JobSeeker checked FIRST)
+    val currentJobSeeker = remember { jobSeekerRepository.getCurrentJobSeeker() }
+    val currentCompany = remember {
+        if (currentJobSeeker == null) repository.getCurrentCompany() else null
+    }
 
-    var isFollowing by remember { mutableStateOf(false) }
-    var isUploadingCover by remember { mutableStateOf(false) }
-    var isUploadingProfile by remember { mutableStateOf(false) }
-
-    // Track displayed URLs
-    var displayedCoverUrl by remember { mutableStateOf("") }
-    var displayedProfileUrl by remember { mutableStateOf("") }
-
+    // 6. Current User ID (JobSeeker checked FIRST)
     val currentUserId = remember {
-        if (currentCompany != null) currentCompany.uid
-        else if (currentJobSeeker != null) currentJobSeeker.uid
+        if (currentJobSeeker != null) currentJobSeeker.uid
+        else if (currentCompany != null) currentCompany.uid
         else ""
     }
 
+    // 7. Current User Type (JobSeeker checked FIRST)
     val currentUserType = remember {
         when {
-            currentCompany != null -> "Company"
             currentJobSeeker != null -> "JobSeeker"
+            currentCompany != null -> "Company"
             else -> ""
         }
     }
 
-    // Fetch company profile based on whether it's own profile or viewing another company
+    // 8. Upload state variables
+    var isUploadingCover by remember { mutableStateOf(false) }
+    var isUploadingProfile by remember { mutableStateOf(false) }
+
+    // 9. Display URL tracking
+    var displayedCoverUrl by remember { mutableStateOf("") }
+    var displayedProfileUrl by remember { mutableStateOf("") }
+
+    // 10. UI state variables (dialogs, drawers)
+    var isDrawerOpen by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var showConfirmPasswordDialog by remember { mutableStateOf(false) }
+    var showEditProfileDialog by remember { mutableStateOf(false) }
+
+    fun shareCompanyProfile(context: Context, company: CompanyModel?) {
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+
+            val shareText = buildString {
+                append("Check out ${company?.companyName ?: "this company"}'s profile!\n\n")
+                append("📍 Location: ${company?.companyLocation ?: "N/A"}\n")
+                append("📧 Email: ${company?.companyEmail ?: "N/A"}\n")
+                append("📞 Phone: ${company?.companyContactNumber ?: "N/A"}\n")
+                append("🏢 Industry: Information Technology\n")
+                append("🌐 Website: www.labish.com\n\n")
+                append("Join us on our journey of innovation and growth!")
+            }
+
+            putExtra(Intent.EXTRA_SUBJECT, "${company?.companyName ?: "Company"} Profile")
+            putExtra(Intent.EXTRA_TEXT, shareText)
+        }
+
+        context.startActivity(Intent.createChooser(shareIntent, "Share Company Profile via"))
+    }
+
     LaunchedEffect(companyId) {
         if (companyId.isNotEmpty()) {
             if (isOwnProfile) {
                 companyViewModel.fetchCurrentCompany()
             } else {
-                // Fetch specific company profile for viewing
                 companyViewModel.getCompanyDetails(companyId)
             }
         } else {
@@ -160,7 +212,6 @@ fun CompanyProfileBody(
         }
     }
 
-    // Update displayed URLs when company data loads
     LaunchedEffect(company.value) {
         company.value?.let {
             displayedCoverUrl = it.companyCoverPhoto
@@ -168,7 +219,6 @@ fun CompanyProfileBody(
         }
     }
 
-    // Auto-upload cover photo when selected
     LaunchedEffect(selectedCoverUri) {
         if (selectedCoverUri != null && !isUploadingCover) {
             isUploadingCover = true
@@ -176,8 +226,6 @@ fun CompanyProfileBody(
                 isUploadingCover = false
                 if (uploadedUrl != null) {
                     displayedCoverUrl = uploadedUrl
-
-                    // Update in database
                     company.value?.let { currentCompany ->
                         val updatedCompany = currentCompany.copy(companyCoverPhoto = uploadedUrl)
                         companyViewModel.addCompanyToDatabase(
@@ -207,7 +255,6 @@ fun CompanyProfileBody(
                 if (uploadedUrl != null) {
                     displayedProfileUrl = uploadedUrl
 
-                    // Update in database
                     company.value?.let { currentCompany ->
                         val updatedCompany = currentCompany.copy(companyProfileImage = uploadedUrl)
                         companyViewModel.addCompanyToDatabase(
@@ -228,28 +275,48 @@ fun CompanyProfileBody(
         }
     }
 
-    // Check follow status when company data loads
-    LaunchedEffect(company.value, currentUserId, companyId) {
+    LaunchedEffect(company.value, currentUserId, companyId, isOwnProfile) {
         company.value?.let { targetCompany ->
-            if (currentUserId.isNotEmpty() && companyId.isNotEmpty() && !isOwnProfile) {
-                followViewModel.checkFollowStatus(currentUserId, companyId)
-                followViewModel.getFollowersCount(companyId)
-                followViewModel.getFollowingCount(companyId)
+            // For own profile, use the company's ID from the fetched data
+            val profileIdToLoad = if (isOwnProfile) {
+                targetCompany.companyId
+            } else {
+                companyId
+            }
+
+            if (profileIdToLoad.isNotEmpty()) {
+                // Only check follow status if viewing someone else's profile
+                if (!isOwnProfile && currentUserId.isNotEmpty() && currentUserType.isNotEmpty()) {
+                    followViewModel.checkFollowStatus(currentUserId, profileIdToLoad)
+                }
+
+                // Always load followers and following counts
+                followViewModel.getFollowersCount(profileIdToLoad)
+                followViewModel.getFollowingCount(profileIdToLoad)
+                // Load followers list
+                followViewModel.getFollowers(profileIdToLoad)
             }
         }
     }
 
-    LaunchedEffect(followersCountState, followingCountState) {
-        // Update UI with real follow counts
+    // Refresh counts when follow status changes (for other profiles)
+    LaunchedEffect(isFollowingState) {
+        if (!isOwnProfile && company.value != null && currentUserId.isNotEmpty()) {
+            val profileIdToLoad = companyId
+            if (profileIdToLoad.isNotEmpty()) {
+                followViewModel.getFollowersCount(profileIdToLoad)
+                followViewModel.getFollowingCount(profileIdToLoad)
+            }
+        }
     }
 
     Scaffold(
         containerColor = Color(0xFFF8FAFC)
-    ) { paddingValues ->
+    ) { padding->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding()
                 .verticalScroll(rememberScrollState())
         ) {
             Box(
@@ -257,7 +324,6 @@ fun CompanyProfileBody(
                     .fillMaxWidth()
                     .height(240.dp)
             ) {
-                // Display cover photo
                 if (selectedCoverUri != null || displayedCoverUrl.isNotEmpty()) {
                     Image(
                         painter = rememberAsyncImagePainter(selectedCoverUri ?: displayedCoverUrl),
@@ -273,7 +339,6 @@ fun CompanyProfileBody(
                             .background(Color.Black.copy(alpha = 0.2f))
                     )
 
-                    // Show loading indicator for cover
                     if (isUploadingCover) {
                         Box(
                             modifier = Modifier
@@ -329,7 +394,6 @@ fun CompanyProfileBody(
                     }
                 }
 
-                // Glassmorphism Top Bar
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -353,7 +417,9 @@ fun CompanyProfileBody(
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         IconButton(
-                            onClick = { /* Share */ },
+                            onClick = {
+                                shareCompanyProfile(context, company.value)
+                            },
                             modifier = Modifier
                                 .shadow(8.dp, CircleShape)
                                 .background(Color.White.copy(alpha = 0.95f), CircleShape)
@@ -366,10 +432,9 @@ fun CompanyProfileBody(
                             )
                         }
 
-                        // Show edit options only for own profile
                         if (isOwnProfile) {
                             IconButton(
-                                onClick = { /* More options */ },
+                                onClick = { isDrawerOpen = true },
                                 modifier = Modifier
                                     .shadow(8.dp, CircleShape)
                                     .background(Color.White.copy(alpha = 0.95f), CircleShape)
@@ -386,14 +451,12 @@ fun CompanyProfileBody(
                 }
             }
 
-            // Profile Content with elevated design
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .offset(y = (-70).dp)
                     .padding(horizontal = 20.dp)
             ) {
-                // Enhanced Profile Image with Ring
                 Box(
                     modifier = Modifier.align(Alignment.Start)
                 ) {
@@ -505,7 +568,6 @@ fun CompanyProfileBody(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Company Name with Premium Badge
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -517,22 +579,6 @@ fun CompanyProfileBody(
                         color = Color(0xFF111827),
                         letterSpacing = (-0.5).sp
                     )
-
-                    // Premium Verified Badge
-                    Surface(
-                        shape = CircleShape,
-                        color = Color(0xFF3B82F6),
-                        shadowElevation = 4.dp
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = "Verified",
-                            tint = Color.White,
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .size(20.dp)
-                        )
-                    }
 
                     // Premium Badge
                     Surface(
@@ -552,7 +598,7 @@ fun CompanyProfileBody(
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = "Premium",
+                                text = "Verified",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFD97706)
@@ -565,7 +611,7 @@ fun CompanyProfileBody(
 
                 // Enhanced Tagline
                 Text(
-                    text = "Leading Technology Solutions Provider",
+                    text = company.value?.companyTagline ?: "Loading...",
                     fontSize = 15.sp,
                     color = Color(0xFF6B7280),
                     fontWeight = FontWeight.Medium,
@@ -586,24 +632,43 @@ fun CompanyProfileBody(
                         modifier = Modifier.weight(1f)
                     )
                     EnhancedStatCard(
-                        label = "Employees",
-                        value = "250+",
+                        label = "Followers",
+                        value = if (isOwnProfile) {
+                            // For own profile, show your followers count
+                            formatNumber(followersCountState)
+                        } else {
+                            // For other profiles, show their followers count
+                            formatNumber(followersCountState)
+                        },
                         icon = Icons.Default.Face,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                // Open followers list activity
+                                val intent = Intent(context, FollowersListActivity::class.java)
+                                intent.putExtra("USER_ID", if (isOwnProfile) company.value?.companyId ?: "" else companyId)
+                                intent.putExtra("USER_TYPE", "Company")
+                                intent.putExtra("IS_OWN_PROFILE", isOwnProfile)
+                                context.startActivity(intent)
+                            }
                     )
                     EnhancedStatCard(
-                        label = "Founded",
-                        value = company.value?.companyEstablishedDate?.take(4) ?: "2015",
-                        icon = Icons.Default.DateRange,
+                        label = "Following",
+                        value = if (isOwnProfile) {
+                            // For own profile, show the count of who you're following
+                            formatNumber(followingCountState)
+                        } else {
+                            // For other profiles, show who they're following
+                            formatNumber(followingCountState)
+                        },
+                        icon = Icons.Default.Person,
                         modifier = Modifier.weight(1f)
                     )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Action Buttons (different for own profile vs viewing others)
                 if (!isOwnProfile) {
-                    // Viewing other company's profile - show follow and message
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -619,6 +684,8 @@ fun CompanyProfileBody(
                                             followingType = "Company",
                                             onComplete = { success, message ->
                                                 if (success) {
+                                                    // Refresh counts after unfollowing
+                                                    followViewModel.getFollowersCount(companyId)
                                                     Toast.makeText(
                                                         context,
                                                         "Unfollowed!",
@@ -641,6 +708,8 @@ fun CompanyProfileBody(
                                             followingType = "Company",
                                             onComplete = { success, message ->
                                                 if (success) {
+                                                    // Refresh counts after following
+                                                    followViewModel.getFollowersCount(companyId)
                                                     Toast.makeText(
                                                         context,
                                                         "Followed!",
@@ -669,9 +738,7 @@ fun CompanyProfileBody(
                                 .height(52.dp)
                                 .shadow(8.dp, RoundedCornerShape(16.dp)),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isFollowingState) Color(0xFF10B981) else Color(
-                                    0xFF6366F1
-                                )
+                                containerColor = if (isFollowingState) Color(0xFF10B981) else Color(0xFF6366F1)
                             ),
                             shape = RoundedCornerShape(16.dp)
                         ) {
@@ -728,7 +795,7 @@ fun CompanyProfileBody(
                 // About Section with gradient accent
                 EnhancedInfoSection(title = "About Company") {
                     Text(
-                        text = "Labish is a pioneering technology company dedicated to delivering innovative solutions that transform businesses. With a team of experienced professionals, we specialize in software development, cloud solutions, and digital transformation.",
+                        text = company.value?.companyInformation?:"",
                         fontSize = 15.sp,
                         color = Color(0xFF374151),
                         lineHeight = 24.sp,
@@ -744,12 +811,12 @@ fun CompanyProfileBody(
                         EnhancedDetailRow(
                             icon = Icons.Default.Email,
                             label = "Industry",
-                            value = "Information Technology",
+                            value = company.value?.companyIndustry?:"",
                             gradient = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
                         )
                         EnhancedDetailRow(
                             icon = Icons.Default.LocationOn,
-                            label = "Headquarters",
+                            label = "Headquarter",
                             value = company.value?.companyLocation ?: "",
                             gradient = listOf(Color(0xFFEC4899), Color(0xFFF43F5E))
                         )
@@ -767,8 +834,14 @@ fun CompanyProfileBody(
                         )
                         EnhancedDetailRow(
                             icon = Icons.Default.PlayArrow,
+                            label = "Founded",
+                            value = company.value?.companyEstablishedDate?.take(4) ?: "2015",
+                            gradient = listOf(Color(0xFF05C2B2), Color(0xFF25E4EB))
+                        )
+                        EnhancedDetailRow(
+                            icon = Icons.Default.PlayArrow,
                             label = "Website",
-                            value = "www.labish.com",
+                            value = company.value?.companyWebsite ?: "",
                             gradient = listOf(Color(0xFF3B82F6), Color(0xFF2563EB))
                         )
                     }
@@ -778,19 +851,40 @@ fun CompanyProfileBody(
 
                 // Specialties with gradient chips
                 EnhancedInfoSection(title = "Core Specialties") {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        listOf(
-                            "Software Development" to listOf(Color(0xFF6366F1), Color(0xFF8B5CF6)),
-                            "Cloud Solutions" to listOf(Color(0xFF3B82F6), Color(0xFF2563EB)),
-                            "AI & ML" to listOf(Color(0xFFEC4899), Color(0xFFF43F5E)),
-                            "Mobile Apps" to listOf(Color(0xFF10B981), Color(0xFF059669)),
-                            "Web Development" to listOf(Color(0xFFF59E0B), Color(0xFFEAB308)),
-                            "Consulting" to listOf(Color(0xFF8B5CF6), Color(0xFFA855F7))
-                        ).forEach { (specialty, gradient) ->
-                            GradientSpecialtyChip(text = specialty, gradient = gradient)
+                    val specialties = company.value?.companySpecialties ?: emptyList()
+
+                    if (specialties.isEmpty()) {
+                        // Show placeholder when no specialties are available
+                        Text(
+                            text = "No specialties added yet",
+                            fontSize = 14.sp,
+                            color = Color(0xFF9CA3AF),
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    } else {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            // Predefined gradient colors that cycle through
+                            val gradientColors = listOf(
+                                listOf(Color(0xFF6366F1), Color(0xFF8B5CF6)),
+                                listOf(Color(0xFF3B82F6), Color(0xFF2563EB)),
+                                listOf(Color(0xFFEC4899), Color(0xFFF43F5E)),
+                                listOf(Color(0xFF10B981), Color(0xFF059669)),
+                                listOf(Color(0xFFF59E0B), Color(0xFFEAB308)),
+                                listOf(Color(0xFF8B5CF6), Color(0xFFA855F7)),
+                                listOf(Color(0xFF06B6D4), Color(0xFF0891B2)),
+                                listOf(Color(0xFFEF4444), Color(0xFFDC2626)),
+                                listOf(Color(0xFF14B8A6), Color(0xFF0D9488)),
+                                listOf(Color(0xFFF97316), Color(0xFFEA580C))
+                            )
+
+                            specialties.forEachIndexed { index, specialty ->
+                                val gradient = gradientColors[index % gradientColors.size]
+                                GradientSpecialtyChip(text = specialty, gradient = gradient)
+                            }
                         }
                     }
                 }
@@ -798,6 +892,422 @@ fun CompanyProfileBody(
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+
+        AnimatedVisibility(
+            visible = isDrawerOpen,
+            enter = slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec = tween(350, easing = FastOutSlowInEasing)
+            ) + fadeIn(),
+            exit = slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(350, easing = FastOutSlowInEasing)
+            ) + fadeOut(),
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(10f)
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.6f))
+                        .clickable { isDrawerOpen = false }
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(340.dp)
+                        .align(Alignment.CenterEnd)
+                        .shadow(24.dp)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFFFAFAFA),
+                                    Color.White
+                                )
+                            )
+                        )
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp)
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color(0xFF667EEA),
+                                            Color(0xFF764BA2)
+                                        )
+                                    )
+                                )
+                        ) {
+                            Surface(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(16.dp)
+                                    .size(36.dp),
+                                shape = CircleShape,
+                                color = Color.White.copy(alpha = 0.2f)
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                                    contentDescription = "Close",
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .graphicsLayer(rotationZ = 180f)
+                                        .clickable { isDrawerOpen = false }
+                                        .padding(8.dp)
+                                )
+                            }
+
+                            // Profile Section
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.CenterStart)
+                                    .padding(
+                                        start = 20.dp,
+                                        end = 20.dp,
+                                        bottom = 16.dp,
+                                        top = 56.dp
+                                    ),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Card(
+                                    modifier = Modifier
+                                        .size(70.dp)
+                                        .border(3.dp, Color.White, CircleShape),
+                                    shape = CircleShape,
+                                    elevation = CardDefaults.cardElevation(8.dp)
+                                ) {
+                                    if (displayedProfileUrl.isNotEmpty()) {
+                                        AsyncImage(
+                                            model = displayedProfileUrl,
+                                            contentDescription = "Company Logo",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(
+                                                    Brush.linearGradient(
+                                                        colors = listOf(
+                                                            Color(0xFF667EEA),
+                                                            Color(0xFF764BA2)
+                                                        )
+                                                    )
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = company.value?.companyName?.firstOrNull()?.toString() ?: "C",
+                                                fontSize = 32.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(16.dp))
+
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = company.value?.companyName ?: "Company",
+                                        style = TextStyle(
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = Color.White
+                                        ),
+                                        maxLines = 1
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Text(
+                                        text = "Information Technology",
+                                        style = TextStyle(
+                                            fontSize = 13.sp,
+                                            color = Color.White.copy(alpha = 0.9f),
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // MENU ITEMS
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            CompanyDrawerMenuItem(
+                                icon = R.drawable.outline_edit_24,
+                                text = "Edit Profile",
+                                subtitle = "Update company information",
+                                iconColor = Color(0xFF2196F3),
+                                onClick = {
+                                    isDrawerOpen = false
+                                    showEditProfileDialog = true
+                                }
+                            )
+
+                            CompanyDrawerMenuItem(
+                                icon = R.drawable.feedback,
+                                text = "Help & Support",
+                                subtitle = "Get help or send feedback",
+                                iconColor = Color(0xFF2196F3),
+                                onClick = {
+                                    isDrawerOpen = false
+                                    Toast.makeText(context, "Edit Profile clicked", Toast.LENGTH_SHORT).show()                                }
+                            )
+
+                            CompanyDrawerMenuItem(
+                                icon = R.drawable.settings,
+                                text = "Settings",
+                                subtitle = "Manage preferences",
+                                iconColor = Color(0xFF9C27B0),
+                                onClick = {
+                                    isDrawerOpen = false
+                                    showSettingsDialog = true
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 20.dp),
+                                color = Color.Gray.copy(alpha = 0.2f)
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        // LOGOUT BUTTON
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 24.dp)
+                                .clickable {
+                                    isDrawerOpen = false
+                                    repository.logout(currentUserId) { success, message ->
+                                        if (success) {
+                                            Toast.makeText(
+                                                context,
+                                                "Logged out successfully",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            val intent = Intent(context, LoginActivity::class.java)
+                                            intent.flags =
+                                                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                            context.startActivity(intent)
+                                            (context as? ComponentActivity)?.finish()
+                                        } else {
+                                            Toast.makeText(context, message, Toast.LENGTH_SHORT)
+                                                .show()
+                                        }
+                                    }
+                                },
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFFFEBEE)
+                            ),
+                            elevation = CardDefaults.cardElevation(4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(18.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.baseline_logout_24),
+                                    contentDescription = "Logout",
+                                    tint = Color(0xFFD32F2F),
+                                    modifier = Modifier.size(26.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Logout",
+                                    style = TextStyle(
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFD32F2F)
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showSettingsDialog) {
+            CompanySettingsDialog(
+                onDismiss = { showSettingsDialog = false },
+                onChangePasswordClick = {
+                    showSettingsDialog = false
+                    showChangePasswordDialog = true
+                },
+                onDeactivateClick = {
+                    showSettingsDialog = false
+                    showConfirmPasswordDialog = true
+                },
+                onDeleteAccountClick = {
+                    showSettingsDialog = false
+                    showDeleteAccountDialog = true
+                },
+                context = context
+            )
+        }
+
+        if (showChangePasswordDialog) {
+            ChangePasswordDialog(
+                onDismiss = { showChangePasswordDialog = false },
+                repository = jobSeekerRepository,
+                context = context
+            )
+        }
+
+        if (showDeleteAccountDialog) {
+            DeleteAccountConfirmationDialog(
+                onDismiss = { showDeleteAccountDialog = false },
+                onConfirm = { password ->
+                    val currentUser = repository.getCurrentCompany()
+                    if (currentUser != null && currentUser.email != null) {
+                        val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(
+                            currentUser.email!!,
+                            password
+                        )
+
+                        currentUser.reauthenticate(credential)
+                            .addOnSuccessListener {
+                                companyViewModel.deleteAccount(currentUserId) { success, message ->
+                                    if (success) {
+                                        Toast.makeText(
+                                            context,
+                                            "Account deleted permanently",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+
+                                        val intent = Intent(context, LoginActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        context.startActivity(intent)
+                                        activity.finish()
+                                    } else {
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    }
+                                    showDeleteAccountDialog = false
+                                }
+                            }
+                            .addOnFailureListener { exception ->
+                                Toast.makeText(
+                                    context,
+                                    "Incorrect password. Please try again.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Unable to verify user. Please try again.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                context = context
+            )
+        }
+
+        if (showConfirmPasswordDialog) {
+            ConfirmPasswordForDeactivateDialog(
+                onDismiss = {
+                    showConfirmPasswordDialog = false
+                },
+                onConfirm = { password ->
+                    // Verify password first
+                    val currentUser = repository.getCurrentCompany()
+                    if (currentUser != null && currentUser.email != null) {
+                        val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(
+                            currentUser.email!!,
+                            password
+                        )
+
+                        currentUser.reauthenticate(credential)
+                            .addOnSuccessListener {
+                                // Password is correct, proceed with deactivation
+                                companyViewModel.deactivateAccount(currentUserId) { success, message ->
+                                    if (success) {
+                                        Toast.makeText(
+                                            context,
+                                            "Account deactivated successfully",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+
+                                        // Navigate to login screen
+                                        val intent = Intent(context, LoginActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        context.startActivity(intent)
+                                        activity.finish()
+                                    } else {
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    }
+                                    showConfirmPasswordDialog = false
+                                }
+                            }
+                            .addOnFailureListener { exception ->
+                                Toast.makeText(
+                                    context,
+                                    "Incorrect password. Please try again.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Unable to verify user. Please try again.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                context = context
+            )
+        }
+
+        if (showEditProfileDialog) {
+            EditCompanyProfileDialog(
+                company = company.value,
+                onDismiss = { showEditProfileDialog = false },
+                onSave = { updatedCompany ->
+                    companyViewModel.addCompanyToDatabase(
+                        updatedCompany.companyId,
+                        updatedCompany
+                    ) { success, message ->
+                        showEditProfileDialog = false
+                        if (success) {
+                            Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
+                            companyViewModel.fetchCurrentCompany()
+                        } else {
+                            Toast.makeText(context, "Failed to update: $message", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                context = context
+            )
+        }
+
     }
 }
 
@@ -982,5 +1492,810 @@ fun GradientSpecialtyChip(text: String, gradient: List<Color>) {
                 letterSpacing = 0.3.sp
             )
         }
+    }
+}
+
+@Composable
+fun CompanyDrawerMenuItem(
+    icon: Int,
+    text: String,
+    subtitle: String,
+    iconColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 6.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = iconColor.copy(alpha = 0.1f)
+            ) {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = text,
+                    tint = iconColor,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = text,
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF263238)
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        color = Color(0xFF78909C)
+                    )
+                )
+            }
+
+            Icon(
+                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                contentDescription = "Navigate",
+                tint = Color(0xFFBDBDBD),
+                modifier = Modifier
+                    .size(16.dp)
+                    .graphicsLayer(rotationZ = 180f)
+            )
+        }
+    }
+}
+
+@Composable
+fun CompanySettingsDialog(
+    onDismiss: () -> Unit,
+    onChangePasswordClick: () -> Unit,
+    onDeactivateClick: () -> Unit,
+    onDeleteAccountClick: () -> Unit,
+    context: Context
+) {
+
+    var isDarkMode by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(20f)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable { onDismiss() }
+        )
+
+        Card(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.85f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Settings",
+                        style = TextStyle(
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF667EEA)
+                        )
+                    )
+
+                    Surface(
+                        modifier = Modifier.size(32.dp),
+                        shape = CircleShape,
+                        color = Color(0xFFF5F5F5)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = "Close",
+//                            onClick = { isDrawerOpen = true
+//                                showSettingsDialog = false },
+                            tint = Color(0xFF546E7A),
+                            modifier = Modifier
+                                .padding(8.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // SETTINGS OPTIONS
+                CompanySettingsOption(
+                    icon = R.drawable.outline_lock_24,
+                    title = "Change Password",
+                    subtitle = "Update your password",
+                    iconColor = Color(0xFF4CAF50),
+                    onClick = onChangePasswordClick
+                )
+
+                CompanySettingsOptionWithSwitch(
+                    icon = R.drawable.darkmode,
+                    title = "Dark Mode",
+                    subtitle = if (isDarkMode) "Dark theme enabled" else "Light theme enabled",
+                    iconColor = Color(0xFF9C27B0),
+                    isChecked = isDarkMode,
+                    onCheckedChange = { isDarkMode = it }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsOption(
+                    icon = R.drawable.deactivateaccount,
+                    title = "Deactivate Account",
+                    subtitle = "Temporarily disable your account",
+                    iconColor = Color(0xFFFF9800),
+                    onClick = onDeactivateClick
+                )
+
+                SettingsOption(
+                    icon = R.drawable.deleteaccount,
+                    title = "Delete Account",
+                    subtitle = "Permanently remove your account",
+                    iconColor = Color(0xFFF44336),
+                    onClick = onDeleteAccountClick
+                )
+            }
+
+        }
+    }
+}
+
+@Composable
+fun CompanySettingsOption(
+    icon: Int,
+    title: String,
+    subtitle: String,
+    iconColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFFAFAFA)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(44.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = iconColor.copy(alpha = 0.12f)
+            ) {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = title,
+                    tint = iconColor,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = TextStyle(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF263238)
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        color = Color(0xFF78909C)
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CompanySettingsOptionWithSwitch(
+    icon: Int,
+    title: String,
+    subtitle: String,
+    iconColor: Color,
+    isChecked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFFAFAFA)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(44.dp),
+                shape = RoundedCornerShape(10.dp),
+                color = iconColor.copy(alpha = 0.12f)
+            ) {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = title,
+                    tint = iconColor,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = TextStyle(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF263238)
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        color = Color(0xFF78909C)
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Switch(
+                checked = isChecked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = iconColor,
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = Color(0xFFBDBDBD)
+                )
+            )
+        }
+    }
+}
+
+// Add this composable function to your CompanyProfileActivity.kt file
+
+@Composable
+fun EditCompanyProfileDialog(
+    company: CompanyModel?,
+    onDismiss: () -> Unit,
+    onSave: (CompanyModel) -> Unit,
+    context: Context
+) {
+    var companyName by remember { mutableStateOf(company?.companyName ?: "") }
+    var tagline by remember { mutableStateOf(company?.companyTagline ?: "") }
+    var aboutCompany by remember { mutableStateOf(company?.companyInformation?:"") }
+    var industry by remember { mutableStateOf(company?.companyIndustry ?: "") }
+    var location by remember { mutableStateOf(company?.companyLocation ?: "") }
+    var phone by remember { mutableStateOf(company?.companyContactNumber ?: "") }
+    var email by remember { mutableStateOf(company?.companyEmail ?: "") }
+    var website by remember { mutableStateOf(company?.companyWebsite ?: "") }
+    var founded by remember { mutableStateOf(company?.companyEstablishedDate ?: "") }
+
+    // Core Specialties
+    var specialties by remember {
+        mutableStateOf(listOf(
+            *(company?.companySpecialties?.toTypedArray() ?: emptyArray())
+        ))
+    }
+    var newSpecialty by remember { mutableStateOf("") }
+    var showAddSpecialtyField by remember { mutableStateOf(false) }
+
+    var isSaving by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(30f)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable { if (!isSaving) onDismiss() }
+        )
+
+        Card(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.92f)
+                .fillMaxHeight(0.85f),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                // Header
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF667EEA),
+                                    Color(0xFF764BA2)
+                                )
+                            )
+                        )
+                        .padding(20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Edit Profile",
+                            style = TextStyle(
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        )
+
+                        Surface(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clickable { if (!isSaving) onDismiss() },
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.2f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color.White,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Scrollable Content
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Company Name
+                    EditTextField(
+                        label = "Company Name",
+                        value = companyName,
+                        onValueChange = { companyName = it },
+                        icon = Icons.Default.Face
+                    )
+
+                    // Tagline
+                    EditTextField(
+                        label = "Tagline",
+                        value = tagline,
+                        onValueChange = { tagline = it },
+                        icon = Icons.Default.Edit
+                    )
+
+                    // About Company
+                    EditTextFieldMultiline(
+                        label = "About Company",
+                        value = aboutCompany,
+                        onValueChange = { aboutCompany = it },
+                        icon = Icons.Default.Info
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Company Information",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF667EEA)
+                    )
+
+                    // Industry
+                    EditTextField(
+                        label = "Industry",
+                        value = industry,
+                        onValueChange = { industry = it },
+                        icon = Icons.Default.Email
+                    )
+
+                    // Location
+                    EditTextField(
+                        label = "Location",
+                        value = location,
+                        onValueChange = { location = it },
+                        icon = Icons.Default.LocationOn
+                    )
+
+                    // Phone
+                    EditTextField(
+                        label = "Phone",
+                        value = phone,
+                        onValueChange = { phone = it },
+                        icon = Icons.Default.Phone
+                    )
+
+                    // Email
+                    EditTextField(
+                        label = "Email",
+                        value = email,
+                        onValueChange = { email = it },
+                        icon = Icons.Default.Email,
+                        enabled = true
+                    )
+
+                    // Founded
+                    EditTextField(
+                        label = "Founded",
+                        value = founded,
+                        onValueChange = { founded = it },
+                        icon = Icons.Default.Done,
+                        enabled = true
+                    )
+
+                    // Website
+                    EditTextField(
+                        label = "Website",
+                        value = website,
+                        onValueChange = { website = it },
+                        icon = Icons.Default.PlayArrow
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Core Specialties Section
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Core Specialties",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF667EEA)
+                        )
+
+                        IconButton(
+                            onClick = { showAddSpecialtyField = !showAddSpecialtyField },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (showAddSpecialtyField) Icons.Default.Close else Icons.Default.Add,
+                                contentDescription = "Add Specialty",
+                                tint = Color(0xFF667EEA)
+                            )
+                        }
+                    }
+
+                    // Add new specialty field
+                    if (showAddSpecialtyField) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = newSpecialty,
+                                onValueChange = { newSpecialty = it },
+                                modifier = Modifier.weight(1f),
+                                placeholder = { Text("Enter specialty") },
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color(0xFF667EEA),
+                                    unfocusedBorderColor = Color(0xFFE0E0E0)
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+
+                            Button(
+                                onClick = {
+                                    if (newSpecialty.isNotBlank()) {
+                                        specialties = specialties + newSpecialty.trim()
+                                        newSpecialty = ""
+                                        showAddSpecialtyField = false
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF667EEA)
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Add")
+                            }
+                        }
+                    }
+
+                    // Display specialties as removable chips
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        specialties.forEach { specialty ->
+                            RemovableSpecialtyChip(
+                                text = specialty,
+                                onRemove = {
+                                    specialties = specialties.filter { it != specialty }
+                                }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(80.dp))
+                }
+
+                // Save Button (Fixed at bottom)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shadowElevation = 8.dp,
+                    color = Color.White
+                ) {
+                    Button(
+                        onClick = {
+                            if (companyName.isBlank()) {
+                                Toast.makeText(
+                                    context,
+                                    "Company name cannot be empty",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return@Button
+                            }
+
+                            isSaving = true
+
+                            // Create updated company model
+                            val updatedCompany = company?.copy(
+                                companyName = companyName,
+                                companyTagline = tagline,
+                                companyInformation = aboutCompany,
+                                companyIndustry = industry,
+                                companyLocation = location,
+                                companyContactNumber = phone,
+                                companyEmail = email,
+                                companyEstablishedDate = founded,
+                                companyWebsite = website,
+                                companySpecialties = specialties
+                            ) ?: CompanyModel(
+                                companyName = companyName,
+                                companyTagline = tagline,
+                                companyInformation = aboutCompany,
+                                companyIndustry = industry,
+                                companyLocation = location,
+                                companyContactNumber = phone,
+                                companyEmail = email,
+                                companyEstablishedDate = founded,
+                                companyWebsite = website,
+                                companySpecialties = specialties
+                            )
+
+                            onSave(updatedCompany)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF667EEA)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        enabled = !isSaving
+                    ) {
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = "Save Changes",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EditTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    icon: ImageVector,
+    enabled: Boolean = true
+) {
+    Column {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF374151),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = Color(0xFF667EEA)
+                )
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF667EEA),
+                unfocusedBorderColor = Color(0xFFE0E0E0),
+                disabledBorderColor = Color(0xFFE0E0E0),
+                disabledTextColor = Color(0xFF9CA3AF)
+            ),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            enabled = enabled
+        )
+    }
+}
+
+@Composable
+fun EditTextFieldMultiline(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    icon: ImageVector
+) {
+    Column {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF374151),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp),
+            leadingIcon = {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = Color(0xFF667EEA),
+                    modifier = Modifier.padding(bottom = 80.dp)
+                )
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF667EEA),
+                unfocusedBorderColor = Color(0xFFE0E0E0)
+            ),
+            shape = RoundedCornerShape(12.dp),
+            maxLines = 5
+        )
+    }
+}
+
+@Composable
+fun RemovableSpecialtyChip(
+    text: String,
+    onRemove: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = Color(0xFF667EEA).copy(alpha = 0.1f),
+        border = BorderStroke(1.dp, Color(0xFF667EEA).copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = text,
+                fontSize = 13.sp,
+                color = Color(0xFF667EEA),
+                fontWeight = FontWeight.Medium
+            )
+
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Remove",
+                tint = Color(0xFF667EEA),
+                modifier = Modifier
+                    .size(16.dp)
+                    .clickable { onRemove() }
+            )
+        }
+    }
+}
+
+fun formatNumber(count: Int): String {
+    return when {
+        count >= 1000000 -> {
+            val millions = count / 1000000.0
+            if (millions % 1 == 0.0) {
+                "${count / 1000000}M"
+            } else {
+                "%.1fM".format(millions)
+            }
+        }
+        count >= 1000 -> {
+            val thousands = count / 1000.0
+            if (thousands % 1 == 0.0) {
+                "${count / 1000}K"
+            } else {
+                "%.1fK".format(thousands)
+            }
+        }
+        else -> count.toString()
     }
 }

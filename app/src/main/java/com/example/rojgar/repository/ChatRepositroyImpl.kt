@@ -1,21 +1,45 @@
 // File: ChatRepositoryImpl.kt
 package com.example.rojgar.repository
 
+import android.content.Context
+import android.media.MediaPlayer
+import android.util.Log
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import com.cloudinary.Cloudinary
+import com.cloudinary.utils.ObjectUtils
 import com.example.rojgar.model.ChatMessage
 import com.example.rojgar.model.ChatRoom
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import com.zego.ve.Log
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
+import java.io.File
+import java.io.InputStream
 import java.util.*
+import java.util.concurrent.Executors
 import kotlin.collections.HashMap
 
 class ChatRepositoryImpl : ChatRepository {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val database: FirebaseDatabase = FirebaseDatabase.getInstance()
+    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
+
     private val chatRoomsRef: DatabaseReference = database.getReference("ChatRooms")
     private val messagesRef: DatabaseReference = database.getReference("ChatMessages")
     private val typingStatusRef: DatabaseReference = database.getReference("TypingStatus")
+
+    private val storageRef: StorageReference = storage.reference
+
+    private val cloudinary = Cloudinary(
+        mapOf(
+            "cloud_name" to "dtmprduic",
+            "api_key" to "883843915169633",
+            "api_secret" to "DhiLcks25VLVZCBhWgGvObdGGyE"
+        )
+    )
 
     override fun createChatRoom(
         participant1Id: String,
@@ -304,6 +328,181 @@ class ChatRepositoryImpl : ChatRepository {
         })
     }
 
+    override fun uploadVoiceMessage(
+        audioFile: File,
+        onProgress: (Double) -> Unit,
+        onSuccess: (String) -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        // Validate file exists
+        if (!audioFile.exists()) {
+            Log.e("VoiceUpload", "File does not exist: ${audioFile.absolutePath}")
+            onFailure("Audio file does not exist")
+            return
+        }
+
+        // Validate file is not empty
+        if (audioFile.length() == 0L) {
+            Log.e("VoiceUpload", "File is empty: ${audioFile.absolutePath}")
+            onFailure("Audio file is empty")
+            return
+        }
+
+        // Log file details
+        Log.d("VoiceUpload", "Starting upload...")
+        Log.d("VoiceUpload", "File path: ${audioFile.absolutePath}")
+        Log.d("VoiceUpload", "File exists: ${audioFile.exists()}")
+        Log.d("VoiceUpload", "File size: ${audioFile.length()} bytes")
+        Log.d("VoiceUpload", "Can read: ${audioFile.canRead()}")
+
+        try {
+            // Generate unique filename with timestamp
+            val timestamp = System.currentTimeMillis()
+            val uniqueId = UUID.randomUUID().toString().substring(0, 8)
+            val fileName = "voice_messages/voice_${timestamp}_${uniqueId}.m4a"
+            val voiceMessageRef = storageRef.child(fileName)
+
+            Log.d("VoiceUpload", "Target path: $fileName")
+
+            // Use URI-based upload instead of byte array
+            val fileUri = Uri.fromFile(audioFile)
+            Log.d("VoiceUpload", "File URI: $fileUri")
+
+            // Upload using URI
+            val uploadTask = voiceMessageRef.putFile(fileUri)
+
+            // Monitor progress
+            uploadTask.addOnProgressListener { taskSnapshot ->
+                val progress = (100.0 * taskSnapshot.bytesTransferred) / taskSnapshot.totalByteCount
+                Log.d("VoiceUpload", "Upload progress: $progress%")
+                onProgress(progress)
+            }
+
+            // Handle successful upload
+            uploadTask.addOnSuccessListener { taskSnapshot ->
+                Log.d("VoiceUpload", "Upload successful!")
+                Log.d("VoiceUpload", "Bytes transferred: ${taskSnapshot.bytesTransferred}")
+                Log.d("VoiceUpload", "Getting download URL...")
+
+                // Get download URL
+                voiceMessageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                    val downloadUrl = downloadUri.toString()
+                    Log.d("VoiceUpload", "Download URL obtained: $downloadUrl")
+                    onSuccess(downloadUrl)
+                }.addOnFailureListener { exception ->
+                    Log.e("VoiceUpload", "Failed to get download URL", exception)
+                    onFailure("Failed to get download URL: ${exception.message}")
+                }
+            }
+
+            // Handle upload failure
+            uploadTask.addOnFailureListener { exception ->
+                Log.e("VoiceUpload", "Upload failed", exception)
+                Log.e("VoiceUpload", "Exception type: ${exception.javaClass.name}")
+                Log.e("VoiceUpload", "Exception message: ${exception.message}")
+                Log.e("VoiceUpload", "Exception cause: ${exception.cause?.message}")
+                onFailure("Upload failed: ${exception.message}")
+            }
+
+        } catch (e: Exception) {
+            Log.e("VoiceUpload", "Exception during upload preparation", e)
+            onFailure("Exception: ${e.message}")
+        }
+    }
+
+    override fun getVoiceMessageDuration(audioFile: File): Long {
+        return try {
+            if (!audioFile.exists()) {
+                Log.e("VoiceDuration", "File does not exist")
+                return 0L
+            }
+
+            val mediaPlayer = MediaPlayer()
+            mediaPlayer.setDataSource(audioFile.absolutePath)
+            mediaPlayer.prepare()
+            val duration = mediaPlayer.duration.toLong()
+            mediaPlayer.release()
+
+            Log.d("VoiceDuration", "Duration: $duration ms")
+            duration
+        } catch (e: Exception) {
+            Log.e("VoiceDuration", "Failed to get duration", e)
+            0L
+        }
+    }
+
+    override fun uploadMediaFile(
+        context: Context,
+        mediaUri: Uri,
+        mediaType: String,
+        onProgress: (Double) -> Unit,
+        onSuccess: (String) -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        val executor = Executors.newSingleThreadExecutor()
+        executor.execute {
+            try {
+                Log.d("MediaUpload", "Starting $mediaType upload")
+                Log.d("MediaUpload", "URI: $mediaUri")
+
+                val inputStream: InputStream? = context.contentResolver.openInputStream(mediaUri)
+
+                if (inputStream == null) {
+                    Handler(Looper.getMainLooper()).post {
+                        onFailure("Failed to open file")
+                    }
+                    return@execute
+                }
+
+                val fileName = getFileNameFromUri(context, mediaUri)
+                val timestamp = System.currentTimeMillis()
+                val publicId = "chat_${mediaType}_${timestamp}_${fileName?.substringBeforeLast(".") ?: "media"}"
+
+                Handler(Looper.getMainLooper()).post {
+                    onProgress(25.0)
+                }
+
+                val resourceType = when (mediaType) {
+                    "image" -> "image"
+                    "video" -> "video"
+                    "document" -> "raw"
+                    else -> "auto"
+                }
+
+                val response = cloudinary.uploader().upload(
+                    inputStream, ObjectUtils.asMap(
+                        "public_id" to publicId,
+                        "resource_type" to resourceType
+                    )
+                )
+
+                Handler(Looper.getMainLooper()).post {
+                    onProgress(75.0)
+                }
+
+                var mediaUrl = response["secure_url"] as String? ?: (response["url"] as String?)
+                mediaUrl = mediaUrl?.replace("http://", "https://")
+
+                Log.d("MediaUpload", "Upload successful: $mediaUrl")
+
+                Handler(Looper.getMainLooper()).post {
+                    onProgress(100.0)
+                    if (mediaUrl != null) {
+                        onSuccess(mediaUrl)
+                    } else {
+                        onFailure("Failed to get media URL")
+                    }
+                }
+
+            } catch (e: Exception) {
+                Log.e("MediaUpload", "Upload failed", e)
+                Handler(Looper.getMainLooper()).post {
+                    onFailure("Upload failed: ${e.message}")
+                }
+            }
+        }
+    }
+
     private fun generateChatId(userId1: String, userId2: String): String {
         return if (userId1 < userId2) {
             "${userId1}_${userId2}"
@@ -324,7 +523,15 @@ class ChatRepositoryImpl : ChatRepository {
 
                         // Update last message and time
                         val updates = HashMap<String, Any>()
-                        updates["lastMessage"] = message.messageText
+
+                        // For voice messages, show "Voice message" instead of duration
+                        val displayText = if (message.messageType == "voice") {
+                            "🎤 Voice message"
+                        } else {
+                            message.messageText
+                        }
+
+                        updates["lastMessage"] = displayText
                         updates["lastMessageTime"] = message.timestamp
 
                         // Update unread count based on receiver
@@ -373,4 +580,9 @@ class ChatRepositoryImpl : ChatRepository {
             }
         })
     }
+
+    private fun getFileNameFromUri(context: Context, uri: Uri): String? {
+        return uri.lastPathSegment ?: "file_${System.currentTimeMillis()}"
+    }
+
 }

@@ -2,9 +2,9 @@ package com.example.rojgar.viewmodel
 
 import android.content.Context
 import android.net.Uri
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.example.rojgar.model.CompanyModel
-import com.example.rojgar.model.JobModel
 import com.example.rojgar.repository.CompanyRepo
 import com.google.firebase.auth.FirebaseUser
 
@@ -12,6 +12,9 @@ class CompanyViewModel(val repo: CompanyRepo) {
 
     private val _companyDetails = MutableLiveData<CompanyModel?>()
     val companyDetails: MutableLiveData<CompanyModel?> get() = _companyDetails
+
+    private val _allCompanies = MutableLiveData<List<CompanyModel>>()
+    val allCompanies: LiveData<List<CompanyModel>> get() = _allCompanies
 
     private val _loading = MutableLiveData<Boolean>()
     val loading: MutableLiveData<Boolean> get() = _loading
@@ -71,7 +74,6 @@ class CompanyViewModel(val repo: CompanyRepo) {
         repo.forgetPassword(email, callback)
     }
 
-
     fun getCompanyDetails(companyId: String) {
         _loading.postValue(true)
         repo.getCompanyDetails(companyId) { success, message, data ->
@@ -89,10 +91,10 @@ class CompanyViewModel(val repo: CompanyRepo) {
 
         val currentUser = repo.getCurrentCompany()
         if (currentUser != null) {
-            repo.getCompanyById(currentUser.uid) { success, message, jobSeekerModel ->
+            repo.getCompanyById(currentUser.uid) { success, message, companyModel ->
                 _loading.value = false
-                if (success && jobSeekerModel != null) {
-                    _companyDetails.value = jobSeekerModel
+                if (success && companyModel != null) {
+                    _companyDetails.value = companyModel
                 } else {
                     _companyDetails.value = null
                 }
@@ -107,16 +109,60 @@ class CompanyViewModel(val repo: CompanyRepo) {
         context: Context,
         imageUri: Uri,
         callback: (String?) -> Unit
-    ){
+    ) {
         repo.uploadCompanyProfileImage(context, imageUri, callback)
-
     }
 
     fun uploadCompanyCoverPhoto(
         context: Context,
         imageUri: Uri,
         callback: (String?) -> Unit
-    ){
+    ) {
         repo.uploadCompanyCoverPhoto(context, imageUri, callback)
+    }
+
+    fun deleteAccount(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.deleteAccount(companyId, callback)
+    }
+
+    fun checkAccountStatusByEmail(
+        email: String,
+        callback: (Boolean, String?, String) -> Unit
+    ) {
+        repo.checkAccountStatusByEmail(email, callback)
+    }
+
+    fun reactivateAccount(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.reactivateAccount(companyId, callback)
+    }
+
+    fun deactivateAccount(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.deactivateAccount(companyId, callback)
+    }
+
+    fun checkAccountStatus(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.checkAccountStatus(companyId, callback)
+    }
+
+    fun fetchAllCompaniesForMap() {
+        _loading.value = true
+        repo.getAllCompany { success, message, list ->
+            _loading.value = false
+            if (success && list != null) {
+                _allCompanies.value = list
+            }
+        }
     }
 }

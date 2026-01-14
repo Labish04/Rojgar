@@ -14,6 +14,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> <!-- For Android 13+ -->
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <application
         android:allowBackup="true"
@@ -28,9 +33,9 @@
         tools:replace="android:fullBackupContent"
         tools:targetApi="31">
         <activity
-            android:name=".view.CompanyHelpAndSupportActivity"
+            android:name=".view.AdminDashboardActivity"
             android:exported="true"
-            android:label="@string/title_activity_company_help_and_support"
+            android:label="@string/title_activity_admin_dashboard"
             android:theme="@style/Theme.Rojgar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -39,9 +44,9 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".view.NotificationActivity"
+            android:name=".view.FollowersListActivity"
             android:exported="true"
-            android:label="@string/title_activity_company_review"
+            android:label="@string/title_activity_followers_list"
             android:theme="@style/Theme.Rojgar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -50,9 +55,9 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".view.CompanyReviewActivity"
+            android:name=".view.MapActivity"
             android:exported="true"
-            android:label="@string/title_activity_company_review"
+            android:label="@string/title_activity_map"
             android:theme="@style/Theme.Rojgar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -66,7 +71,21 @@
         <meta-data
             android:name="im.zego.zim.enable_notification"
             android:value="true" />
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyCX3_5f2eilotR-J9y7sC-7Q-zCFP98G7U" />
 
+        <activity
+            android:name=".view.FollowingListActivity"
+            android:exported="true"
+            android:label="@string/title_activity_chat"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".view.JobSeekerReviewActivity"
             android:exported="true"

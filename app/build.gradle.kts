@@ -43,18 +43,19 @@ android {
 }
 
 dependencies {
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
-    implementation("com.github.ZEGOCLOUD:zego_inapp_chat_uikit_android:+") {
-        exclude(group = "com.android.support", module = "support-compat")
-    }
-    implementation("com.github.ZEGOCLOUD:zego_uikit_prebuilt_call_android:+") {
-        exclude(group = "com.android.support", module = "support-compat")
-    }
+    implementation("com.google.firebase:firebase-storage-ktx:20.3.0")
 
-    // It's a good practice to also ensure zim is clean, though it's less likely the cause
-    implementation("im.zego:zim:2.14.0") {
-        exclude(group = "com.android.support", module = "support-compat")
-    }
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    implementation("androidx.credentials:credentials:1.2.2")
+    implementation("androidx.credentials:credentials-play-services-auth:1.2.2")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
+    implementation("com.google.maps.android:maps-compose:4.3.3")
+    implementation("com.google.android.gms:play-services-maps:19.0.0")
+
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
 
     implementation("com.cloudinary:cloudinary-android:2.1.0")
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
@@ -75,6 +76,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.database)
+    implementation(libs.androidx.appcompat)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

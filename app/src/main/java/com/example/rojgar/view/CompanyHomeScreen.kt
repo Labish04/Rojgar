@@ -1,9 +1,11 @@
 package com.example.rojgar.view
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +47,8 @@ import com.example.rojgar.ui.theme.White
 
 @Composable
 fun CompanyHomeScreenBody(){
+
+    val context = LocalContext.current
 
     var search by remember { mutableStateOf("") }
 
@@ -61,50 +66,45 @@ fun CompanyHomeScreenBody(){
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically
         ){
-            OutlinedTextField(
-                value = search,
-                onValueChange = { search = it },
-                placeholder = { Text("Search...", style = TextStyle(
-                    fontSize = 24.sp,
-                    color = Color.Gray
-                )) },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(R.drawable.searchicon),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(40.dp),
-                        tint = Gray,
-                    )
-                },
-                shape = RoundedCornerShape(15.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = White,
-                    unfocusedContainerColor = White,
-                    focusedIndicatorColor = NormalBlue,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                modifier = Modifier
-                    .height(60.dp)
-                    .width(300.dp)
-            )
-
-            Button(
-                onClick = {},
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Purple
-                ),
-                shape = RoundedCornerShape(12.dp),
+            Box(
                 modifier = Modifier
                     .height(50.dp)
                     .fillMaxWidth()
-                    .padding(start = 20.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        context.startActivity(
+                            Intent(context, JobSeekerSearchActivity::class.java)
+                        )
+                    }
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.filter),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(40.dp)
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = {},
+                    readOnly = true,
+                    enabled = false, // Important
+                    placeholder = {
+                        Text(
+                            "Search",
+                            fontSize = 20.sp,
+                            color = Color.Gray
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.searchicon),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = Gray
+                        )
+                    },
+                    shape = RoundedCornerShape(15.dp),
+                    colors = TextFieldDefaults.colors(
+                        disabledContainerColor = White,
+                        disabledIndicatorColor = Color.Transparent
+                    ),
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         }
