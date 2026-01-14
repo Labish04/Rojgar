@@ -139,9 +139,8 @@ fun CompanyProfileBody(
     val isFollowingState by followViewModel.isFollowing.observeAsState(initial = false)
     val followersCountState by followViewModel.followersCount.observeAsState(initial = 0)
     val followingCountState by followViewModel.followingCount.observeAsState(initial = 0)
-    val followersList by followViewModel.followers.observeAsState(initial = emptyList())
 
-    // 5. Current User identification (JobSeeker checked FIRST)
+     // 5. Current User identification (JobSeeker checked FIRST)
     val currentJobSeeker = remember { jobSeekerRepository.getCurrentJobSeeker() }
     val currentCompany = remember {
         if (currentJobSeeker == null) repository.getCurrentCompany() else null
