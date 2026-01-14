@@ -10,6 +10,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import java.util.Locale
 import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 
@@ -106,6 +107,7 @@ class AnalyticsRepoImpl : AnalyticsRepo {
                         val category = jobSnapshot.child("categories").value?.toString() ?: ""
                         val salary = jobSnapshot.child("salary").value?.toString() ?: ""
                         val postedDate = jobSnapshot.child("timestamp").value as? Long ?: System.currentTimeMillis()
+                        val deadline = jobSnapshot.child("deadline").value?.toString() ?: ""
 
                         // Get applications for this job using single-value event
                         // Applications use field name "postId" to reference the job (ApplicationModel.postId)
@@ -159,6 +161,7 @@ class AnalyticsRepoImpl : AnalyticsRepo {
                                                 conversionRate = conversionRate.toFloat(),
                                                 timeToHire = timeToHire,
                                                 postedDate = postedDate,
+                                                deadline = deadline,
                                                 category = category,
                                                 salary = salary
                                             )

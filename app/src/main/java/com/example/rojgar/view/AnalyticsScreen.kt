@@ -26,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.model.*
 import com.example.rojgar.viewmodel.AnalyticsViewModel
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 
 // Premium Color Palette
@@ -811,28 +814,6 @@ fun AnalyticsOverviewGrid(profile: CompanyProfileAnalytics) {
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OverviewCard(
-                modifier = Modifier.weight(1f),
-                title = "Avg Time to Hire",
-                value = "${profile.avgTimeToHire}",
-                unit = "days",
-                icon = "⏱️",
-                color = WarningOrange
-            )
-            OverviewCard(
-                modifier = Modifier.weight(1f),
-                title = "Profile Views",
-                value = profile.profileViews.toString(),
-                unit = "views",
-                icon = "👁️",
-                color = InfoCyan
-            )
-        }
     }
 }
 
@@ -1046,7 +1027,7 @@ fun CategoryPerformanceBar(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = category.category,
+                text = formatCategoryName(category.category),
                 fontSize = 14.sp,
                 color = TextPrimary,
                 fontWeight = FontWeight.Medium
@@ -1122,7 +1103,7 @@ fun DetailedJobCard(job: JobAnalyticsMetrics) {
                         color = TextPrimary
                     )
                     Text(
-                        text = job.category,
+                        text = formatCategoryName(job.category),
                         fontSize = 12.sp,
                         color = TextSecondary
                     )
@@ -1169,7 +1150,7 @@ fun DetailedJobCard(job: JobAnalyticsMetrics) {
                 )
                 JobMetricItem(
                     label = "Time",
-                    value = "${job.timeToHire}d",
+                    value = getDaysLeft(job.deadline),
                     icon = "⏱️",
                     color = WarningOrange
                 )
@@ -1183,7 +1164,8 @@ fun JobMetricItem(
     label: String,
     value: String,
     icon: String,
-    color: Color
+    color: Color,
+    subtitle: String? = null
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1198,6 +1180,16 @@ fun JobMetricItem(
         ) {
             Text(text = icon, fontSize = 16.sp)
         }
+
+        // subtitle shown just below the icon (small, secondary color)
+        if (!subtitle.isNullOrBlank()) {
+            Text(
+                text = subtitle,
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+        }
+
         Text(
             text = value,
             fontSize = 16.sp,
@@ -1386,7 +1378,7 @@ fun CategoryLegendItem(category: String, applications: Int, color: Color) {
         )
         Column {
             Text(
-                text = category,
+                text = formatCategoryName(category),
                 fontSize = 12.sp,
                 color = TextPrimary,
                 fontWeight = FontWeight.Medium
@@ -1400,6 +1392,10 @@ fun CategoryLegendItem(category: String, applications: Int, color: Color) {
     }
 }
 
+fun formatCategoryName(raw: String): String {
+    return raw.trim().removePrefix("[").removeSuffix("]")
+}
+
 fun getCategoryColor(index: Int): Color {
     val colors = listOf(
         PrimaryBlue,
@@ -1410,4 +1406,23 @@ fun getCategoryColor(index: Int): Color {
         DangerRed
     )
     return colors[index % colors.size]
+}
+
+// parse deadline string stored by CompanyUploadPost ("dd/MM/yyyy HH:mm") and return "N days left" or "Expired"
+fun getDaysLeft(deadline: String): String {
+    if (deadline.isBlank()) return "No deadline"
+    return try {
+        val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+        val date = sdf.parse(deadline) ?: return "Invalid date"
+        val diff = date.time - System.currentTimeMillis()
+        val days = TimeUnit.MILLISECONDS.toDays(diff)
+        when {
+            diff < 0 -> "Expired"
+            days == 0L -> "0 days left"
+            days == 1L -> "1 day left"
+            else -> "$days days left"
+        }
+    } catch (e: Exception) {
+        "Invalid date"
+    }
 }

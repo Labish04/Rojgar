@@ -11,6 +11,7 @@ data class JobAnalyticsMetrics(
     val conversionRate: Float = 0f,
     val timeToHire: Int = 0, // days
     val postedDate: Long = System.currentTimeMillis(),
+    val deadline: String = "",
     val category: String = "",
     val salary: String = ""
 ) {
@@ -26,6 +27,7 @@ data class JobAnalyticsMetrics(
             "conversionRate" to conversionRate,
             "timeToHire" to timeToHire,
             "postedDate" to postedDate,
+            "deadline" to deadline,
             "category" to category,
             "salary" to salary
         )
