@@ -2,19 +2,22 @@
 <project version="4">
   <component name="deploymentTargetSelector">
     <selectionStates>
-      <SelectionState runConfigName="CompanyReviewActivity (2)">
+      <SelectionState runConfigName="CompanyHelpAndSupportActivity (2)">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="CompanyHelpAndSupportActivity">
+      <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
       <SelectionState runConfigName="CompanyHelpAndSupportActivity (1)">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="CompanyHelpAndSupportActivity (2)">
+      <SelectionState runConfigName="CompanyHelpAndSupportActivity (3)">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="CompanyHelpAndSupportActivity (3)">
+      <SelectionState runConfigName="CompanyHelpAndSupportActivity (4)">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
+      <SelectionState runConfigName="CompanyHelpAndSupportActivity (5)">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>
