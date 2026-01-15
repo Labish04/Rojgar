@@ -75,8 +75,9 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyCX3_5f2eilotR-J9y7sC-7Q-zCFP98G7U" />
 
+
         <activity
-            android:name=".view.FollowingListActivity"
+            android:name=".view.CompanyHelpAndSupportActivity"
             android:exported="true"
             android:label="@string/title_activity_chat"
             android:theme="@style/Theme.Rojgar">

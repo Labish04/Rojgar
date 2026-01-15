@@ -133,29 +133,6 @@ fun HelpAndSupportScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Company Information Section
-                SectionCard(title = "Company Information", icon = Icons.Default.Info) {
-                    CustomTextField(
-                        value = uiState.companyName,
-                        onValueChange = { viewModel.updateCompanyName(it) },
-                        label = "Company Name",
-                        icon = Icons.Default.Face,
-                        placeholder = "Enter your company name"
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    CustomTextField(
-                        value = uiState.companyEmail,
-                        onValueChange = { viewModel.updateCompanyEmail(it) },
-                        label = "Company Email",
-                        icon = Icons.Default.Email,
-                        placeholder = "company@example.com"
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // Request Details Section
                 SectionCard(title = "Request Details", icon = Icons.Default.Menu) {
                     CustomTextField(
@@ -601,5 +578,3 @@ fun getPriorityColor(priority: Priority): Color {
         Priority.URGENT -> Color(0xFFF44336)
     }
 }
-
-
