@@ -1090,7 +1090,8 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                     iconColor = Color(0xFF2196F3),
                                     onClick = {
                                         isDrawerOpen = false
-                                        Toast.makeText(context, "Applied Jobs clicked", Toast.LENGTH_SHORT).show()
+                                        val intent = Intent(context, AppliedJobsActivity::class.java)
+                                        context.startActivity(intent)
                                     }
                                 )
 
