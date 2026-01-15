@@ -43,6 +43,10 @@ android {
 }
 
 dependencies {
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4")
+
     implementation("com.google.firebase:firebase-storage-ktx:20.3.0")
 
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
