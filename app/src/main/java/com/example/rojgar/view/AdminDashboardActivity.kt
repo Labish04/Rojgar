@@ -22,7 +22,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.repository.CompanyRepoImpl
+import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.viewmodel.CompanyViewModel
+import com.example.rojgar.viewmodel.JobSeekerViewModel
 
 class AdminDashboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,14 +32,16 @@ class AdminDashboardActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val repository = CompanyRepoImpl()
+            val JobSeekerRepository = JobSeekerRepoImpl()
             val viewModel = CompanyViewModel(repository)
-            AdminDashboardBody(viewModel)
+            val jobSeekerViewModel = JobSeekerViewModel(JobSeekerRepository)
+            AdminDashboardBody(viewModel, jobSeekerViewModel)
         }
     }
 }
 
 @Composable
-fun AdminDashboardBody(viewModel: CompanyViewModel) {
+fun AdminDashboardBody(companyViewModel: CompanyViewModel, jobSeekerViewModel: JobSeekerViewModel) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Overview", "Companies", "Job Seekers")
 
@@ -133,8 +137,8 @@ fun AdminDashboardBody(viewModel: CompanyViewModel) {
             // Content based on selected tab
             when (selectedTab) {
                 0 -> AdminHomeBody() // Overview tab shows home screen
-                1 -> CompaniesContent(viewModel)
-                2 -> JobSeekersContent()
+                1 -> CompaniesContent(companyViewModel)
+                2 -> JobSeekersContent(jobSeekerViewModel)
             }
         }
     }
@@ -146,16 +150,6 @@ fun CompaniesContent(viewModel: CompanyViewModel) {
 }
 
 @Composable
-fun JobSeekersContent() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Job Seekers Content",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF1565C0)
-        )
-    }
+fun JobSeekersContent(viewModel: JobSeekerViewModel) {
+    AdminJobSeekerScreen(viewModel = viewModel)
 }

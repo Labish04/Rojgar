@@ -22,37 +22,38 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.rojgar.model.CompanyModel
-import com.example.rojgar.viewmodel.CompanyViewModel
+import com.example.rojgar.model.JobSeekerModel
+import com.example.rojgar.viewmodel.JobSeekerViewModel
 
 @Composable
-fun AdminCompaniesScreen(viewModel: CompanyViewModel) {
-    var companies by remember { mutableStateOf<List<CompanyModel>>(emptyList()) }
+fun AdminJobSeekerScreen(viewModel: JobSeekerViewModel) {
+    var jobSeekers by remember { mutableStateOf<List<JobSeekerModel>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
-    var selectedCompany by remember { mutableStateOf<CompanyModel?>(null) }
+    var selectedJobSeeker by remember { mutableStateOf<JobSeekerModel?>(null) }
     var showDetailsDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
-    // Filter companies based on search query
-    val filteredCompanies = remember(companies, searchQuery) {
+    // Filter job seekers based on search query
+    val filteredJobSeekers = remember(jobSeekers, searchQuery) {
         if (searchQuery.isBlank()) {
-            companies
+            jobSeekers
         } else {
-            companies.filter { company ->
-                company.companyName.contains(searchQuery, ignoreCase = true) ||
-                        company.companyTagline.contains(searchQuery, ignoreCase = true) ||
-                        company.companyIndustry.contains(searchQuery, ignoreCase = true) ||
-                        company.companyLocation.contains(searchQuery, ignoreCase = true)
+            jobSeekers.filter { jobSeeker ->
+                jobSeeker.fullName.contains(searchQuery, ignoreCase = true) ||
+                        jobSeeker.email.contains(searchQuery, ignoreCase = true) ||
+                        jobSeeker.profession.contains(searchQuery, ignoreCase = true) ||
+                        jobSeeker.currentAddress.contains(searchQuery, ignoreCase = true) ||
+                        jobSeeker.phoneNumber.contains(searchQuery, ignoreCase = true)
             }
         }
     }
 
     LaunchedEffect(Unit) {
         loading = true
-        viewModel.getAllCompany { success, message, fetchedCompanies ->
+        viewModel.getAllJobSeeker { success, message, fetchedJobSeekers ->
             loading = false
-            if (success && fetchedCompanies != null) {
-                companies = fetchedCompanies
+            if (success && fetchedJobSeekers != null) {
+                jobSeekers = fetchedJobSeekers
             }
         }
     }
@@ -79,7 +80,7 @@ fun AdminCompaniesScreen(viewModel: CompanyViewModel) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 8.dp),
-                        placeholder = { Text("Search companies...") },
+                        placeholder = { Text("Search job seekers...") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Search,
@@ -116,9 +117,9 @@ fun AdminCompaniesScreen(viewModel: CompanyViewModel) {
                     ) {
                         Text(
                             text = if (searchQuery.isNotEmpty())
-                                "Found ${filteredCompanies.size} results"
+                                "Found ${filteredJobSeekers.size} results"
                             else
-                                "All Companies (${companies.size})",
+                                "All Job Seekers (${jobSeekers.size})",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF1565C0)
@@ -126,17 +127,17 @@ fun AdminCompaniesScreen(viewModel: CompanyViewModel) {
                     }
                 }
 
-                items(filteredCompanies) { company ->
-                    CompanyCard(
-                        company = company,
+                items(filteredJobSeekers) { jobSeeker ->
+                    JobSeekerCard(
+                        jobSeeker = jobSeeker,
                         onClick = {
-                            selectedCompany = company
+                            selectedJobSeeker = jobSeeker
                             showDetailsDialog = true
                         }
                     )
                 }
 
-                if (companies.isEmpty()) {
+                if (jobSeekers.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier
@@ -145,7 +146,7 @@ fun AdminCompaniesScreen(viewModel: CompanyViewModel) {
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No companies found",
+                                text = "No job seekers found",
                                 fontSize = 16.sp,
                                 color = Color.Gray
                             )
@@ -153,7 +154,7 @@ fun AdminCompaniesScreen(viewModel: CompanyViewModel) {
                     }
                 }
 
-                if (companies.isNotEmpty() && filteredCompanies.isEmpty()) {
+                if (jobSeekers.isNotEmpty() && filteredJobSeekers.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier
@@ -172,7 +173,7 @@ fun AdminCompaniesScreen(viewModel: CompanyViewModel) {
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = "No companies match your search",
+                                    text = "No job seekers match your search",
                                     fontSize = 16.sp,
                                     color = Color.Gray
                                 )
@@ -184,20 +185,20 @@ fun AdminCompaniesScreen(viewModel: CompanyViewModel) {
         }
     }
 
-    if (showDetailsDialog && selectedCompany != null) {
-        CompanyDetailsDialog(
-            company = selectedCompany!!,
+    if (showDetailsDialog && selectedJobSeeker != null) {
+        JobSeekerDetailsDialog(
+            jobSeeker = selectedJobSeeker!!,
             onDismiss = {
                 showDetailsDialog = false
-                selectedCompany = null
+                selectedJobSeeker = null
             }
         )
     }
 }
 
 @Composable
-fun CompanyCard(
-    company: CompanyModel,
+fun JobSeekerCard(
+    jobSeeker: JobSeekerModel,
     onClick: () -> Unit
 ) {
     Card(
@@ -214,11 +215,11 @@ fun CompanyCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Company Logo
-            if (company.companyProfileImage.isNotEmpty()) {
+            // Profile Photo
+            if (jobSeeker.profilePhoto.isNotEmpty()) {
                 AsyncImage(
-                    model = company.companyProfileImage,
-                    contentDescription = "Company Logo",
+                    model = jobSeeker.profilePhoto,
+                    contentDescription = "Profile Photo",
                     modifier = Modifier
                         .size(64.dp)
                         .clip(CircleShape)
@@ -238,7 +239,7 @@ fun CompanyCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = company.companyName.firstOrNull()?.toString()?.uppercase() ?: "C",
+                        text = jobSeeker.fullName.firstOrNull()?.toString()?.uppercase() ?: "U",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -252,7 +253,7 @@ fun CompanyCard(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = company.companyName,
+                    text = jobSeeker.fullName,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1565C0),
@@ -260,29 +261,35 @@ fun CompanyCard(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                if (company.companyTagline.isNotEmpty()) {
+                if (jobSeeker.profession.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = company.companyTagline,
+                        text = jobSeeker.profession,
                         fontSize = 14.sp,
                         color = Color.Gray,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                if (company.companyIndustry.isNotEmpty()) {
+                if (jobSeeker.email.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFF2196F3).copy(alpha = 0.1f)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = "Email",
+                            tint = Color(0xFF2196F3),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = company.companyIndustry,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF2196F3),
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            text = jobSeeker.email,
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -299,8 +306,8 @@ fun CompanyCard(
 }
 
 @Composable
-fun CompanyDetailsDialog(
-    company: CompanyModel,
+fun JobSeekerDetailsDialog(
+    jobSeeker: JobSeekerModel,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -314,10 +321,10 @@ fun CompanyDetailsDialog(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (company.companyProfileImage.isNotEmpty()) {
+                if (jobSeeker.profilePhoto.isNotEmpty()) {
                     AsyncImage(
-                        model = company.companyProfileImage,
-                        contentDescription = "Company Logo",
+                        model = jobSeeker.profilePhoto,
+                        contentDescription = "Profile Photo",
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
@@ -327,7 +334,7 @@ fun CompanyDetailsDialog(
                     Spacer(modifier = Modifier.width(12.dp))
                 }
                 Text(
-                    text = company.companyName,
+                    text = jobSeeker.fullName,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1565C0)
@@ -338,131 +345,124 @@ fun CompanyDetailsDialog(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Tagline
-                if (company.companyTagline.isNotEmpty()) {
-                    item {
-                        DetailSection(
-                            icon = Icons.Default.Star,
-                            title = "Tagline",
-                            content = company.companyTagline
-                        )
-                    }
-                }
-
-                // Information
-                if (company.companyInformation.isNotEmpty()) {
-                    item {
-                        DetailSection(
-                            icon = Icons.Default.Info,
-                            title = "About",
-                            content = company.companyInformation
-                        )
-                    }
-                }
-
-                // Industry
-                if (company.companyIndustry.isNotEmpty()) {
+                // Profession
+                if (jobSeeker.profession.isNotEmpty()) {
                     item {
                         DetailSection(
                             icon = Icons.Default.Build,
-                            title = "Industry",
-                            content = company.companyIndustry
+                            title = "Profession",
+                            content = jobSeeker.profession
+                        )
+                    }
+                }
+
+                // Bio
+                if (jobSeeker.bio.isNotEmpty()) {
+                    item {
+                        DetailSection(
+                            icon = Icons.Default.Info,
+                            title = "Bio",
+                            content = jobSeeker.bio
                         )
                     }
                 }
 
                 // Email
-                if (company.companyEmail.isNotEmpty()) {
+                if (jobSeeker.email.isNotEmpty()) {
                     item {
                         DetailSection(
                             icon = Icons.Default.Email,
                             title = "Email",
-                            content = company.companyEmail
+                            content = jobSeeker.email
                         )
                     }
                 }
 
-                // Contact
-                if (company.companyContactNumber.isNotEmpty()) {
+                // Phone
+                if (jobSeeker.phoneNumber.isNotEmpty()) {
                     item {
                         DetailSection(
                             icon = Icons.Default.Phone,
-                            title = "Contact",
-                            content = company.companyContactNumber
+                            title = "Phone Number",
+                            content = jobSeeker.phoneNumber
                         )
                     }
                 }
 
-                // Location
-                if (company.companyLocation.isNotEmpty()) {
+                // Gender
+                if (jobSeeker.gender.isNotEmpty()) {
                     item {
                         DetailSection(
-                            icon = Icons.Default.LocationOn,
-                            title = "Location",
-                            content = company.companyLocation
+                            icon = Icons.Default.Person,
+                            title = "Gender",
+                            content = jobSeeker.gender
                         )
                     }
                 }
 
-                // Website
-                if (company.companyWebsite.isNotEmpty()) {
-                    item {
-                        DetailSection(
-                            icon = Icons.Default.Search,
-                            title = "Website",
-                            content = company.companyWebsite
-                        )
-                    }
-                }
-
-                // Established Date
-                if (company.companyEstablishedDate.isNotEmpty()) {
+                // Date of Birth
+                if (jobSeeker.dob.isNotEmpty()) {
                     item {
                         DetailSection(
                             icon = Icons.Default.DateRange,
-                            title = "Established",
-                            content = company.companyEstablishedDate
+                            title = "Date of Birth",
+                            content = jobSeeker.dob
                         )
                     }
                 }
 
-                // Specialties
-                if (company.companySpecialties.isNotEmpty()) {
+                // Current Address
+                if (jobSeeker.currentAddress.isNotEmpty()) {
                     item {
-                        Column {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.List,
-                                    contentDescription = "Specialties",
-                                    tint = Color(0xFF1565C0),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Specialties",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1565C0)
-                                )
-                            }
-                            company.companySpecialties.forEach { specialty ->
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = Color(0xFF2196F3).copy(alpha = 0.1f),
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        text = specialty,
-                                        fontSize = 13.sp,
-                                        color = Color(0xFF2196F3),
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                                    )
-                                }
-                            }
-                        }
+                        DetailSection(
+                            icon = Icons.Default.LocationOn,
+                            title = "Current Address",
+                            content = jobSeeker.currentAddress
+                        )
+                    }
+                }
+
+                // Permanent Address
+                if (jobSeeker.permanentAddress.isNotEmpty()) {
+                    item {
+                        DetailSection(
+                            icon = Icons.Default.Home,
+                            title = "Permanent Address",
+                            content = jobSeeker.permanentAddress
+                        )
+                    }
+                }
+
+                // Nationality
+                if (jobSeeker.nationality.isNotEmpty()) {
+                    item {
+                        DetailSection(
+                            icon = Icons.Default.Place,
+                            title = "Nationality",
+                            content = jobSeeker.nationality
+                        )
+                    }
+                }
+
+                // Religion
+                if (jobSeeker.religion.isNotEmpty()) {
+                    item {
+                        DetailSection(
+                            icon = Icons.Default.Star,
+                            title = "Religion",
+                            content = jobSeeker.religion
+                        )
+                    }
+                }
+
+                // Marital Status
+                if (jobSeeker.maritalStatus.isNotEmpty()) {
+                    item {
+                        DetailSection(
+                            icon = Icons.Default.Favorite,
+                            title = "Marital Status",
+                            content = jobSeeker.maritalStatus
+                        )
                     }
                 }
 
@@ -472,17 +472,17 @@ fun CompanyDetailsDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = if (company.isActive) Icons.Default.CheckCircle else Icons.Default.Warning,
+                            imageVector = if (jobSeeker.isActive) Icons.Default.CheckCircle else Icons.Default.Warning,
                             contentDescription = "Status",
-                            tint = if (company.isActive) Color(0xFF4CAF50) else Color(0xFFFFA726),
+                            tint = if (jobSeeker.isActive) Color(0xFF4CAF50) else Color(0xFFFFA726),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Status: ${if (company.isActive) "Active" else "Inactive"}",
+                            text = "Status: ${if (jobSeeker.isActive) "Active" else "Inactive"}",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (company.isActive) Color(0xFF4CAF50) else Color(0xFFFFA726)
+                            color = if (jobSeeker.isActive) Color(0xFF4CAF50) else Color(0xFFFFA726)
                         )
                     }
                 }
@@ -491,38 +491,4 @@ fun CompanyDetailsDialog(
         shape = RoundedCornerShape(16.dp),
         containerColor = Color.White
     )
-}
-
-@Composable
-fun DetailSection(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    content: String
-) {
-    Column {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(bottom = 4.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = Color(0xFF1565C0),
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = title,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF1565C0)
-            )
-        }
-        Text(
-            text = content,
-            fontSize = 13.sp,
-            color = Color.Gray,
-            lineHeight = 18.sp
-        )
-    }
 }
