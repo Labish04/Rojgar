@@ -1,6 +1,7 @@
 package com.example.rojgar.view
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -143,7 +144,9 @@ fun JobSeekerDashboardBody() {
                             modifier = Modifier
                                 .width(130.dp)
                         ) {
-                            IconButton(onClick = {}) {
+                            IconButton(onClick = {
+                                val intent = Intent(context, MessageActivity::class.java)
+                                context.startActivity(intent)                            }) {
                                 Icon(
                                     painter = painterResource(R.drawable.chat),
                                     contentDescription = null,

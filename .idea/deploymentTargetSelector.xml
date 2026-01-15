@@ -5,16 +5,16 @@
       <SelectionState runConfigName="LoginActivity (1)">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="CompanyProfileActivity">
+      <SelectionState runConfigName="MessageActivity (1)">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="AdminDashboardActivity (1)">
+      <SelectionState runConfigName="MessageActivity (2)">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="CompanyProfileActivity (1)">
+      <SelectionState runConfigName="MessageActivity (3)">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="FollowingListActivity">
+      <SelectionState runConfigName="AdminDashboardActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>
