@@ -1102,7 +1102,15 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                     iconColor = Color(0xFF2196F3),
                                     onClick = {
                                         isDrawerOpen = false
-                                        Toast.makeText(context, "Feedback clicked", Toast.LENGTH_SHORT).show()
+                                        val profileIdToLoad = if (finalTargetJobSeekerId.isNotEmpty()) {
+                                            finalTargetJobSeekerId
+                                        } else {
+                                            currentUserId
+                                        }
+                                        val intent = Intent(context, FeedbackActivity::class.java).apply {
+                                            putExtra("JOB_SEEKER_ID", profileIdToLoad)
+                                        }
+                                        context.startActivity(intent)
                                     }
                                 )
 

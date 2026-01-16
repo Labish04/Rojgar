@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -28,9 +29,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
 import com.example.rojgar.model.ApplicationModel
@@ -177,8 +181,12 @@ fun ApplicationBody(
                             ApplicationCard(
                                 application = application,
                                 jobSeekerViewModel = jobSeekerViewModel,
-                                onStatusChanged = { applicationId, newStatus ->
-                                    applicationViewModel.updateApplicationStatus(applicationId, newStatus)
+                                onStatusChanged = { applicationId, newStatus, feedback ->
+                                    applicationViewModel.updateApplicationStatus(
+                                        applicationId,
+                                        newStatus,
+                                        feedback
+                                    )
                                     Toast.makeText(
                                         context,
                                         "Status updated to $newStatus",
@@ -187,7 +195,6 @@ fun ApplicationBody(
                                     applicationViewModel.getApplicationsByCompany(companyId)
                                 },
                                 onCardClick = { jobSeekerId ->
-                                    // Navigate to CvViewActivity with jobSeekerId
                                     val intent = Intent(context, CvViewActivity::class.java).apply {
                                         putExtra("JOB_SEEKER_ID", jobSeekerId)
                                     }
@@ -211,12 +218,13 @@ fun ApplicationBody(
 fun ApplicationCard(
     application: ApplicationModel,
     jobSeekerViewModel: JobSeekerViewModel,
-    onStatusChanged: (String, String) -> Unit,
+    onStatusChanged: (String, String, String?) -> Unit,
     onCardClick: (String) -> Unit
 ) {
     var jobSeeker by remember { mutableStateOf<JobSeekerModel?>(null) }
     var isLoadingJobSeeker by remember { mutableStateOf(true) }
     var expanded by remember { mutableStateOf(false) }
+    var showRejectionDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(application.jobSeekerId) {
         isLoadingJobSeeker = true
@@ -226,6 +234,17 @@ fun ApplicationCard(
                 jobSeeker = data
             }
         }
+    }
+
+    if (showRejectionDialog) {
+        RejectionFeedbackDialog(
+            applicantName = jobSeeker?.fullName ?: "Applicant",
+            onDismiss = { showRejectionDialog = false },
+            onConfirm = { feedback ->
+                onStatusChanged(application.applicationId, "Rejected", feedback)
+                showRejectionDialog = false
+            }
+        )
     }
 
     Card(
@@ -459,12 +478,234 @@ fun ApplicationCard(
                                     }
                                 },
                                 onClick = {
-                                    onStatusChanged(application.applicationId, status)
                                     expanded = false
+                                    if (status == "Rejected") {
+                                        showRejectionDialog = true
+                                    } else {
+                                        onStatusChanged(application.applicationId, status, null)
+                                    }
                                 },
                                 modifier = Modifier.padding(vertical = 4.dp)
                             )
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RejectionFeedbackDialog(
+    applicantName: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var feedbackText by remember { mutableStateOf("") }
+    var showError by remember { mutableStateOf(false) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Rejection Feedback",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1A1A1A)
+                    )
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color(0xFF666666)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Applicant info
+                Text(
+                    text = "Providing feedback to $applicantName",
+                    fontSize = 14.sp,
+                    color = Color(0xFF666666),
+                    fontWeight = FontWeight.Medium
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Icon and message
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFFFFF3F3))
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFFE5E5)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.emailicon),
+                                contentDescription = "Info",
+                                modifier = Modifier.size(20.dp),
+                                tint = Color(0xFFD32F2F)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Please provide constructive feedback to help the applicant improve.",
+                            fontSize = 13.sp,
+                            color = Color(0xFF666666),
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Feedback input label
+                Text(
+                    text = "Rejection Reason *",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF333333)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Feedback TextField
+                OutlinedTextField(
+                    value = feedbackText,
+                    onValueChange = {
+                        feedbackText = it
+                        showError = false
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp),
+                    placeholder = {
+                        Text(
+                            text = "e.g., We appreciate your interest, but we found candidates with more relevant experience for this position...",
+                            fontSize = 13.sp,
+                            color = Color(0xFFAAAAAA)
+                        )
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = if (showError) Color(0xFFD32F2F) else DarkBlue2,
+                        unfocusedBorderColor = if (showError) Color(0xFFD32F2F) else Color(0xFFDDDDDD),
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color(0xFFFAFAFA)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    isError = showError,
+                    maxLines = 5
+                )
+
+                if (showError) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Please provide feedback before rejecting",
+                        fontSize = 12.sp,
+                        color = Color(0xFFD32F2F)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "${feedbackText.length}/500 characters",
+                    fontSize = 12.sp,
+                    color = Color(0xFF999999),
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Cancel button
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(0.8f)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF666666)
+                        ),
+                        border = ButtonDefaults.outlinedButtonBorder.copy(
+                            width = 1.5.dp
+                        )
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    // Confirm button
+                    Button(
+                        onClick = {
+                            if (feedbackText.trim().isEmpty()) {
+                                showError = true
+                            } else {
+                                onConfirm(feedbackText.trim())
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFD32F2F),
+                            contentColor = Color.White
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 2.dp,
+                            pressedElevation = 4.dp
+                        )
+                    ) {
+                        Text(
+                            text = "Confirm Rejection",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }

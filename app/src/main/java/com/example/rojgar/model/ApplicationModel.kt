@@ -12,7 +12,9 @@ data class ApplicationModel(
     val appliedDate: Long = System.currentTimeMillis(),
     val status: String = "Pending",
     val coverLetter: String = "",
-    val resumeUrl: String = ""
+    val resumeUrl: String = "",
+    val rejectionFeedback: String? = null,
+    val rejectionDate: Long? = null
 ) {
     fun toMap(): Map<String, Any?> {
         return mapOf(
@@ -27,7 +29,9 @@ data class ApplicationModel(
             "appliedDate" to appliedDate,
             "status" to status,
             "coverLetter" to coverLetter,
-            "resumeUrl" to resumeUrl
+            "resumeUrl" to resumeUrl,
+            "rejectionFeedback" to rejectionFeedback,
+            "rejectionDate" to rejectionDate
         )
     }
 }

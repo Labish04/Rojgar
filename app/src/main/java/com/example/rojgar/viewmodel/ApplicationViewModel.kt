@@ -48,8 +48,12 @@ class ApplicationViewModel(private val repo: ApplicationRepo) : ViewModel() {
         }
     }
 
-    fun updateApplicationStatus(applicationId: String, status: String) {
-        repo.updateApplicationStatus(applicationId, status) { success, message ->
+    fun updateApplicationStatus(
+        applicationId: String,
+        status: String,
+        rejectionFeedback: String? = null
+    ) {
+        repo.updateApplicationStatus(applicationId, status, rejectionFeedback) { success, message ->
             _applyResult.value = Pair(success, message)
         }
     }

@@ -1,5 +1,6 @@
 package com.example.rojgar.repository
 
+import android.util.Log
 import com.example.rojgar.model.ApplicationModel
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -39,21 +40,31 @@ class ApplicationRepoImpl : ApplicationRepo {
         jobSeekerId: String,
         callback: (Boolean, String, List<ApplicationModel>?) -> Unit
     ) {
+        Log.d("ApplicationRepo", "Fetching applications for jobSeekerId: $jobSeekerId")
+
         applicationsRef.orderByChild("jobSeekerId")
             .equalTo(jobSeekerId)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val applications = mutableListOf<ApplicationModel>()
 
+                    Log.d("ApplicationRepo", "Snapshot exists: ${snapshot.exists()}")
+                    Log.d("ApplicationRepo", "Children count: ${snapshot.childrenCount}")
+
                     for (data in snapshot.children) {
                         val application = data.getValue(ApplicationModel::class.java)
-                        application?.let { applications.add(it) }
+                        if (application != null) {
+                            applications.add(application)
+                            Log.d("ApplicationRepo", "Application: id=${application.applicationId}, status=${application.status}, feedback=${application.rejectionFeedback}")
+                        }
                     }
 
+                    Log.d("ApplicationRepo", "Total applications fetched: ${applications.size}")
                     callback(true, "Applications fetched successfully", applications)
                 }
 
                 override fun onCancelled(error: DatabaseError) {
+                    Log.e("ApplicationRepo", "Error fetching applications: ${error.message}")
                     callback(false, error.message, null)
                 }
             })
@@ -86,17 +97,38 @@ class ApplicationRepoImpl : ApplicationRepo {
     override fun updateApplicationStatus(
         applicationId: String,
         status: String,
+        rejectionFeedback: String?,
         callback: (Boolean, String) -> Unit
     ) {
-        applicationsRef.child(applicationId).child("status")
-            .setValue(status)
+        Log.d("ApplicationRepo", "Updating application: $applicationId")
+        Log.d("ApplicationRepo", "New status: $status")
+        Log.d("ApplicationRepo", "Feedback: $rejectionFeedback")
+
+        val updates = hashMapOf<String, Any>(
+            "status" to status
+        )
+
+        // Add rejection feedback if status is Rejected and feedback is provided
+        if (status == "Rejected" && !rejectionFeedback.isNullOrEmpty()) {
+            updates["rejectionFeedback"] = rejectionFeedback
+            updates["rejectionDate"] = System.currentTimeMillis()
+            Log.d("ApplicationRepo", "Adding rejection feedback and date")
+        }
+
+        Log.d("ApplicationRepo", "Updates to apply: $updates")
+
+        applicationsRef.child(applicationId)
+            .updateChildren(updates)
             .addOnSuccessListener {
+                Log.d("ApplicationRepo", "Update successful")
                 callback(true, "Application status updated successfully")
             }
             .addOnFailureListener { e ->
+                Log.e("ApplicationRepo", "Update failed: ${e.message}")
                 callback(false, "Failed to update status: ${e.message}")
             }
     }
+
     override fun deleteApplication(
         applicationId: String,
         callback: (Boolean, String) -> Unit
@@ -110,5 +142,4 @@ class ApplicationRepoImpl : ApplicationRepo {
                 callback(false, "Failed to delete application: ${e.message}")
             }
     }
-
 }

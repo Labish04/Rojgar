@@ -21,6 +21,7 @@ interface ApplicationRepo {
     fun updateApplicationStatus(
         applicationId: String,
         status: String,
+        rejectionFeedback: String?,
         callback: (Boolean, String) -> Unit
     )
     fun deleteApplication(
