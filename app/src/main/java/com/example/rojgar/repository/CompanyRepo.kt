@@ -7,6 +7,11 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.auth.FirebaseUser
 
 interface CompanyRepo {
+
+    fun saveUserRole(
+        uid: String,
+        role: String
+    )
     fun register(
         email: String,
         password: String,

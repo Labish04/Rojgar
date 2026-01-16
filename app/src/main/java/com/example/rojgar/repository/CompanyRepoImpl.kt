@@ -37,6 +37,14 @@ class CompanyRepoImpl : CompanyRepo {
         )
     )
 
+    override fun saveUserRole(uid: String, role: String) {
+        FirebaseDatabase.getInstance()
+            .getReference("users")
+            .child(uid)
+            .child("role")
+            .setValue(role)
+    }
+
     override fun register(
         email: String,
         password: String,
@@ -45,6 +53,8 @@ class CompanyRepoImpl : CompanyRepo {
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener {
                 if (it.isSuccessful) {
+                    val uid = auth.currentUser!!.uid
+                    saveUserRole(uid, "Company")
                     callback(
                         true, "Registration Successful",
                         "${auth.currentUser?.uid}"

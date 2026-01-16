@@ -40,10 +40,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rojgar.R
 import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.utils.ImageUtils
+import com.example.rojgar.view.AnalyticsScreen
+import com.example.rojgar.viewmodel.AnalyticsViewModel
+import com.google.firebase.auth.FirebaseAuth
 
 class CompanyDashboardActivity : ComponentActivity() {
     lateinit var imageUtils: ImageUtils
@@ -102,6 +106,8 @@ fun CompanyDashboardBody(
 ) {
     val context = LocalContext.current
     val activity = context as Activity
+    val analyticsViewModel: AnalyticsViewModel = viewModel()
+    val companyId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
     data class NavItem(
         val label: String,
@@ -240,13 +246,13 @@ fun CompanyDashboardBody(
         ) {
             when (selectedIndex) {
                 0 -> CompanyHomeScreenBody()
-                1 -> Text("Analysis Screen")
+                1 -> AnalyticsScreen(viewModel = analyticsViewModel, companyId = companyId)
                 2 -> CompanyUploadPostScreen(
                     selectedProfileUri = selectedProfileUri,
                     onPickProfileImage = onPickProfileImage
                 )
                 3 -> CompanyProfileBody(
-                    companyId = "",
+                    companyId = companyId,
                     isOwnProfile = true,
                     selectedCoverUri = selectedCoverUri,
                     selectedProfileUri = selectedProfileUri,

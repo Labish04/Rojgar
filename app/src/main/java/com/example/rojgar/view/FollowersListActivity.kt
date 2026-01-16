@@ -1,10 +1,12 @@
 package com.example.rojgar.view
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -20,7 +22,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,23 +33,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.rojgar.R
-import com.example.rojgar.model.CompanyModel
-import com.example.rojgar.model.JobSeekerModel
 import com.example.rojgar.repository.CompanyRepoImpl
 import com.example.rojgar.repository.FollowRepoImpl
 import com.example.rojgar.repository.JobSeekerRepoImpl
-import com.example.rojgar.viewmodel.CompanyViewModel
+import com.example.rojgar.repository.UserRepo
 import com.example.rojgar.viewmodel.FollowViewModel
 import com.example.rojgar.viewmodel.FollowViewModelFactory
-import com.example.rojgar.viewmodel.JobSeekerViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Dispatchers
 
 data class FollowerUi(
     val id: String,
@@ -57,7 +56,8 @@ data class FollowerUi(
     val followerType: String,
     val profileImageUrl: String?,
     var isFollowingBack: Boolean = false,
-    val isLoaded: Boolean = true  // Track if data is loaded
+    var isOwnProfile: Boolean = false,
+    val isLoaded: Boolean = true
 )
 
 class FollowersListActivity : ComponentActivity() {
@@ -77,6 +77,8 @@ fun FollowersListBody() {
     val followViewModel: FollowViewModel = viewModel(factory = FollowViewModelFactory(FollowRepoImpl()))
     val jobSeekerRepo = remember { JobSeekerRepoImpl() }
     val companyRepo = remember { CompanyRepoImpl() }
+    val userRepo = remember { UserRepo() }
+
 
     // Premium color palette
     val primaryBlue = Color(0xFF0EA5E9)
@@ -85,6 +87,8 @@ fun FollowersListBody() {
     val bgGradientStart = Color(0xFFF0F9FF)
     val bgGradientEnd = Color(0xFFE0F2FE)
     val cardBg = Color(0xFFFFFFFF)
+    val followButtonColor = Color(0xFF10B981) // Green for follow back
+    val unfollowButtonColor = Color(0xFFEF4444) // Red for unfollow
 
     var searchQuery by remember { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
@@ -92,12 +96,108 @@ fun FollowersListBody() {
     // Get intent extras
     val activity = context as? ComponentActivity
     val userId = activity?.intent?.getStringExtra("USER_ID") ?: ""
-    val userType = activity?.intent?.getStringExtra("USER_TYPE") ?: "Company"
     val isOwnProfile = activity?.intent?.getBooleanExtra("IS_OWN_PROFILE", false) ?: false
+
+    // Current user info
+    var currentUserId by remember { mutableStateOf("") }
+    var currentUserType by remember { mutableStateOf<String?>(null) }
+    var isLoadingUserType by remember { mutableStateOf(false) }
 
     // Using mutableStateListOf for reactive updates
     var followerDetails by remember { mutableStateOf<List<FollowerUi>>(emptyList()) }
     var isLoadingDetails by remember { mutableStateOf(false) }
+
+    var reloadUserTypeTrigger by remember { mutableStateOf(0) }
+
+    val reloadUserType: () -> Unit = {
+        if (currentUserId.isNotEmpty()) {
+            isLoadingUserType = true
+            userRepo.getUserType { type ->
+                currentUserType = type
+                isLoadingUserType = false
+                reloadUserTypeTrigger++ // Trigger recomposition if needed
+            }
+        }
+    }
+
+    // Get current user info
+    // Get current user info
+    LaunchedEffect(Unit) {
+        currentUserId = userRepo.getCurrentUserId()
+        println("DEBUG: Current User ID = $currentUserId")
+        println("DEBUG: Is User Logged In = ${userRepo.isUserLoggedIn()}")
+
+        if (currentUserId.isNotEmpty()) {
+            isLoadingUserType = true
+
+            // Add a small delay to ensure Firebase is ready
+            delay(100)
+
+            userRepo.getUserType { type ->
+                println("DEBUG: getUserType callback received: $type")
+                currentUserType = type
+                isLoadingUserType = false
+
+                if (type == null) {
+                    println("DEBUG: User type is null for user ID: $currentUserId")
+                    println("DEBUG: User is logged in: ${userRepo.isUserLoggedIn()}")
+
+                    // Try again after a delay
+                    kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                        delay(1000)
+                        println("DEBUG: Retrying getUserType...")
+                        userRepo.getUserType { retryType ->
+                            println("DEBUG: Retry getUserType callback: $retryType")
+                            currentUserType = retryType
+                            isLoadingUserType = false
+                        }
+                    }
+                } else {
+                    println("DEBUG: User type successfully set to: $type")
+                }
+            }
+        } else {
+            println("DEBUG: No current user ID found")
+            isLoadingUserType = false
+        }
+    }
+    // Add this right after the first LaunchedEffect(Unit)
+    LaunchedEffect(Unit) {
+        delay(2000) // Wait 2 seconds
+        if (currentUserId.isNotEmpty()) {
+            println("DEBUG: ==================== MANUAL FIREBASE CHECK ====================")
+
+            // Manually check Companies node
+            val companiesRef = com.google.firebase.database.FirebaseDatabase.getInstance()
+                .getReference("Companys")
+                .child(currentUserId)
+
+            companiesRef.get().addOnSuccessListener { snapshot ->
+                println("DEBUG: Companies node exists: ${snapshot.exists()}")
+                if (snapshot.exists()) {
+                    println("DEBUG: Company data: ${snapshot.value}")
+                }
+            }.addOnFailureListener { error ->
+                println("DEBUG: Companies check FAILED: ${error.message}")
+            }
+
+            // Manually check JobSeekers node
+            val jobSeekersRef = com.google.firebase.database.FirebaseDatabase.getInstance()
+                .getReference("JobSeeker")
+                .child(currentUserId)
+
+            jobSeekersRef.get().addOnSuccessListener { snapshot ->
+                println("DEBUG: JobSeekers node exists: ${snapshot.exists()}")
+                if (snapshot.exists()) {
+                    println("DEBUG: JobSeeker data: ${snapshot.value}")
+                }
+            }.addOnFailureListener { error ->
+                println("DEBUG: JobSeekers check FAILED: ${error.message}")
+            }
+
+            println("DEBUG: ================================================================")
+        }
+    }
 
     // Load followers
     LaunchedEffect(userId) {
@@ -109,8 +209,9 @@ fun FollowersListBody() {
     val followersList by followViewModel.followers.observeAsState(initial = emptyList())
     val loadingState by followViewModel.loading.observeAsState(initial = false)
 
-    // Fetch details for each follower - FIXED VERSION
-    LaunchedEffect(followersList) {
+    // Fetch details for each follower and check follow status
+    // Inside LaunchedEffect(followersList, currentUserId, currentUserType):
+    LaunchedEffect(followersList, currentUserId, currentUserType) {
         if (followersList.isEmpty()) {
             followerDetails = emptyList()
             return@LaunchedEffect
@@ -121,24 +222,42 @@ fun FollowersListBody() {
         var loadedCount = 0
         val totalCount = followersList.size
 
-        android.util.Log.d("FollowersList", "Starting to load ${followersList.size} followers")
-
         followersList.forEach { follow ->
-            android.util.Log.d("FollowersList", "Processing follower - ID: ${follow.followerId}, Type: ${follow.followerType}")
             if (follow.followerType == "JobSeeker") {
                 jobSeekerRepo.getJobSeekerById(follow.followerId) { success, _, model ->
                     if (success && model != null) {
-                        loadedFollowers.add(FollowerUi(
+                        val followerUi = FollowerUi(
                             id = follow.followerId,
                             name = model.fullName.takeIf { !it.isNullOrBlank() } ?: "Job Seeker",
                             profession = model.profession?.takeIf { it.isNotBlank() }
-                                ?: model.profession?.takeIf { it.isNotBlank() }
                                 ?: "Looking for opportunities",
                             followerType = follow.followerType,
                             profileImageUrl = model.profilePhoto?.takeIf { it.isNotBlank() },
-                            isFollowingBack = false,
+                            isOwnProfile = isOwnProfile,
                             isLoaded = true
-                        ))
+                        )
+
+                        // ALWAYS check if current user is following this follower (not just for own profile)
+                        // Only check if current user is logged in
+                        if (currentUserId.isNotEmpty() && currentUserType != null) {
+                            followViewModel.isFollowing(currentUserId, follow.followerId) { isFollowing ->
+                                followerUi.isFollowingBack = isFollowing
+                                loadedFollowers.add(followerUi)
+                                loadedCount++
+                                if (loadedCount == totalCount) {
+                                    followerDetails = loadedFollowers.sortedBy { it.name }
+                                    isLoadingDetails = false
+                                }
+                            }
+                        } else {
+                            // Current user not logged in
+                            loadedFollowers.add(followerUi)
+                            loadedCount++
+                            if (loadedCount == totalCount) {
+                                followerDetails = loadedFollowers.sortedBy { it.name }
+                                isLoadingDetails = false
+                            }
+                        }
                     } else {
                         // Add placeholder for failed load
                         loadedFollowers.add(FollowerUi(
@@ -147,23 +266,20 @@ fun FollowersListBody() {
                             profession = "Profile unavailable",
                             followerType = follow.followerType,
                             profileImageUrl = null,
-                            isFollowingBack = false,
+                            isOwnProfile = isOwnProfile,
                             isLoaded = true
                         ))
-                    }
-
-                    loadedCount++
-                    if (loadedCount == totalCount) {
-                        followerDetails = loadedFollowers.sortedBy { it.name }
-                        isLoadingDetails = false
+                        loadedCount++
+                        if (loadedCount == totalCount) {
+                            followerDetails = loadedFollowers.sortedBy { it.name }
+                            isLoadingDetails = false
+                        }
                     }
                 }
             } else if (follow.followerType == "Company") {
                 companyRepo.getCompanyById(follow.followerId) { success, message, model ->
-                    android.util.Log.d("FollowersList", "Company fetch - ID: ${follow.followerId}, Success: $success, Message: $message, Model: $model")
-
                     if (success && model != null) {
-                        loadedFollowers.add(FollowerUi(
+                        val followerUi = FollowerUi(
                             id = follow.followerId,
                             name = model.companyName.takeIf { !it.isNullOrBlank() } ?: "Company",
                             profession = model.companyTagline?.takeIf { it.isNotBlank() }
@@ -172,26 +288,46 @@ fun FollowersListBody() {
                                 ?: "Company",
                             followerType = follow.followerType,
                             profileImageUrl = model.companyProfileImage?.takeIf { it.isNotBlank() },
-                            isFollowingBack = false,
+                            isOwnProfile = isOwnProfile,
                             isLoaded = true
-                        ))
+                        )
+
+                        // ALWAYS check if current user is following this follower (not just for own profile)
+                        // Only check if current user is logged in
+                        if (currentUserId.isNotEmpty() && currentUserType != null) {
+                            followViewModel.isFollowing(currentUserId, follow.followerId) { isFollowing ->
+                                followerUi.isFollowingBack = isFollowing
+                                loadedFollowers.add(followerUi)
+                                loadedCount++
+                                if (loadedCount == totalCount) {
+                                    followerDetails = loadedFollowers.sortedBy { it.name }
+                                    isLoadingDetails = false
+                                }
+                            }
+                        } else {
+                            loadedFollowers.add(followerUi)
+                            loadedCount++
+                            if (loadedCount == totalCount) {
+                                followerDetails = loadedFollowers.sortedBy { it.name }
+                                isLoadingDetails = false
+                            }
+                        }
                     } else {
-                        // Add placeholder for failed load with error details
+                        // Add placeholder for failed load
                         loadedFollowers.add(FollowerUi(
                             id = follow.followerId,
                             name = "Company",
-                            profession = "Profile unavailable${if (message.isNotEmpty()) ": $message" else ""}",
+                            profession = "Profile unavailable",
                             followerType = follow.followerType,
                             profileImageUrl = null,
-                            isFollowingBack = false,
+                            isOwnProfile = isOwnProfile,
                             isLoaded = true
                         ))
-                    }
-
-                    loadedCount++
-                    if (loadedCount == totalCount) {
-                        followerDetails = loadedFollowers.sortedBy { it.name }
-                        isLoadingDetails = false
+                        loadedCount++
+                        if (loadedCount == totalCount) {
+                            followerDetails = loadedFollowers.sortedBy { it.name }
+                            isLoadingDetails = false
+                        }
                     }
                 }
             } else {
@@ -324,9 +460,94 @@ fun FollowersListBody() {
                                 secondaryBlue = secondaryBlue,
                                 accentBlue = accentBlue,
                                 cardBg = cardBg,
+                                followButtonColor = followButtonColor,
+                                unfollowButtonColor = unfollowButtonColor,
                                 onFollowBackToggle = {
-                                    // TODO: Implement follow back logic
-                                }
+                                    if (currentUserId.isNotEmpty() && currentUserType != null) {
+                                        if (follower.isFollowingBack) {
+                                            // Unfollow
+                                            followViewModel.unfollow(
+                                                followerId = currentUserId,
+                                                followerType = currentUserType!!,
+                                                followingId = follower.id,
+                                                followingType = follower.followerType
+                                            ) { success, message ->
+                                                if (success) {
+                                                    // Update local state
+                                                    val updatedList =
+                                                        followerDetails.toMutableList()
+                                                    val indexToUpdate =
+                                                        updatedList.indexOfFirst { it.id == follower.id }
+                                                    if (indexToUpdate != -1) {
+                                                        updatedList[indexToUpdate] =
+                                                            updatedList[indexToUpdate].copy(
+                                                                isFollowingBack = false
+                                                            )
+                                                        followerDetails = updatedList
+                                                        Toast.makeText(
+                                                            context,
+                                                            "Unfollowed ${follower.name}",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    }
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Failed to unfollow: $message",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+                                        } else {
+                                            // Follow back
+                                            followViewModel.follow(
+                                                followerId = currentUserId,
+                                                followerType = currentUserType!!,
+                                                followingId = follower.id,
+                                                followingType = follower.followerType
+                                            ) { success, message ->
+                                                if (success) {
+                                                    // Update local state
+                                                    val updatedList =
+                                                        followerDetails.toMutableList()
+                                                    val indexToUpdate =
+                                                        updatedList.indexOfFirst { it.id == follower.id }
+                                                    if (indexToUpdate != -1) {
+                                                        updatedList[indexToUpdate] =
+                                                            updatedList[indexToUpdate].copy(
+                                                                isFollowingBack = true
+                                                            )
+                                                        followerDetails = updatedList
+                                                        Toast.makeText(
+                                                            context,
+                                                            "Followed back ${follower.name}",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    }
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Failed to follow: $message",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Please login to follow",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                },
+                                context = context,
+                                followViewModel = followViewModel,
+                                isLoadingUserType = isLoadingUserType,
+                                currentUserId = currentUserId,
+                                currentUserType = currentUserType,
+                                userRepo = userRepo,
+                                onReloadUserType = reloadUserType
                             )
                         }
                     }
@@ -430,7 +651,18 @@ fun FollowerCard(
     secondaryBlue: Color,
     accentBlue: Color,
     cardBg: Color,
-    onFollowBackToggle: () -> Unit
+    followButtonColor: Color,
+    unfollowButtonColor: Color,
+    onFollowBackToggle: () -> Unit,
+    context: Context,
+    followViewModel: FollowViewModel,
+    // ADD THESE NEW PARAMETERS:
+    isLoadingUserType: Boolean,
+    currentUserId: String,
+    currentUserType: String?,
+    // Also need userRepo for the error button
+    userRepo: UserRepo,
+    onReloadUserType: () -> Unit
 ) {
     var visible by remember { mutableStateOf(false) }
 
@@ -527,12 +759,59 @@ fun FollowerCard(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    Button(
-                        onClick = onFollowBackToggle,
-                        colors = ButtonDefaults.buttonColors(containerColor = primaryBlue),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("View")
+                    // Show different button based on follow status and ownership
+                    if (isLoadingUserType) {
+                        // Show loading button
+                        Button(
+                            onClick = { /* Do nothing while loading */ },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = false
+                        ) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    } else if (currentUserId.isNotEmpty() && currentUserType != null) {
+                        // User is logged in and we know their type
+                        Button(
+                            onClick = {
+                                onFollowBackToggle()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (follower.isFollowingBack) unfollowButtonColor else followButtonColor
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(if (follower.isFollowingBack) "Following" else "Follow Back")
+                        }
+                    }  else if (currentUserId.isNotEmpty() && currentUserType == null) {
+                        // User is logged in but we couldn't determine type
+                        Button(
+                            onClick = {
+                                Toast.makeText(context, "Reloading user type...", Toast.LENGTH_SHORT).show()
+                                onReloadUserType()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Retry")
+                        }
+
+                    } else {
+                        // User is not logged in
+                        Button(
+                            onClick = {
+                                Toast.makeText(context, "Please login to follow", Toast.LENGTH_SHORT).show()
+                                // Optionally navigate to login
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = primaryBlue),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("View")
+                        }
                     }
                 }
             }
@@ -609,10 +888,4 @@ fun FollowerEnhancedAvatar(
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewFollowersList() {
-    FollowersListBody()
 }

@@ -6,6 +6,10 @@ import com.example.rojgar.model.JobSeekerModel
 import com.google.firebase.auth.FirebaseUser
 
 interface JobSeekerRepo {
+    fun saveUserRole(
+        uid: String,
+        role: String
+    )
     fun register(
         email: String,
         password: String,

@@ -6,6 +6,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.Query
 import com.google.firebase.database.ValueEventListener
 import java.util.UUID
 
@@ -15,7 +16,8 @@ class ReviewRepoImpl : ReviewRepo {
     val ref: DatabaseReference = database.getReference("Reviews")
     val jobSeekerRef: DatabaseReference = database.getReference("JobSeekers")
 
-    private val listeners = mutableMapOf<String, ValueEventListener>()
+    // Store both listener and query for proper cleanup
+    private val listeners = mutableMapOf<String, Pair<Query, ValueEventListener>>()
 
     override fun addReview(
         review: ReviewModel,
@@ -81,7 +83,8 @@ class ReviewRepoImpl : ReviewRepo {
         callback: (Boolean, String, List<ReviewModel>?) -> Unit
     ) {
         try {
-            ref.orderByChild("companyId").equalTo(companyId).addListenerForSingleValueEvent(object : ValueEventListener {
+            val query: Query = ref.orderByChild("companyId").equalTo(companyId)
+            query.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val reviews = mutableListOf<ReviewModel>()
                     for (childSnapshot in snapshot.children) {
@@ -149,14 +152,18 @@ class ReviewRepoImpl : ReviewRepo {
         callback: (Boolean, String, ReviewModel?) -> Unit
     ) {
         try {
-            ref.orderByChild("userId").equalTo(userId).addListenerForSingleValueEvent(object : ValueEventListener {
+            // Query reviews by userId and companyId
+            val query: Query = ref.orderByChild("userId_companyId")
+                .equalTo("${userId}_$companyId")
+
+            query.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     for (childSnapshot in snapshot.children) {
                         try {
                             val reviewMap = childSnapshot.value as? Map<String, Any?>
                             if (reviewMap != null) {
                                 val review = ReviewModel.fromMap(reviewMap)
-                                if (review.companyId == companyId) {
+                                if (review.userId == userId && review.companyId == companyId) {
                                     callback(true, "User has already reviewed this company", review)
                                     return
                                 }
@@ -182,7 +189,8 @@ class ReviewRepoImpl : ReviewRepo {
         callback: (Boolean, String, Double) -> Unit
     ) {
         try {
-            ref.orderByChild("companyId").equalTo(companyId).addListenerForSingleValueEvent(object : ValueEventListener {
+            val query: Query = ref.orderByChild("companyId").equalTo(companyId)
+            query.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val ratings = mutableListOf<Int>()
                     for (childSnapshot in snapshot.children) {
@@ -222,6 +230,8 @@ class ReviewRepoImpl : ReviewRepo {
     ): String? {
         try {
             val listenerId = UUID.randomUUID().toString()
+            val query: Query = ref.orderByChild("companyId").equalTo(companyId)
+
             val listener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val reviews = mutableListOf<ReviewModel>()
@@ -246,8 +256,9 @@ class ReviewRepoImpl : ReviewRepo {
                 }
             }
 
-            listeners[listenerId] = listener
-            ref.orderByChild("companyId").equalTo(companyId).addValueEventListener(listener)
+            // Store both query and listener for proper cleanup
+            listeners[listenerId] = Pair(query, listener)
+            query.addValueEventListener(listener)
             return listenerId
         } catch (e: Exception) {
             onError(e.message ?: "An error occurred")
@@ -257,8 +268,9 @@ class ReviewRepoImpl : ReviewRepo {
 
     override fun removeReviewListener(listenerId: String?) {
         listenerId?.let { id ->
-            listeners[id]?.let { listener ->
-                ref.removeEventListener(listener)
+            listeners[id]?.let { (query, listener) ->
+                // Remove listener from the specific query, not from ref
+                query.removeEventListener(listener)
                 listeners.remove(id)
             }
         }

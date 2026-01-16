@@ -35,6 +35,14 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         )
     )
 
+    override fun saveUserRole(uid: String, role: String) {
+        FirebaseDatabase.getInstance()
+            .getReference("users")
+            .child(uid)
+            .child("role")
+            .setValue(role)
+    }
+
     override fun register(
         email: String,
         password: String,
@@ -43,6 +51,9 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener {
                 if (it.isSuccessful) {
+                    val uid = auth.currentUser!!.uid
+                    saveUserRole(uid, "JobSeeker")
+
                     callback(
                         true, "Registration Successful",
                         "${auth.currentUser?.uid}"
