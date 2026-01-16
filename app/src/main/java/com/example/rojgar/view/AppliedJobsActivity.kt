@@ -1,466 +1,1050 @@
 package com.example.rojgar.view
 
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
-import com.example.rojgar.model.AppliedJobModel
+import com.example.rojgar.model.ApplicationModel
+import com.example.rojgar.model.JobModel
+import com.example.rojgar.repository.ApplicationRepoImpl
+import com.example.rojgar.repository.CompanyRepoImpl
+import com.example.rojgar.repository.JobRepoImpl
 import com.example.rojgar.repository.JobSeekerRepoImpl
-import com.example.rojgar.view.ui.theme.RojgarTheme
+import com.example.rojgar.ui.theme.Blue
+import com.example.rojgar.ui.theme.DarkBlue2
+import com.example.rojgar.viewmodel.ApplicationViewModel
+import com.example.rojgar.viewmodel.JobViewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 class AppliedJobsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val jobSeekerId = intent.getStringExtra("JOB_SEEKER_ID") ?:
+        JobSeekerRepoImpl().getCurrentJobSeeker()?.uid ?: ""
+
         setContent {
-            RojgarTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    AppliedJobsScreen(
-                        modifier = Modifier.padding(innerPadding),
-                        onBackClick = { finish() }
-                    )
-                }
-            }
+            AppliedJobsScreen(
+                jobSeekerId = jobSeekerId,
+                onBackClick = { finish() }
+            )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppliedJobsScreen(
-    modifier: Modifier = Modifier,
+    jobSeekerId: String,
     onBackClick: () -> Unit = {}
 ) {
-    val repository = remember { JobSeekerRepoImpl() }
-    val currentUser = repository.getCurrentJobSeeker()
+    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl()) }
+    val applications by applicationViewModel.applications.observeAsState(emptyList())
+    val isLoading by applicationViewModel.loading.observeAsState(false)
 
-    var selectedTab by remember { mutableStateOf(0) }
-    var appliedJobs by remember { mutableStateOf<List<AppliedJobModel>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var selectedApplication by remember { mutableStateOf<ApplicationModel?>(null) }
+    var selectedJob by remember { mutableStateOf<JobModel?>(null) }
+    var showWithdrawDialog by remember { mutableStateOf(false) }
 
-    val tabs = listOf(
-        "All",
-        "Pending",
-        "Viewed",
-        "Shortlisted",
-        "Offered",
-        "Hired",
-        "Rejected",
-        "Withdrawn"
-    )
+    LaunchedEffect(jobSeekerId) {
+        if (jobSeekerId.isNotEmpty()) {
+            applicationViewModel.getApplicationsByJobSeeker(jobSeekerId)
+        }
+    }
 
-    // Load applied jobs based on selected tab
-//    LaunchedEffect(selectedTab, currentUser) {
-//        if (currentUser != null) {
-//            isLoading = true
-//            errorMessage = null
-//
-//            when (selectedTab) {
-//                0 -> {
-//                    // Load all applied jobs
-//                    repository.getAppliedJobsByJobSeeker(currentUser.uid) { success, message, jobs ->
-//                        isLoading = false
-//                        if (success && jobs != null) {
-//                            appliedJobs = jobs
-//                        } else {
-//                            errorMessage = message
-//                            appliedJobs = emptyList()
-//                        }
-//                    }
-//                }
-//                else -> {
-//                    // Load filtered jobs by status
-//                    val status = tabs[selectedTab]
-//                    repository.getAppliedJobsByStatus(currentUser.uid, status) { success, message, jobs ->
-//                        isLoading = false
-//                        if (success && jobs != null) {
-//                            appliedJobs = jobs
-//                        } else {
-//                            errorMessage = message
-//                            appliedJobs = emptyList()
-//                        }
-//                    }
-//                }
-//            }
-//        } else {
-//            isLoading = false
-//            errorMessage = "Please log in to view applied jobs"
-//        }
-//    }
-
-    Column(
-        modifier = modifier
+    Box(
+        modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(
+                if (selectedApplication == null) {
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF1E3A8A),
+                            Color(0xFF3B82F6),
+                            Color(0xFFDEEBFF)
+                        )
+                    )
+                } else {
+                    Brush.verticalGradient(
+                        colors = listOf(Color(0xFFF8F9FA), Color(0xFFF8F9FA))
+                    )
+                }
+            )
     ) {
-        // Header with back arrow
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF7C3AED))
-                .padding(horizontal = 16.dp, vertical = 20.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+        if (selectedApplication == null) {
+            Column(
+                modifier = Modifier.fillMaxSize()
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.outline_arrow_back_ios_24),
-                    contentDescription = "Back",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clickable { onBackClick() }
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "Applied Jobs",
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-        }
-
-        // Tab Row
-        ScrollableTabRow(
-            selectedTabIndex = selectedTab,
-            containerColor = Color.White,
-            contentColor = Color.Black,
-            edgePadding = 0.dp,
-            indicator = { tabPositions ->
-                if (selectedTab < tabPositions.size) {
-                    TabRowDefaults.SecondaryIndicator(
-                        Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                        color = Color(0xFF7C3AED)
-                    )
-                }
-            },
-            divider = {
-                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.Transparent
                 ) {
-                    Text(
-                        text = title,
-                        fontSize = 14.sp,
-                        color = if (selectedTab == index) Color(0xFF7C3AED) else Color.Gray,
-                        fontWeight = if (selectedTab == index) FontWeight.SemiBold else FontWeight.Normal,
-                        modifier = Modifier.padding(vertical = 12.dp)
-                    )
-                }
-            }
-        }
+                    Column {
+                        Spacer(modifier = Modifier.height(40.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = onBackClick,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(
+                                        Color.White.copy(alpha = 0.2f),
+                                        shape = CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = Color.White
+                                )
+                            }
 
-        // Column Headers with horizontal scroll
-        val scrollState = rememberScrollState()
+                            Spacer(modifier = Modifier.width(16.dp))
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFFF9FAFB))
-                .horizontalScroll(scrollState)
-                .padding(horizontal = 16.dp, vertical = 18.dp),
-            horizontalArrangement = Arrangement.spacedBy(32.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            HeaderCell(
-                text = "Title",
-                minWidth = 140.dp
-            )
-            HeaderCell(
-                text = "Company",
-                minWidth = 140.dp
-            )
-            HeaderCell(
-                text = "Status",
-                minWidth = 100.dp
-            )
-            HeaderCell(
-                text = "Location",
-                minWidth = 120.dp
-            )
-            HeaderCell(
-                text = "Openings",
-                minWidth = 100.dp
-            )
-            HeaderCell(
-                text = "Applied Date",
-                minWidth = 120.dp
-            )
-        }
+                            Column {
+                                Text(
+                                    text = "Applied Jobs",
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "${applications.size} ${if (applications.size == 1) "Application" else "Applications"}",
+                                    fontSize = 14.sp,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
 
-        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
 
-        // Content area
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.White)
-        ) {
-            when {
-                isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = Color(0xFF7C3AED)
-                    )
-                }
-                errorMessage != null -> {
-                    Text(
-                        text = errorMessage ?: "An error occurred",
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(32.dp),
-                        color = Color.Red,
-                        fontSize = 16.sp,
-                        textAlign = TextAlign.Center
-                    )
-                }
-                appliedJobs.isEmpty() -> {
-                    Text(
-                        text = when (selectedTab) {
-                            0 -> "No applied jobs yet"
-                            1 -> "No pending applications"
-                            2 -> "No viewed applications"
-                            3 -> "No shortlisted applications"
-                            4 -> "No offered applications"
-                            5 -> "No hired applications"
-                            6 -> "No rejected applications"
-                            7 -> "No withdrawn applications"
-                            else -> ""
-                        },
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(32.dp),
-                        color = Color.Gray,
-                        fontSize = 16.sp,
-                        textAlign = TextAlign.Center
-                    )
-                }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-//                        items(appliedJobs) { job ->
-//                            AppliedJobRow(
-//                                appliedJob = job,
-//                                onWithdraw = { applicationId ->
-//                                    if (currentUser != null) {
-//                                        repository.withdrawApplication(
-//                                            applicationId,
-//                                            currentUser.uid
-//                                        ) { success, message ->
-//                                            // Handle withdrawal result
-//                                            // You can show a toast or snackbar here
-//                                        }
-//                                    }
-//                                }
-//                            )
-//                            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f))
-//                        }
+                // Content
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                strokeWidth = 3.dp
+                            )
+                        }
+                    }
+                    applications.isEmpty() -> {
+                        EmptyState()
+                    }
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            contentPadding = PaddingValues(vertical = 16.dp)
+                        ) {
+                            items(
+                                items = applications,
+                                key = { it.applicationId }
+                            ) { application ->
+                                AppliedJobCard(
+                                    application = application,
+                                    onClick = {
+                                        selectedApplication = application
+                                    }
+                                )
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
+                        }
                     }
                 }
             }
+        } else {
+            JobApplicationDetailScreen(
+                application = selectedApplication!!,
+                onBackClick = {
+                    selectedApplication = null
+                    selectedJob = null
+                },
+                onWithdrawClick = {
+                    showWithdrawDialog = true
+                },
+                onJobLoaded = { job ->
+                    selectedJob = job
+                }
+            )
+        }
+
+        // Withdraw Dialog
+        if (showWithdrawDialog) {
+            WithdrawApplicationDialog(
+                onDismiss = { showWithdrawDialog = false },
+                onConfirm = {
+                    selectedApplication?.let { app ->
+                        applicationViewModel.deleteApplication(app.applicationId)
+                        showWithdrawDialog = false
+                        selectedApplication = null
+                        selectedJob = null
+                    }
+                }
+            )
         }
     }
 }
 
 @Composable
-fun AppliedJobRow(
-    appliedJob: AppliedJobModel,
-    onWithdraw: (String) -> Unit
+fun JobApplicationDetailScreen(
+    application: ApplicationModel,
+    onBackClick: () -> Unit,
+    onWithdrawClick: () -> Unit,
+    onJobLoaded: (JobModel) -> Unit
 ) {
-    val scrollState = rememberScrollState()
+    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    var jobPost by remember { mutableStateOf<JobModel?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(scrollState)
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(32.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Title
-        Box(
-            modifier = Modifier.widthIn(min = 140.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Text(
-                text = appliedJob.jobTitle,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.Black,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+    LaunchedEffect(application.postId) {
+        isLoading = true
+        JobRepoImpl().getJobPostById(application.postId) { success, _, job ->
+            if (success && job != null) {
+                jobPost = job
+                onJobLoaded(job)
+            }
+            isLoading = false
         }
+    }
 
-        // Company
-        Box(
-            modifier = Modifier.widthIn(min = 140.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Text(
-                text = appliedJob.companyName,
-                fontSize = 14.sp,
-                color = Color(0xFF374151),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        // Status
-        Box(
-            modifier = Modifier.widthIn(min = 100.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
+    Scaffold(
+        topBar = {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.White,
+                shadowElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color(0xFF00BCD4)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Application Details",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                }
+            }
+        },
+        floatingActionButton = {
+            if (application.status == "Pending" || application.status == "Reviewed") {
+                ExtendedFloatingActionButton(
+                    onClick = onWithdrawClick,
+                    containerColor = Color(0xFFEF4444),
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = FloatingActionButtonDefaults.elevation(
+                        defaultElevation = 8.dp,
+                        pressedElevation = 12.dp
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Withdraw",
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Withdraw Application",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End
+    ) { padding ->
+        if (isLoading) {
             Box(
                 modifier = Modifier
-                    .background(
-                        color = when (appliedJob.status) {
-                            "Pending" -> Color(0xFFFEF3C7)
-                            "Viewed" -> Color(0xFFDBEAFE)
-                            "Shortlisted" -> Color(0xFFDDD6FE)
-                            "Offered" -> Color(0xFFD1FAE5)
-                            "Hired" -> Color(0xFFBBF7D0)
-                            "Rejected" -> Color(0xFFFFE4E6)
-                            "Withdrawn" -> Color(0xFFF3F4F6)
-                            else -> Color.LightGray
-                        },
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = appliedJob.status,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = when (appliedJob.status) {
-                        "Pending" -> Color(0xFFB45309)
-                        "Viewed" -> Color(0xFF1E40AF)
-                        "Shortlisted" -> Color(0xFF6D28D9)
-                        "Offered" -> Color(0xFF047857)
-                        "Hired" -> Color(0xFF15803D)
-                        "Rejected" -> Color(0xFFBE123C)
-                        "Withdrawn" -> Color(0xFF6B7280)
-                        else -> Color.Black
-                    }
-                )
+                CircularProgressIndicator(color = Color(0xFF00BCD4))
             }
-        }
-
-        // Location
-        Box(
-            modifier = Modifier.widthIn(min = 120.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Text(
-                text = appliedJob.location,
-                fontSize = 14.sp,
-                color = Color(0xFF374151),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        // Openings
-        Box(
-            modifier = Modifier.widthIn(min = 100.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Text(
-                text = appliedJob.openings.toString(),
-                fontSize = 14.sp,
-                color = Color(0xFF374151)
-            )
-        }
-
-        // Applied Date
-        Box(
-            modifier = Modifier.widthIn(min = 120.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Text(
-                text = appliedJob.appliedDate,
-                fontSize = 14.sp,
-                color = Color(0xFF374151)
-            )
-        }
-
-        // Actions (optional - withdraw button)
-        if (appliedJob.status == "Pending" || appliedJob.status == "Viewed") {
-            TextButton(
-                onClick = { onWithdraw(appliedJob.applicationId) },
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color(0xFFEF4444)
-                )
+        } else if (jobPost == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Withdraw",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Job not found", fontSize = 16.sp, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = onBackClick) {
+                        Text("Go Back")
+                    }
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF8F9FA))
+                    .padding(padding),
+                contentPadding = PaddingValues(bottom = 88.dp)
+            ) {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp)
+                        ) {
+                            Text(
+                                text = "Application Status",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Current Status",
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    EnhancedStatusBadge(status = application.status)
+                                }
+
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = "Applied On",
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = formatApplicationDate(application.appliedDate),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF00BCD4)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    JobDescriptionContent(jobPost!!)
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
         }
     }
 }
-
 @Composable
-fun HeaderCell(
-    text: String,
-    minWidth: Dp,
-    modifier: Modifier = Modifier
+fun WithdrawApplicationDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
 ) {
-    Box(
-        modifier = modifier
-            .widthIn(min = minWidth),
-        contentAlignment = Alignment.CenterStart
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+
+    val infiniteTransition = rememberInfiniteTransition()
+    val iconScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(300)) + scaleIn(tween(300))
     ) {
-        Text(
-            text = text,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF6B7280),
-            maxLines = 1
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            containerColor = Color.White,
+            shape = RoundedCornerShape(24.dp),
+            tonalElevation = 8.dp,
+            icon = {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .scale(iconScale)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xFFFFE4E6),
+                                    Color(0xFFFECDD3)
+                                )
+                            ),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        tint = Color(0xFFEF4444),
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            },
+            title = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Withdraw Application?",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 22.sp,
+                        color = Color(0xFF0F172A),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(60.dp)
+                            .height(4.dp)
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color(0xFFEF4444),
+                                        Color(0xFFF87171)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(2.dp)
+                            )
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Are you sure you want to withdraw this application?",
+                        fontSize = 15.sp,
+                        color = Color(0xFF475569),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        lineHeight = 22.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "This action cannot be undone.",
+                        fontSize = 13.sp,
+                        color = Color(0xFFEF4444),
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = onConfirm,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFEF4444)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 4.dp,
+                        pressedElevation = 8.dp
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            "Yes, Withdraw",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF0EA5E9)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        2.dp,
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF0EA5E9),
+                                Color(0xFF38BDF8)
+                            )
+                        )
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                ) {
+                    Text(
+                        "Cancel",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+            }
         )
     }
 }
 
-@Preview(showBackground = true, widthDp = 900, heightDp = 600)
 @Composable
-fun AppliedJobsScreenPreview() {
-    RojgarTheme {
-        AppliedJobsScreen()
+fun AppliedJobCard(
+    application: ApplicationModel,
+    onClick: () -> Unit
+) {
+    val companyRepo = remember { CompanyRepoImpl() }
+    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+
+    var companyName by remember { mutableStateOf("") }
+    var companyLogo by remember { mutableStateOf("") }
+    var jobPost by remember { mutableStateOf<JobModel?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(application.companyId, application.postId) {
+        isLoading = true
+
+        companyRepo.getCompanyById(application.companyId) { success, _, company ->
+            if (success && company != null) {
+                companyName = company.companyName
+                companyLogo = company.companyProfileImage
+            }
+        }
+
+        JobRepoImpl().getJobPostById(application.postId) { success, _, job ->
+            if (success && job != null) {
+                jobPost = job
+            }
+            isLoading = false
+        }
+    }
+
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(600)) +
+                slideInVertically(
+                    initialOffsetY = { it / 3 },
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                ) +
+                scaleIn(
+                    initialScale = 0.95f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy
+                    )
+                )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() },
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 10.dp,
+                pressedElevation = 6.dp
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFFF0F9FF),
+                                Color(0xFFFFFFFF)
+                            )
+                        )
+                    )
+            ) {
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(36.dp),
+                            color = Color(0xFF0EA5E9),
+                            strokeWidth = 3.dp
+                        )
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            // Left Side - Logo
+                            val logoScale by animateFloatAsState(
+                                targetValue = 1f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                    stiffness = Spring.StiffnessLow
+                                )
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .size(75.dp)
+                                    .scale(logoScale)
+                                    .background(
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(
+                                                Color(0xFF0EA5E9),
+                                                Color(0xFF38BDF8),
+                                                Color(0xFF7DD3FC)
+                                            )
+                                        ),
+                                        shape = CircleShape
+                                    )
+                                    .padding(3.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.White, CircleShape)
+                                        .padding(10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (companyLogo.isNotEmpty()) {
+                                        Image(
+                                            painter = rememberAsyncImagePainter(companyLogo),
+                                            contentDescription = "Company Logo",
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clip(CircleShape),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.companynameicon),
+                                            contentDescription = "Company",
+                                            modifier = Modifier.size(40.dp),
+                                            tint = Color(0xFF0EA5E9)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            // Right Side - Job Info
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                // Company Name
+                                Text(
+                                    text = companyName.ifEmpty { "Company Name" },
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0EA5E9),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                // Job Title
+                                Text(
+                                    text = jobPost?.title ?: "Job Title",
+                                    fontSize = 19.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF0F172A),
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    lineHeight = 24.sp
+                                )
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                // Position
+                                jobPost?.position?.let { position ->
+                                    if (position.isNotEmpty()) {
+                                        Text(
+                                            text = position,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color(0xFF64748B),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                    }
+                                }
+
+                                // Job Type and Experience Row
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    jobPost?.jobType?.let { jobType ->
+                                        ModernChip(
+                                            text = jobType,
+                                            backgroundColor = Color(0xFFE0F2FE),
+                                            textColor = Color(0xFF0369A1)
+                                        )
+                                    }
+
+                                    jobPost?.experience?.let { exp ->
+                                        ModernChip(
+                                            text = exp,
+                                            backgroundColor = Color(0xFFFEF3C7),
+                                            textColor = Color(0xFFB45309)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // Gradient Divider
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color(0xFFBAE6FD),
+                                            Color(0xFF7DD3FC),
+                                            Color(0xFFBAE6FD),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                        )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // Bottom Row - Status and Date
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Status Badge (Left)
+                            EnhancedStatusBadge(status = application.status)
+
+                            // Applied Date (Right)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.datetimeicon),
+                                    contentDescription = "Date",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = Color(0xFF0EA5E9)
+                                )
+                                Text(
+                                    text = formatApplicationDate(application.appliedDate),
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF475569),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernChip(
+    text: String,
+    backgroundColor: Color,
+    textColor: Color
+) {
+    val scale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
+    Surface(
+        modifier = Modifier.scale(scale),
+        shape = RoundedCornerShape(10.dp),
+        color = backgroundColor
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = textColor,
+            letterSpacing = 0.2.sp
+        )
+    }
+}
+
+@Composable
+fun EnhancedStatusBadge(status: String) {
+    val (backgroundColor, textColor, icon) = when (status) {
+        "Pending" -> Triple(
+            Color(0xFFFEF3C7),
+            Color(0xFFF59E0B),
+            Icons.Default.MailOutline
+        )
+        "Reviewed" -> Triple(
+            Color(0xFFDBEAFE),
+            Color(0xFF3B82F6),
+            Icons.Default.CheckCircle
+        )
+        "Shortlisted" -> Triple(
+            Color(0xFFE9D5FF),
+            Color(0xFF9333EA),
+            Icons.Default.CheckCircle
+        )
+        "Accepted" -> Triple(
+            Color(0xFFD1FAE5),
+            Color(0xFF10B981),
+            Icons.Default.CheckCircle
+        )
+        "Rejected" -> Triple(
+            Color(0xFFFFE4E6),
+            Color(0xFFEF4444),
+            Icons.Default.Close
+        )
+        else -> Triple(
+            Color(0xFFF1F5F9),
+            Color(0xFF64748B),
+            Icons.Default.MailOutline
+        )
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
+    val infiniteTransition = rememberInfiniteTransition()
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
+    Surface(
+        modifier = Modifier
+            .scale(scale)
+            .then(
+                if (status == "Accepted" || status == "Shortlisted")
+                    Modifier.scale(pulseScale)
+                else Modifier
+            ),
+        shape = RoundedCornerShape(14.dp),
+        color = backgroundColor,
+        shadowElevation = 3.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = status,
+                modifier = Modifier.size(16.dp),
+                tint = textColor
+            )
+            Text(
+                text = status,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = textColor,
+                letterSpacing = 0.3.sp
+            )
+        }
+    }
+}
+
+
+@Composable
+fun EmptyState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.jobpost_filled),
+                    contentDescription = "No Applications",
+                    modifier = Modifier.size(60.dp),
+                    tint = Color.White
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "No Applications Yet",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Start applying to jobs and track them here",
+                fontSize = 15.sp,
+                color = Color.White.copy(alpha = 0.8f)
+            )
+        }
+    }
+}
+
+fun formatApplicationDate(timestamp: Long): String {
+    return try {
+        val now = System.currentTimeMillis()
+        val diff = now - timestamp
+
+        when {
+            diff < 60000 -> "Just now"
+            diff < 3600000 -> "${diff / 60000}m ago"
+            diff < 86400000 -> "${diff / 3600000}h ago"
+            diff < 604800000 -> "${diff / 86400000}d ago"
+            else -> {
+                val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+                sdf.format(Date(timestamp))
+            }
+        }
+    } catch (e: Exception) {
+        "N/A"
     }
 }
