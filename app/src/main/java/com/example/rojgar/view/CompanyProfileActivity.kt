@@ -321,10 +321,49 @@ fun CompanyProfileBody(
 
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(text = company.value?.companyName ?: "Loading...", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF111827), letterSpacing = (-0.5).sp)
-                    Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFFEF3C7), shadowElevation = 2.dp) {
-                        Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(14.dp))
-                            Text(text = "Verified", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFD97706))
+                    if (company.value?.isVerified == true) {
+                        Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFFEF3C7), shadowElevation = 2.dp)
+                        {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = Color(0xFFF59E0B),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = "Verified",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFD97706)
+                                )
+                            }
+                        }
+                    }else{
+                        Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFFEF3C7), shadowElevation = 2.dp)
+                        {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = Color(0xFFB91010),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = "Not Verified",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF5F0606)
+                                )
+                            }
                         }
                     }
                 }
@@ -495,6 +534,18 @@ fun CompanyProfileBody(
                             CompanyDrawerMenuItem(icon = R.drawable.outline_edit_24, text = "Edit Profile", subtitle = "Update company information", iconColor = Color(0xFF2196F3), onClick = { isDrawerOpen = false; showEditProfileDialog = true })
                             CompanyDrawerMenuItem(icon = R.drawable.feedback, text = "Help & Support", subtitle = "Get help or send feedback", iconColor = Color(0xFF2196F3), onClick = { isDrawerOpen = false; Toast.makeText(context, "Support clicked", Toast.LENGTH_SHORT).show() })
                             CompanyDrawerMenuItem(icon = R.drawable.settings, text = "Settings", subtitle = "Manage preferences", iconColor = Color(0xFF9C27B0), onClick = { isDrawerOpen = false; showSettingsDialog = true })
+                            CompanyDrawerMenuItem(
+                                icon = R.drawable.verified_badge,
+                                text = "Company Verification",
+                                subtitle = if (company.value?.isVerified == true) "Verified" else "Get verified",
+                                iconColor = Color(0xFF10B981),
+                                onClick = {
+                                    isDrawerOpen = false
+                                    val intent = Intent(context, CompanyVerificationActivity::class.java)
+                                    intent.putExtra("COMPANY_ID", company.value?.companyId ?: "")
+                                    context.startActivity(intent)
+                                }
+                            )
                             Spacer(modifier = Modifier.height(12.dp))
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color.Gray.copy(alpha = 0.2f))
                             Spacer(modifier = Modifier.height(12.dp))
