@@ -106,4 +106,15 @@ interface CompanyRepo {
     )
 
     fun getLatLngFromAddress(context: Context, address: String): LatLng?
+
+    fun uploadVerificationDocument(
+        companyId: String,
+        imageUri: Uri,
+        callback: (Boolean, String) -> Unit
+    )
+
+    fun requestVerification(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    )
 }

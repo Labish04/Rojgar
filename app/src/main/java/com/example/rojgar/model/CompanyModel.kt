@@ -16,6 +16,13 @@ data class CompanyModel(
     val companyProfileImage: String = "",
     val companyCoverPhoto: String = "",
     val isActive: Boolean = true, // Added isActive field with default true
+    val isVerified: Boolean = false, // Added verification status
+    val verificationDocument: String = "", // Added verification document URL
+    val verificationRequestDate: String = "", // Added request date
+    val verificationStatus: String = "pending", // pending, approved, rejected
+    val verificationReviewedDate: String = "",
+    val verificationReviewedBy: String = "",
+    val verificationRejectionReason: String = "",
     val latitude: Double = 0.0,
     val longitude: Double = 0.0
 ) {
@@ -36,6 +43,13 @@ data class CompanyModel(
             "companyIndustry" to companyIndustry,
             "companyWebsite" to companyWebsite,
             "companySpecialties" to companySpecialties,
+            "isVerified" to isVerified,
+            "verificationDocument" to verificationDocument,
+            "verificationRequestDate" to verificationRequestDate,
+            "verificationStatus" to verificationStatus,
+            "verificationReviewedDate" to verificationReviewedDate,
+            "verificationReviewedBy" to verificationReviewedBy,
+            "verificationRejectionReason" to verificationRejectionReason,
         )
     }
 }
