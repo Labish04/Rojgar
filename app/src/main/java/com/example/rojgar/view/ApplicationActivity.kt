@@ -35,17 +35,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.FocusInteraction
+import androidx.compose.ui.graphics.graphicsLayer
 import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
-import com.example.rojgar.model.ApplicationModel
-import com.example.rojgar.model.JobSeekerModel
-import com.example.rojgar.repository.ApplicationRepoImpl
-import com.example.rojgar.repository.JobSeekerRepoImpl
+import com.example.rojgar.model.*
+import com.example.rojgar.repository.*
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
-import com.example.rojgar.ui.theme.Purple
-import com.example.rojgar.viewmodel.ApplicationViewModel
-import com.example.rojgar.viewmodel.JobSeekerViewModel
+import com.example.rojgar.viewmodel.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -67,6 +66,13 @@ class ApplicationActivity : ComponentActivity() {
     }
 }
 
+data class FilterCriteria(
+    val profession: String = "",
+    val educationDegree: String = "",
+    val minExperienceYears: Int = 0,
+    val requiredSkills: List<String> = emptyList()
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ApplicationBody(
@@ -77,17 +83,138 @@ fun ApplicationBody(
 ) {
     val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl()) }
     val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
+    val educationViewModel = remember { EducationViewModel(EducationRepoImpl()) }
+    val experienceViewModel = remember { ExperienceViewModel(ExperienceRepoImpl()) }
+    val skillViewModel = remember { SkillViewModel(SkillRepoImpl()) }
+
     val context = LocalContext.current
     val applications by applicationViewModel.applications.observeAsState(emptyList())
     val isLoading by applicationViewModel.loading.observeAsState(false)
+
+    var showFilterDialog by remember { mutableStateOf(false) }
+    var filterCriteria by remember { mutableStateOf(FilterCriteria()) }
+    var activeFiltersCount by remember { mutableStateOf(0) }
+
+    // Job seeker data maps
+    var jobSeekerProfiles by remember { mutableStateOf<Map<String, JobSeekerModel>>(emptyMap()) }
+    var educationData by remember { mutableStateOf<Map<String, List<EducationModel>>>(emptyMap()) }
+    var experienceData by remember { mutableStateOf<Map<String, List<ExperienceModel>>>(emptyMap()) }
+    var skillsData by remember { mutableStateOf<Map<String, List<SkillModel>>>(emptyMap()) }
+
     val filteredApplications = remember(applications, jobPostId) {
         applications.filter { it.postId == jobPostId }
+    }
+
+    // Filter applications based on criteria
+    val finalFilteredApplications = remember(filteredApplications, filterCriteria, jobSeekerProfiles, educationData, experienceData, skillsData) {
+        if (activeFiltersCount == 0) {
+            filteredApplications
+        } else {
+            filteredApplications.filter { application ->
+                val jobSeeker = jobSeekerProfiles[application.jobSeekerId]
+                val education = educationData[application.jobSeekerId] ?: emptyList()
+                val experience = experienceData[application.jobSeekerId] ?: emptyList()
+                val skills = skillsData[application.jobSeekerId] ?: emptyList()
+
+                var matches = true
+
+                // Filter by profession
+                if (filterCriteria.profession.isNotEmpty()) {
+                    matches = matches && jobSeeker?.profession?.contains(filterCriteria.profession, ignoreCase = true) == true
+                }
+
+                // Filter by education degree
+                if (filterCriteria.educationDegree.isNotEmpty()) {
+                    matches = matches && education.any {
+                        it.educationDegree.contains(filterCriteria.educationDegree, ignoreCase = true)
+                    }
+                }
+
+                // Filter by minimum experience
+                if (filterCriteria.minExperienceYears > 0) {
+                    val totalYears = experience.sumOf { exp ->
+                        try {
+                            val yearsString = exp.calculateYearsOfExperience()
+                            val years = yearsString.split(" ").firstOrNull()?.toIntOrNull() ?: 0
+                            years
+                        } catch (e: Exception) {
+                            0
+                        }
+                    }
+                    matches = matches && totalYears >= filterCriteria.minExperienceYears
+                }
+
+                // Filter by required skills
+                if (filterCriteria.requiredSkills.isNotEmpty()) {
+                    val jobSeekerSkills = skills.map { it.skill.lowercase() }
+                    matches = matches && filterCriteria.requiredSkills.all { requiredSkill ->
+                        jobSeekerSkills.any { it.contains(requiredSkill.lowercase()) }
+                    }
+                }
+
+                matches
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
         if (companyId.isNotEmpty()) {
             applicationViewModel.getApplicationsByCompany(companyId)
         }
+    }
+
+    // Load job seeker data for all applications
+    LaunchedEffect(filteredApplications) {
+        filteredApplications.forEach { application ->
+            // Load job seeker profile
+            jobSeekerViewModel.getJobSeekerById(application.jobSeekerId) { success, _, data ->
+                if (success && data != null) {
+                    jobSeekerProfiles = jobSeekerProfiles + (application.jobSeekerId to data)
+                }
+            }
+
+            // Load education
+            educationViewModel.getEducationsByJobSeekerId(application.jobSeekerId) { success, _, eduList ->
+                if (success && eduList != null) {
+                    educationData = educationData + (application.jobSeekerId to eduList)
+                }
+            }
+
+            // Load experience
+            experienceViewModel.getExperiencesByJobSeekerId(application.jobSeekerId) { success, _, expList ->
+                if (success && expList != null) {
+                    experienceData = experienceData + (application.jobSeekerId to expList)
+                }
+            }
+
+            // Load skills
+            skillViewModel.getSkillsByJobSeekerId(application.jobSeekerId) { success, _, skillList ->
+                if (success && skillList != null) {
+                    skillsData = skillsData + (application.jobSeekerId to skillList)
+                }
+            }
+        }
+    }
+
+    if (showFilterDialog) {
+        FilterDialog(
+            currentFilters = filterCriteria,
+            onDismiss = { showFilterDialog = false },
+            onApply = { newFilters ->
+                filterCriteria = newFilters
+                activeFiltersCount =
+                    (if (newFilters.profession.isNotEmpty()) 1 else 0) +
+                            (if (newFilters.educationDegree.isNotEmpty()) 1 else 0) +
+                            (if (newFilters.minExperienceYears > 0) 1 else 0) +
+                            (if (newFilters.requiredSkills.isNotEmpty()) 1 else 0)
+                showFilterDialog = false
+            },
+            onClear = {
+                filterCriteria = FilterCriteria()
+                activeFiltersCount = 0
+                showFilterDialog = false
+            }
+        )
     }
 
     Scaffold(
@@ -103,7 +230,7 @@ fun ApplicationBody(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "${filteredApplications.size} ${if (filteredApplications.size == 1) "Application" else "Applications"}",
+                            text = "${finalFilteredApplications.size} of ${filteredApplications.size} Applications",
                             fontSize = 14.sp,
                             color = Color.Gray
                         )
@@ -116,6 +243,32 @@ fun ApplicationBody(
                             contentDescription = "Back",
                             tint = Color.Black
                         )
+                    }
+                },
+                actions = {
+                    BadgedBox(
+                        badge = {
+                            if (activeFiltersCount > 0) {
+                                Badge(
+                                    containerColor = Color(0xFFD32F2F),
+                                    contentColor = Color.White
+                                ) {
+                                    Text(
+                                        text = "$activeFiltersCount",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    ) {
+                        IconButton(onClick = { showFilterDialog = true }) {
+                            Icon(
+                                painter = painterResource(R.drawable.filter),
+                                contentDescription = "Filter",
+                                tint = if (activeFiltersCount > 0) DarkBlue2 else Color.Black
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -139,7 +292,7 @@ fun ApplicationBody(
                         CircularProgressIndicator(color = DarkBlue2)
                     }
                 }
-                filteredApplications.isEmpty() -> {
+                finalFilteredApplications.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -156,17 +309,30 @@ fun ApplicationBody(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "No Applications Yet",
+                                text = if (activeFiltersCount > 0) "No Matching Applications" else "No Applications Yet",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Gray
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Applications for this job will appear here",
+                                text = if (activeFiltersCount > 0)
+                                    "Try adjusting your filters"
+                                else
+                                    "Applications for this job will appear here",
                                 fontSize = 14.sp,
-                                color = Color.Gray
+                                color = Color.Gray,
+                                textAlign = TextAlign.Center
                             )
+                            if (activeFiltersCount > 0) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                TextButton(onClick = {
+                                    filterCriteria = FilterCriteria()
+                                    activeFiltersCount = 0
+                                }) {
+                                    Text("Clear Filters", color = DarkBlue2)
+                                }
+                            }
                         }
                     }
                 }
@@ -177,7 +343,7 @@ fun ApplicationBody(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(filteredApplications, key = { it.applicationId }) { application ->
+                        items(finalFilteredApplications, key = { it.applicationId }) { application ->
                             ApplicationCard(
                                 application = application,
                                 jobSeekerViewModel = jobSeekerViewModel,
@@ -213,6 +379,516 @@ fun ApplicationBody(
     }
 }
 
+@Composable
+fun FilterDialog(
+    currentFilters: FilterCriteria,
+    onDismiss: () -> Unit,
+    onApply: (FilterCriteria) -> Unit,
+    onClear: () -> Unit
+) {
+    var profession by remember { mutableStateOf(currentFilters.profession) }
+    var educationDegree by remember { mutableStateOf(currentFilters.educationDegree) }
+    var minExperience by remember { mutableStateOf(currentFilters.minExperienceYears.toString()) }
+    var skillsText by remember { mutableStateOf(currentFilters.requiredSkills.joinToString(", ")) }
+
+    var professionFocused by remember { mutableStateOf(false) }
+    var educationFocused by remember { mutableStateOf(false) }
+    var experienceFocused by remember { mutableStateOf(false) }
+    var skillsFocused by remember { mutableStateOf(false) }
+
+    val slideIn = remember {
+        androidx.compose.animation.core.tween<Float>(
+            durationMillis = 300,
+            easing = androidx.compose.animation.core.FastOutSlowInEasing
+        )
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFFF8FBFF),
+                                Color.White
+                            )
+                        )
+                    )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(28.dp)
+                ) {
+                    // Animated Header with Icon
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(
+                                        androidx.compose.ui.graphics.Brush.linearGradient(
+                                            colors = listOf(
+                                                DarkBlue2,
+                                                Color(0xFF2962FF)
+                                            )
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.filter),
+                                    contentDescription = "Filter",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Filter Applications",
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1A1A1A)
+                                )
+                                Text(
+                                    text = "Refine your search",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF999999)
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF5F5F5))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color(0xFF666666),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    // Profession Filter with Animation
+                    FilterSection(
+                        label = "Profession",
+                        icon = R.drawable.profileemptypic,
+                        isFocused = professionFocused,
+                        gradient = listOf(Color(0xFFE3F2FD), Color(0xFFBBDEFB))
+                    ) {
+                        OutlinedTextField(
+                            value = profession,
+                            onValueChange = { profession = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = {
+                                Text(
+                                    "e.g., Software Engineer, Designer",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFFAAAAAA)
+                                )
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = DarkBlue2,
+                                unfocusedBorderColor = Color(0xFFE0E0E0),
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color(0xFFFAFAFA)
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            singleLine = true,
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            interactionSource = remember { MutableInteractionSource() }
+                                .also { interactionSource ->
+                                    LaunchedEffect(interactionSource) {
+                                        interactionSource.interactions.collect { interaction ->
+                                            professionFocused = interaction is FocusInteraction.Focus
+                                        }
+                                    }
+                                }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Education Filter
+                    FilterSection(
+                        label = "Education Degree",
+                        icon = R.drawable.emailicon,
+                        isFocused = educationFocused,
+                        gradient = listOf(Color(0xFFF3E5F5), Color(0xFFE1BEE7))
+                    ) {
+                        OutlinedTextField(
+                            value = educationDegree,
+                            onValueChange = { educationDegree = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = {
+                                Text(
+                                    "e.g., Bachelor's, Master's, PhD",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFFAAAAAA)
+                                )
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF7B1FA2),
+                                unfocusedBorderColor = Color(0xFFE0E0E0),
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color(0xFFFAFAFA)
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            singleLine = true,
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            interactionSource = remember { MutableInteractionSource() }
+                                .also { interactionSource ->
+                                    LaunchedEffect(interactionSource) {
+                                        interactionSource.interactions.collect { interaction ->
+                                            educationFocused = interaction is FocusInteraction.Focus
+                                        }
+                                    }
+                                }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Experience Filter with Slider Preview
+                    FilterSection(
+                        label = "Minimum Experience",
+                        icon = R.drawable.datetimeicon,
+                        isFocused = experienceFocused,
+                        gradient = listOf(Color(0xFFFFF9C4), Color(0xFFFFF59D))
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = minExperience,
+                                onValueChange = {
+                                    if (it.isEmpty() || (it.all { char -> char.isDigit() } && it.toIntOrNull() ?: 0 <= 20)) {
+                                        minExperience = it
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                placeholder = {
+                                    Text(
+                                        "Years",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFFAAAAAA)
+                                    )
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color(0xFFF57F17),
+                                    unfocusedBorderColor = Color(0xFFE0E0E0),
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = Color(0xFFFAFAFA)
+                                ),
+                                shape = RoundedCornerShape(14.dp),
+                                singleLine = true,
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                interactionSource = remember { MutableInteractionSource() }
+                                    .also { interactionSource ->
+                                        LaunchedEffect(interactionSource) {
+                                            interactionSource.interactions.collect { interaction ->
+                                                experienceFocused = interaction is FocusInteraction.Focus
+                                            }
+                                        }
+                                    }
+                            )
+
+                            if (minExperience.isNotEmpty() && minExperience.toIntOrNull() != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color(0xFFFFF59D))
+                                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                                ) {
+                                    Text(
+                                        text = "${minExperience}+ years",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFF57F17)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Skills Filter with Chips Preview
+                    FilterSection(
+                        label = "Required Skills",
+                        icon = R.drawable.jobpost_filled,
+                        isFocused = skillsFocused,
+                        gradient = listOf(Color(0xFFE8F5E9), Color(0xFFC8E6C9))
+                    ) {
+                        Column {
+                            OutlinedTextField(
+                                value = skillsText,
+                                onValueChange = { skillsText = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = {
+                                    Text(
+                                        "e.g., Java, Kotlin, Android, UI/UX",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFFAAAAAA)
+                                    )
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color(0xFF2E7D32),
+                                    unfocusedBorderColor = Color(0xFFE0E0E0),
+                                    focusedContainerColor = Color.White,
+                                    unfocusedContainerColor = Color(0xFFFAFAFA)
+                                ),
+                                shape = RoundedCornerShape(14.dp),
+                                maxLines = 2,
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                interactionSource = remember { MutableInteractionSource() }
+                                    .also { interactionSource ->
+                                        LaunchedEffect(interactionSource) {
+                                            interactionSource.interactions.collect { interaction ->
+                                                skillsFocused = interaction is FocusInteraction.Focus
+                                            }
+                                        }
+                                    }
+                            )
+
+                            // Skills Chips Preview
+                            if (skillsText.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                androidx.compose.foundation.layout.FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    skillsText.split(",").take(6).forEach { skill ->
+                                        if (skill.trim().isNotEmpty()) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(20.dp))
+                                                    .background(
+                                                        androidx.compose.ui.graphics.Brush.linearGradient(
+                                                            colors = listOf(
+                                                                Color(0xFF66BB6A),
+                                                                Color(0xFF43A047)
+                                                            )
+                                                        )
+                                                    )
+                                                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                                            ) {
+                                                Text(
+                                                    text = skill.trim(),
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = Color.White
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Modern Action Buttons with Gradient
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onClear,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFF666666)
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                2.dp,
+                                Color(0xFFE0E0E0)
+                            )
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Clear",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                val skills = skillsText.split(",")
+                                    .map { it.trim() }
+                                    .filter { it.isNotEmpty() }
+
+                                val newFilters = FilterCriteria(
+                                    profession = profession.trim(),
+                                    educationDegree = educationDegree.trim(),
+                                    minExperienceYears = minExperience.toIntOrNull() ?: 0,
+                                    requiredSkills = skills
+                                )
+                                onApply(newFilters)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Transparent
+                            ),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        androidx.compose.ui.graphics.Brush.linearGradient(
+                                            colors = listOf(
+                                                DarkBlue2,
+                                                Color(0xFF2962FF)
+                                            )
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.filter),
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Apply Filters",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FilterSection(
+    label: String,
+    icon: Int,
+    isFocused: Boolean,
+    gradient: List<Color>,
+    content: @Composable () -> Unit
+) {
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isFocused) 1.02f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+        )
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        androidx.compose.ui.graphics.Brush.linearGradient(
+                            colors = gradient
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = Color(0xFF666666)
+                )
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = label,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF333333)
+            )
+        }
+        content()
+    }
+}
 
 @Composable
 fun ApplicationCard(

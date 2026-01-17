@@ -63,6 +63,7 @@ fun JobSeekerViewPostBody() {
     var savedJobIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var companies by remember { mutableStateOf<Map<String, CompanyModel>>(emptyMap()) }
 
+
     // Fetch jobs first
     LaunchedEffect(Unit) {
         jobViewModel.getAllJobPosts { success, message, posts ->

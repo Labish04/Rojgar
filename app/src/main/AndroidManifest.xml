@@ -33,6 +33,39 @@
         tools:replace="android:fullBackupContent"
         tools:targetApi="31">
         <activity
+            android:name=".view.AdminVerificationActivity"
+            android:exported="true"
+            android:label="@string/title_activity_admin_verification"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".view.SavedJobsActivity"
+            android:exported="true"
+            android:label="@string/title_activity_company_verification"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".view.CompanyVerificationActivity"
+            android:exported="true"
+            android:label="@string/title_activity_company_verification"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".view.FeedbackActivity"
             android:exported="true"
             android:label="@string/title_activity_feedback"
@@ -85,7 +118,6 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyCX3_5f2eilotR-J9y7sC-7Q-zCFP98G7U" />
-
 
         <activity
             android:name=".view.CompanyHelpAndSupportActivity"

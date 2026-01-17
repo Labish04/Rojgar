@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.rojgar.R
 import com.example.rojgar.repository.EducationRepoImpl
 import com.example.rojgar.repository.ExperienceRepoImpl
@@ -182,6 +183,7 @@ fun CvViewBody(
                 }
                 // Modern Profile Header
                 ModernProfileHeader(
+                    photo = jobSeeker.value?.profilePhoto,
                     name = jobSeeker.value?.fullName,
                     profession = jobSeeker.value?.profession,
                 )
@@ -405,6 +407,7 @@ fun CvViewBody(
 
 @Composable
 fun ModernProfileHeader(
+    photo: String? = null,
     name: String? = null,
     profession: String? = null,
 ) {
@@ -458,15 +461,26 @@ fun ModernProfileHeader(
                                 .clip(CircleShape)
                                 .background(Color.White)
                         )
-                        Image(
-                            painter = painterResource(R.drawable.ic_launcher_foreground),
-                            contentDescription = "Profile Photo",
-                            modifier = Modifier
-                                .size(128.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFE3F2FD)),
-                            contentScale = ContentScale.Crop
-                        )
+                        if (photo != null) {
+                            AsyncImage(
+                                model = photo?:0,
+                                contentDescription = "Profile Photo",
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        }else {
+                            Image(
+                                painter = painterResource(R.drawable.ic_launcher_foreground),
+                                contentDescription = "Profile Photo",
+                                modifier = Modifier
+                                    .size(128.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFE3F2FD)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))

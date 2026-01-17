@@ -20,6 +20,8 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import java.io.InputStream
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
 
@@ -28,6 +30,8 @@ class CompanyRepoImpl : CompanyRepo {
     val auth: FirebaseAuth = FirebaseAuth.getInstance()
     val database: FirebaseDatabase = FirebaseDatabase.getInstance()
     val ref: DatabaseReference = database.getReference("Companys")
+
+    private val adminRef: DatabaseReference = database.getReference("AdminVerifications")
 
     private val cloudinary = Cloudinary(
         mapOf(
@@ -466,5 +470,129 @@ class CompanyRepoImpl : CompanyRepo {
             e.printStackTrace()
             null
         }
+    }
+
+    override fun uploadVerificationDocument(
+        companyId: String,
+        context: Context,
+        imageUri: Uri,
+        callback: (Boolean, String) -> Unit
+    ) {
+        val executor = Executors.newSingleThreadExecutor()
+        executor.execute {
+            try {
+                val inputStream: InputStream? = context.contentResolver.openInputStream(imageUri)
+                var fileName = getFileNameFromUri(context, imageUri)
+
+                fileName = fileName?.substringBeforeLast(".") ?: "verification_doc"
+                fileName = "verification_${companyId}_${System.currentTimeMillis()}"
+
+                val response = cloudinary.uploader().upload(
+                    inputStream, ObjectUtils.asMap(
+                        "public_id", fileName,
+                        "resource_type", "image"
+                    )
+                )
+
+                var imageUrl = response["url"] as String?
+                imageUrl = imageUrl?.replace("http://", "https://")
+
+                Handler(Looper.getMainLooper()).post {
+                    if (imageUrl != null) {
+                        // Save document URL to company
+                        ref.child(companyId).child("verificationDocument").setValue(imageUrl)
+                            .addOnSuccessListener {
+                                // Return the URL in the callback message
+                                callback(true, imageUrl)
+                            }
+                            .addOnFailureListener { e ->
+                                callback(false, "Failed to save document URL: ${e.message}")
+                            }
+                    } else {
+                        callback(false, "Failed to upload document")
+                    }
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Handler(Looper.getMainLooper()).post {
+                    callback(false, "Upload failed: ${e.message}")
+                }
+            }
+        }
+    }
+
+    override fun requestVerification(
+        companyId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        // Get current date
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        val currentDate = dateFormat.format(Date())
+
+        // First, get the current company data
+        ref.child(companyId).get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    val company = snapshot.getValue(CompanyModel::class.java)
+                    if (company != null) {
+                        // Create updated company with new verification data
+                        val updatedCompany = company.copy(
+                            verificationStatus = "pending",
+                            verificationRequestDate = currentDate
+                        )
+
+                        // Save the updated company back to database
+                        ref.child(companyId).setValue(updatedCompany)
+                            .addOnSuccessListener {
+                                // Create a notification for admin
+                                createAdminVerificationRequest(companyId, currentDate)
+                                callback(true, "Verification request submitted successfully")
+                            }
+                            .addOnFailureListener { e ->
+                                callback(false, "Failed to update company: ${e.message}")
+                            }
+                    } else {
+                        callback(false, "Company data not found")
+                    }
+                } else {
+                    callback(false, "Company not found")
+                }
+            }
+            .addOnFailureListener { e ->
+                callback(false, "Failed to fetch company data: ${e.message}")
+            }
+    }
+
+    private fun createAdminVerificationRequest(companyId: String, requestDate: String) {
+        // Get company details first
+        ref.child(companyId).get().addOnSuccessListener { snapshot ->
+            val company = snapshot.getValue(CompanyModel::class.java)
+            if (company != null) {
+                val verificationData = mapOf(
+                    "companyId" to companyId,
+                    "companyName" to company.companyName,
+                    "companyEmail" to company.companyEmail,
+                    "requestDate" to requestDate,
+                    "verificationDocument" to company.verificationDocument,
+                    "status" to "pending",
+                    "reviewedBy" to "",
+                    "reviewedAt" to ""
+                )
+                adminRef.child(companyId).setValue(verificationData)
+                    .addOnSuccessListener {
+                        println("DEBUG: Admin verification request created successfully")
+                    }
+                    .addOnFailureListener { e ->
+                        println("DEBUG: Failed to create admin request: ${e.message}")
+                    }
+            }
+        }
+    }
+
+    private fun getAppContext(): Context? {
+        // This is a placeholder - you'll need to pass context or use Application class
+        // For now, we'll handle context differently in the ViewModel
+        return null
     }
 }

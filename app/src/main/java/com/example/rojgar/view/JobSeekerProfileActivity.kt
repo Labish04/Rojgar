@@ -33,6 +33,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.graphics.Bitmap
 import android.media.ThumbnailUtils
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -890,8 +891,13 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                         // View CV button
                         Button(
                             onClick = {
+                                val profileIdToLoad = if (finalTargetJobSeekerId.isNotEmpty()) {
+                                    finalTargetJobSeekerId
+                                } else {
+                                    currentUserId
+                                }
                                 val intent = Intent(context, CvViewActivity::class.java).apply {
-                                    putExtra("JOB_SEEKER_ID", finalTargetJobSeekerId)
+                                    putExtra("JOB_SEEKER_ID", profileIdToLoad)
                                 }
                                 context.startActivity(intent)
                             },
@@ -1079,7 +1085,20 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                     iconColor = Color(0xFF4CAF50),
                                     onClick = {
                                         isDrawerOpen = false
-                                        Toast.makeText(context, "Saved Jobs clicked", Toast.LENGTH_SHORT).show()
+                                        try {
+                                            val profileIdToLoad = if (finalTargetJobSeekerId.isNotEmpty()) {
+                                                finalTargetJobSeekerId
+                                            } else {
+                                                currentUserId
+                                            }
+                                            val intent = Intent(context, SavedJobsActivity::class.java).apply {
+                                                putExtra("JOB_SEEKER_ID", profileIdToLoad)
+                                            }
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Error opening saved jobs", Toast.LENGTH_SHORT).show()
+                                            Log.e("SavedJobs", "Error: ${e.message}")
+                                        }
                                     }
                                 )
 
