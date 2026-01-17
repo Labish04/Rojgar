@@ -395,7 +395,7 @@ fun CompanyVerificationScreen(
             }
 
             // Request Verification Button
-            if (verificationDocument.isNotEmpty() && verificationStatus != "pending") {
+            if (verificationDocument.isNotEmpty() && verificationStatus != "approved") {
                 Button(
                     onClick = {
                         isRequesting = true

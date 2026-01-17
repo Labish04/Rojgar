@@ -474,7 +474,7 @@ class CompanyRepoImpl : CompanyRepo {
 
     override fun uploadVerificationDocument(
         companyId: String,
-        context: Context, // Add context parameter
+        context: Context,
         imageUri: Uri,
         callback: (Boolean, String) -> Unit
     ) {
@@ -502,7 +502,8 @@ class CompanyRepoImpl : CompanyRepo {
                         // Save document URL to company
                         ref.child(companyId).child("verificationDocument").setValue(imageUrl)
                             .addOnSuccessListener {
-                                callback(true, "Verification document uploaded successfully")
+                                // Return the URL in the callback message
+                                callback(true, imageUrl)
                             }
                             .addOnFailureListener { e ->
                                 callback(false, "Failed to save document URL: ${e.message}")
@@ -521,7 +522,6 @@ class CompanyRepoImpl : CompanyRepo {
         }
     }
 
-
     override fun requestVerification(
         companyId: String,
         callback: (Boolean, String) -> Unit
@@ -530,19 +530,38 @@ class CompanyRepoImpl : CompanyRepo {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         val currentDate = dateFormat.format(Date())
 
-        // Update company verification status
-        ref.child(companyId).updateChildren(
-            mapOf(
-                "verificationStatus" to "pending",
-                "verificationRequestDate" to currentDate
-            )
-        ).addOnSuccessListener {
-            // Create a notification for admin
-            createAdminVerificationRequest(companyId, currentDate)
-            callback(true, "Verification request submitted successfully")
-        }.addOnFailureListener { e ->
-            callback(false, "Failed to submit request: ${e.message}")
-        }
+        // First, get the current company data
+        ref.child(companyId).get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    val company = snapshot.getValue(CompanyModel::class.java)
+                    if (company != null) {
+                        // Create updated company with new verification data
+                        val updatedCompany = company.copy(
+                            verificationStatus = "pending",
+                            verificationRequestDate = currentDate
+                        )
+
+                        // Save the updated company back to database
+                        ref.child(companyId).setValue(updatedCompany)
+                            .addOnSuccessListener {
+                                // Create a notification for admin
+                                createAdminVerificationRequest(companyId, currentDate)
+                                callback(true, "Verification request submitted successfully")
+                            }
+                            .addOnFailureListener { e ->
+                                callback(false, "Failed to update company: ${e.message}")
+                            }
+                    } else {
+                        callback(false, "Company data not found")
+                    }
+                } else {
+                    callback(false, "Company not found")
+                }
+            }
+            .addOnFailureListener { e ->
+                callback(false, "Failed to fetch company data: ${e.message}")
+            }
     }
 
     private fun createAdminVerificationRequest(companyId: String, requestDate: String) {
@@ -561,6 +580,12 @@ class CompanyRepoImpl : CompanyRepo {
                     "reviewedAt" to ""
                 )
                 adminRef.child(companyId).setValue(verificationData)
+                    .addOnSuccessListener {
+                        println("DEBUG: Admin verification request created successfully")
+                    }
+                    .addOnFailureListener { e ->
+                        println("DEBUG: Failed to create admin request: ${e.message}")
+                    }
             }
         }
     }

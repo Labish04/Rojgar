@@ -15,14 +15,13 @@ data class CompanyModel(
     val companySpecialties: List<String> = emptyList(),
     val companyProfileImage: String = "",
     val companyCoverPhoto: String = "",
-    val isActive: Boolean = true, // Added isActive field with default true
-    val isVerified: Boolean = false, // Added verification status
-    val verificationDocument: String = "", // Added verification document URL
-    val verificationRequestDate: String = "", // Added request date
-    val verificationStatus: String = "pending", // pending, approved, rejected
+    val isActive: Boolean = true,
+    val isVerified: Boolean = false,
+    val verificationDocument: String = "",
+    val verificationRequestDate: String = "",
+    val verificationStatus: String = "", // pending, approved, rejected
     val verificationReviewedDate: String = "",
-    val verificationReviewedBy: String = "",
-    val verificationRejectionReason: String = "",
+    val verificationRejectionReason: String = "", // Add this field
     val latitude: Double = 0.0,
     val longitude: Double = 0.0
 ) {
@@ -37,7 +36,7 @@ data class CompanyModel(
             "companyEstablishedDate" to companyEstablishedDate,
             "companyProfileImage" to companyProfileImage,
             "companyCoverPhoto" to companyCoverPhoto,
-            "isActive" to isActive, // Added to map
+            "isActive" to isActive,
             "companyTagline" to companyTagline,
             "companyInformation" to companyInformation,
             "companyIndustry" to companyIndustry,
@@ -48,8 +47,9 @@ data class CompanyModel(
             "verificationRequestDate" to verificationRequestDate,
             "verificationStatus" to verificationStatus,
             "verificationReviewedDate" to verificationReviewedDate,
-            "verificationReviewedBy" to verificationReviewedBy,
-            "verificationRejectionReason" to verificationRejectionReason,
+            "verificationRejectionReason" to verificationRejectionReason, // Add this
+            "latitude" to latitude,
+            "longitude" to longitude
         )
     }
 }

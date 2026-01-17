@@ -8,7 +8,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,22 +33,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.repository.AdminRepoImpl
 import com.example.rojgar.repository.UserRepo
 import com.example.rojgar.viewmodel.AdminViewModel
 
-
 class AdminVerificationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
-            AdminVerificationScreen(
-                onBack = { finish() }
-            )
+            AdminVerificationScreen(onBack = { finish() })
         }
     }
 }
@@ -67,12 +63,15 @@ fun AdminVerificationScreen(onBack: () -> Unit) {
     val rejectedCompanies by viewModel.rejectedCompanies.observeAsState(emptyList())
     val stats by viewModel.verificationStats.observeAsState(emptyMap())
     val loading by viewModel.loading.observeAsState(false)
+    val error by viewModel.error.observeAsState("")
+    val success by viewModel.success.observeAsState("")
 
     var selectedTab by remember { mutableStateOf(0) }
     var showDetailsDialog by remember { mutableStateOf(false) }
     var selectedCompany by remember { mutableStateOf<CompanyModel?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
 
-    // Fetch data
+    // Fetch data on launch
     LaunchedEffect(Unit) {
         viewModel.fetchPendingVerificationRequests()
         viewModel.fetchVerifiedCompanies()
@@ -80,13 +79,29 @@ fun AdminVerificationScreen(onBack: () -> Unit) {
         viewModel.fetchVerificationStats()
     }
 
+    // Show success/error messages
+    LaunchedEffect(success) {
+        if (success.isNotEmpty()) {
+            Toast.makeText(context, success, Toast.LENGTH_SHORT).show()
+            viewModel.clearMessages()
+        }
+    }
+
+    LaunchedEffect(error) {
+        if (error.isNotEmpty()) {
+            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+            viewModel.clearMessages()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "Verification Management",
-                        fontWeight = FontWeight.Bold
+                        "Company Verification",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
                     )
                 },
                 navigationIcon = {
@@ -105,113 +120,125 @@ fun AdminVerificationScreen(onBack: () -> Unit) {
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color(0xFFF8FAFC))
         ) {
-            // Statistics Cards
-            Row(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    .fillMaxSize()
+                    .background(Color(0xFFF8FAFC))
             ) {
-                StatCard(
-                    title = "Pending",
-                    value = "${stats["pending"] ?: 0}",
-                    color = Color(0xFFF59E0B),
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    title = "Approved",
-                    value = "${stats["approved"] ?: 0}",
-                    color = Color(0xFF10B981),
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    title = "Rejected",
-                    value = "${stats["rejected"] ?: 0}",
-                    color = Color(0xFFEF4444),
-                    modifier = Modifier.weight(1f)
-                )
-            }
+                // Statistics Cards
+                StatsSection(stats)
 
-            // Tabs
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = Color.White,
-                contentColor = Color(0xFF6366F1),
-                modifier = Modifier.padding(horizontal = 16.dp)
-            ) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = {
-                        Text(
-                            "Pending (${pendingRequests.size})",
-                            fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
+                // Search Bar
+                SearchBar(
+                    query = searchQuery,
+                    onQueryChange = { searchQuery = it },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = {
-                        Text(
-                            "Verified (${verifiedCompanies.size})",
-                            fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                )
-                Tab(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    text = {
-                        Text(
-                            "Rejected (${rejectedCompanies.size})",
-                            fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                )
-            }
 
-            // Content
-            Box(modifier = Modifier.weight(1f)) {
-                when (selectedTab) {
-                    0 -> CompanyVerificationList(
-                        companies = pendingRequests,
-                        onCompanyClick = {
-                            selectedCompany = it
-                            showDetailsDialog = true
+                // Tabs
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF6366F1),
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                ) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "Pending",
+                                    fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
+                                )
+                                Text(
+                                    "${pendingRequests.size}",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFFF59E0B)
+                                )
+                            }
                         }
                     )
-                    1 -> CompanyVerificationList(
-                        companies = verifiedCompanies,
-                        onCompanyClick = {
-                            selectedCompany = it
-                            showDetailsDialog = true
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "Verified",
+                                    fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
+                                )
+                                Text(
+                                    "${verifiedCompanies.size}",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF10B981)
+                                )
+                            }
                         }
                     )
-                    2 -> CompanyVerificationList(
-                        companies = rejectedCompanies,
-                        onCompanyClick = {
-                            selectedCompany = it
-                            showDetailsDialog = true
+                    Tab(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
+                        text = {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "Rejected",
+                                    fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal
+                                )
+                                Text(
+                                    "${rejectedCompanies.size}",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFFEF4444)
+                                )
+                            }
                         }
                     )
                 }
 
-                if (loading) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.3f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = Color(0xFF6366F1))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Content
+                val filteredCompanies = when (selectedTab) {
+                    0 -> pendingRequests
+                    1 -> verifiedCompanies
+                    else -> rejectedCompanies
+                }.filter {
+                    searchQuery.isEmpty() ||
+                            it.companyName.contains(searchQuery, ignoreCase = true) ||
+                            it.companyEmail.contains(searchQuery, ignoreCase = true)
+                }
+
+                CompanyVerificationList(
+                    companies = filteredCompanies,
+                    onCompanyClick = {
+                        selectedCompany = it
+                        showDetailsDialog = true
                     }
+                )
+            }
+
+            // Loading Overlay
+            if (loading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Color(0xFF6366F1))
                 }
             }
         }
@@ -230,11 +257,6 @@ fun AdminVerificationScreen(onBack: () -> Unit) {
                         selectedCompany!!.companyId,
                         adminId
                     )
-                    Toast.makeText(
-                        context,
-                        "Company verified successfully!",
-                        Toast.LENGTH_SHORT
-                    ).show()
                     showDetailsDialog = false
                     selectedCompany = null
                 },
@@ -245,11 +267,6 @@ fun AdminVerificationScreen(onBack: () -> Unit) {
                         adminId,
                         reason
                     )
-                    Toast.makeText(
-                        context,
-                        "Verification rejected",
-                        Toast.LENGTH_SHORT
-                    ).show()
                     showDetailsDialog = false
                     selectedCompany = null
                 }
@@ -259,26 +276,63 @@ fun AdminVerificationScreen(onBack: () -> Unit) {
 }
 
 @Composable
+fun StatsSection(stats: Map<String, Int>) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        StatCard(
+            title = "Pending",
+            value = "${stats["pending"] ?: 0}",
+            color = Color(0xFFF59E0B),
+            icon = Icons.Default.Info,
+            modifier = Modifier.weight(1f)
+        )
+        StatCard(
+            title = "Verified",
+            value = "${stats["approved"] ?: 0}",
+            color = Color(0xFF10B981),
+            icon = Icons.Default.CheckCircle,
+            modifier = Modifier.weight(1f)
+        )
+        StatCard(
+            title = "Rejected",
+            value = "${stats["rejected"] ?: 0}",
+            color = Color(0xFFEF4444),
+            icon = Icons.Default.Close,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
 fun StatCard(
     title: String,
     value: String,
     color: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier
-            .shadow(4.dp, RoundedCornerShape(12.dp)),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        )
+        modifier = modifier.shadow(4.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = color,
+                modifier = Modifier.size(32.dp)
+            )
             Text(
                 text = value,
                 fontSize = 28.sp,
@@ -287,12 +341,48 @@ fun StatCard(
             )
             Text(
                 text = title,
-                fontSize = 12.sp,
+                fontSize = 13.sp,
                 color = Color(0xFF6B7280),
                 fontWeight = FontWeight.Medium
             )
         }
     }
+}
+
+@Composable
+fun SearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = modifier.fillMaxWidth(),
+        placeholder = { Text("Search companies...") },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search"
+            )
+        },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Clear"
+                    )
+                }
+            }
+        },
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Color(0xFF6366F1),
+            unfocusedBorderColor = Color(0xFFE5E7EB)
+        ),
+        singleLine = true
+    )
 }
 
 @Composable
@@ -307,17 +397,17 @@ fun CompanyVerificationList(
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = null,
                     tint = Color(0xFF9CA3AF),
-                    modifier = Modifier.size(64.dp)
+                    modifier = Modifier.size(80.dp)
                 )
                 Text(
                     text = "No companies found",
-                    fontSize = 16.sp,
+                    fontSize = 18.sp,
                     color = Color(0xFF6B7280),
                     fontWeight = FontWeight.Medium
                 )
@@ -350,9 +440,7 @@ fun CompanyVerificationCard(
             .clickable(onClick = onClick)
             .shadow(4.dp, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        )
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
             modifier = Modifier
@@ -384,7 +472,7 @@ fun CompanyVerificationCard(
                     )
                 } else {
                     Text(
-                        text = company.companyName.firstOrNull()?.toString() ?: "C",
+                        text = company.companyName.firstOrNull()?.uppercase() ?: "C",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -395,7 +483,7 @@ fun CompanyVerificationCard(
             // Company Info
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
                     text = company.companyName,
@@ -414,7 +502,7 @@ fun CompanyVerificationCard(
                         imageVector = Icons.Default.Email,
                         contentDescription = null,
                         tint = Color(0xFF6B7280),
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                     Text(
                         text = company.companyEmail,
@@ -423,6 +511,27 @@ fun CompanyVerificationCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                }
+
+                if (company.companyLocation.isNotEmpty()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = Color(0xFF6B7280),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = company.companyLocation,
+                            fontSize = 12.sp,
+                            color = Color(0xFF6B7280),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
                 if (company.verificationRequestDate.isNotEmpty()) {
@@ -434,10 +543,10 @@ fun CompanyVerificationCard(
                             imageVector = Icons.Default.DateRange,
                             contentDescription = null,
                             tint = Color(0xFF6B7280),
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "Requested: ${company.verificationRequestDate}",
+                            text = company.verificationRequestDate,
                             fontSize = 12.sp,
                             color = Color(0xFF6B7280)
                         )
@@ -485,32 +594,19 @@ fun CompanyVerificationDetailsDialog(
     var showRejectDialog by remember { mutableStateOf(false) }
     var rejectionReason by remember { mutableStateOf("") }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .zIndex(20f)
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.7f))
-                .clickable { onDismiss() }
-        )
-
         Card(
             modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxWidth(0.92f)
-                .fillMaxHeight(0.85f),
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.9f),
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            ),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(16.dp)
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
+            Column(modifier = Modifier.fillMaxSize()) {
                 // Header
                 Box(
                     modifier = Modifier
@@ -532,24 +628,24 @@ fun CompanyVerificationDetailsDialog(
                     ) {
                         Text(
                             text = "Verification Details",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
 
-                        Surface(
+                        IconButton(
+                            onClick = onDismiss,
                             modifier = Modifier
-                                .size(36.dp)
-                                .clickable { onDismiss() },
-                            shape = CircleShape,
-                            color = Color.White.copy(alpha = 0.2f)
+                                .size(40.dp)
+                                .background(
+                                    Color.White.copy(alpha = 0.2f),
+                                    CircleShape
+                                )
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Close",
-                                tint = Color.White,
-                                modifier = Modifier.padding(8.dp)
+                                tint = Color.White
                             )
                         }
                     }
@@ -563,74 +659,129 @@ fun CompanyVerificationDetailsDialog(
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    // Company Info
-                    DetailRow(
-                        icon = Icons.Default.Face,
-                        label = "Company Name",
-                        value = company.companyName
-                    )
-                    DetailRow(
-                        icon = Icons.Default.Email,
-                        label = "Email",
-                        value = company.companyEmail
-                    )
-                    DetailRow(
-                        icon = Icons.Default.Phone,
-                        label = "Phone",
-                        value = company.companyContactNumber
-                    )
-                    DetailRow(
-                        icon = Icons.Default.LocationOn,
-                        label = "Location",
-                        value = company.companyLocation
-                    )
-                    DetailRow(
-                        icon = Icons.Default.DateRange,
-                        label = "Request Date",
-                        value = company.verificationRequestDate
-                    )
-
-                    HorizontalDivider()
-
-                    // Verification Document
-                    Text(
-                        text = "Verification Document",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF111827)
-                    )
-
-                    if (company.verificationDocument.isNotEmpty()) {
-                        Button(
-                            onClick = {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(company.verificationDocument))
-                                context.startActivity(intent)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF6366F1)
-                            ),
-                            shape = RoundedCornerShape(12.dp)
+                    // Company Profile Image
+                    if (company.companyProfileImage.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .size(100.dp)
+                                .align(Alignment.CenterHorizontally)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF3F4F6))
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Face,
-                                contentDescription = null
+                            AsyncImage(
+                                model = company.companyProfileImage,
+                                contentDescription = "Company Logo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("View Document")
                         }
-                    } else {
-                        Text(
-                            text = "No document uploaded",
-                            fontSize = 14.sp,
-                            color = Color(0xFFEF4444),
-                            fontWeight = FontWeight.Medium
+                    }
+
+                    // Company Info
+                    DetailSection(title = "Basic Information") {
+                        DetailRow(
+                            icon = Icons.Default.Face,
+                            label = "Company Name",
+                            value = company.companyName
+                        )
+                        DetailRow(
+                            icon = Icons.Default.Email,
+                            label = "Email",
+                            value = company.companyEmail
+                        )
+                        DetailRow(
+                            icon = Icons.Default.Phone,
+                            label = "Phone",
+                            value = company.companyContactNumber
+                        )
+                        DetailRow(
+                            icon = Icons.Default.LocationOn,
+                            label = "Location",
+                            value = company.companyLocation
+                        )
+                        if (company.companyWebsite.isNotEmpty()) {
+                            DetailRow(
+                                icon = Icons.Default.Search,
+                                label = "Website",
+                                value = company.companyWebsite
+                            )
+                        }
+                        if (company.companyIndustry.isNotEmpty()) {
+                            DetailRow(
+                                icon = Icons.Default.Build,
+                                label = "Industry",
+                                value = company.companyIndustry
+                            )
+                        }
+                    }
+
+                    // Verification Info
+                    DetailSection(title = "Verification Information") {
+                        DetailRow(
+                            icon = Icons.Default.DateRange,
+                            label = "Request Date",
+                            value = company.verificationRequestDate
+                        )
+                        DetailRow(
+                            icon = Icons.Default.Info,
+                            label = "Status",
+                            value = company.verificationStatus.replaceFirstChar { it.uppercase() }
                         )
                     }
 
-                    if (company.verificationStatus == "rejected" && company.verificationRejectionReason.isNotEmpty()) {
-                        HorizontalDivider()
+                    // Verification Document
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFF3F4F6)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "Verification Document",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF111827)
+                            )
 
+                            if (company.verificationDocument.isNotEmpty()) {
+                                Button(
+                                    onClick = {
+                                        val intent = Intent(
+                                            Intent.ACTION_VIEW,
+                                            Uri.parse(company.verificationDocument)
+                                        )
+                                        context.startActivity(intent)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF6366F1)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = null
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("View Document")
+                                }
+                            } else {
+                                Text(
+                                    text = "No document uploaded",
+                                    fontSize = 14.sp,
+                                    color = Color(0xFFEF4444),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+
+                    // Rejection Reason (if rejected)
+                    if (company.verificationStatus == "rejected" &&
+                        company.verificationRejectionReason.isNotEmpty()) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = Color(0xFFFEE2E2)
@@ -639,12 +790,23 @@ fun CompanyVerificationDetailsDialog(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text(
-                                    text = "Rejection Reason",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF991B1B)
-                                )
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = Color(0xFF991B1B),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = "Rejection Reason",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF991B1B)
+                                    )
+                                }
                                 Text(
                                     text = company.verificationRejectionReason,
                                     fontSize = 14.sp,
@@ -655,7 +817,7 @@ fun CompanyVerificationDetailsDialog(
                     }
                 }
 
-                // Actions
+                // Actions (only for pending)
                 if (company.verificationStatus == "pending") {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
@@ -682,15 +844,9 @@ fun CompanyVerificationDetailsDialog(
                                     Color(0xFFEF4444)
                                 )
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = null
-                                )
+                                Icon(imageVector = Icons.Default.Close, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Reject",
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Text("Reject", fontWeight = FontWeight.Bold)
                             }
 
                             Button(
@@ -708,10 +864,7 @@ fun CompanyVerificationDetailsDialog(
                                     contentDescription = null
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Approve",
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Text("Approve", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -723,14 +876,20 @@ fun CompanyVerificationDetailsDialog(
         if (showRejectDialog) {
             AlertDialog(
                 onDismissRequest = { showRejectDialog = false },
-                title = { Text("Rejection Reason") },
+                title = {
+                    Text(
+                        "Rejection Reason",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 text = {
                     OutlinedTextField(
                         value = rejectionReason,
                         onValueChange = { rejectionReason = it },
                         placeholder = { Text("Enter reason for rejection...") },
                         modifier = Modifier.fillMaxWidth(),
-                        minLines = 3
+                        minLines = 4,
+                        shape = RoundedCornerShape(12.dp)
                     )
                 },
                 confirmButton = {
@@ -741,9 +900,12 @@ fun CompanyVerificationDetailsDialog(
                                 showRejectDialog = false
                             }
                         },
-                        enabled = rejectionReason.isNotBlank()
+                        enabled = rejectionReason.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFEF4444)
+                        )
                     ) {
-                        Text("Reject")
+                        Text("Reject Company")
                     }
                 },
                 dismissButton = {
@@ -753,6 +915,24 @@ fun CompanyVerificationDetailsDialog(
                 }
             )
         }
+    }
+}
+
+@Composable
+fun DetailSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = title,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF111827)
+        )
+        content()
     }
 }
 
