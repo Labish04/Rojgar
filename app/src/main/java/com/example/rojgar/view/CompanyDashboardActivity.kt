@@ -8,6 +8,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,25 +31,35 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.example.rojgar.R
+import com.example.rojgar.repository.CompanyRepoImpl
+import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.utils.ImageUtils
 import com.example.rojgar.view.AnalyticsScreen
 import com.example.rojgar.viewmodel.AnalyticsViewModel
+import com.example.rojgar.viewmodel.CompanyViewModel
+import com.example.rojgar.viewmodel.JobSeekerViewModel
 import com.google.firebase.auth.FirebaseAuth
 
 class CompanyDashboardActivity : ComponentActivity() {
@@ -110,6 +122,11 @@ fun CompanyDashboardBody(
     val analyticsViewModel: AnalyticsViewModel = viewModel()
     val companyId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
+    val companyViewModel: CompanyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
+
+    val company = companyViewModel.companyDetails.observeAsState(initial = null)
+
+
     data class NavItem(
         val label: String,
         val selectedIcon: Int,
@@ -141,10 +158,22 @@ fun CompanyDashboardBody(
         )
     )
 
+    LaunchedEffect(Unit) {
+
+        // Get current user ID
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            val jobSeekerId = currentUser.uid
+
+            // Fetch all profile data
+            companyViewModel.fetchCurrentCompany()
+        }
+    }
+
 
     Scaffold(
         topBar = {
-            val showTopBar = selectedIndex in listOf(0, 1)
+            val showTopBar = selectedIndex in listOf(0)
 
             if (showTopBar) {
                 CenterAlignedTopAppBar(
@@ -161,22 +190,40 @@ fun CompanyDashboardBody(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(start = 20.dp)
+                                .padding(start = 20.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = {}) {
-                                Image(
-                                    painter = painterResource(R.drawable.forgetpassworddesign),
-                                    contentDescription = null,
+
+                            Box(
+                                modifier = Modifier
+                                    .size(60.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF4CAF50)), // change color if you want
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AsyncImage(
+                                    model = company.value?.companyProfileImage,
+                                    contentDescription = "Profile Photo",
                                     modifier = Modifier
-                                        .size(60.dp)
-                                        .clip(shape = CircleShape),
+                                        .size(100.dp)
+                                        .clip(CircleShape),
                                     contentScale = ContentScale.Crop
                                 )
                             }
+
                             Spacer(modifier = Modifier.width(8.dp))
+
                             Column {
-                                Text("Apple")
-                                Text("Let's hire top talent.")
+                                Text(
+                                    text = "Hi! ${company.value?.companyName}",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "Let's hire top talent.",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
                             }
                         }
                     },

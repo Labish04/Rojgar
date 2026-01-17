@@ -890,8 +890,13 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                         // View CV button
                         Button(
                             onClick = {
+                                val profileIdToLoad = if (finalTargetJobSeekerId.isNotEmpty()) {
+                                    finalTargetJobSeekerId
+                                } else {
+                                    currentUserId
+                                }
                                 val intent = Intent(context, CvViewActivity::class.java).apply {
-                                    putExtra("JOB_SEEKER_ID", finalTargetJobSeekerId)
+                                    putExtra("JOB_SEEKER_ID", profileIdToLoad)
                                 }
                                 context.startActivity(intent)
                             },
