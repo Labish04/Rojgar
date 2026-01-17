@@ -44,6 +44,17 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".view.SavedJobsActivity"
+            android:exported="true"
+            android:label="@string/title_activity_company_verification"
+            android:theme="@style/Theme.Rojgar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".view.CompanyVerificationActivity"
             android:exported="true"
             android:label="@string/title_activity_company_verification"

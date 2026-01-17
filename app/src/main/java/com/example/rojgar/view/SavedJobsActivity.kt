@@ -42,10 +42,12 @@ class SavedJobsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val jobSeekerId = intent.getStringExtra("JOB_SEEKER_ID") ?: ""
         setContent {
             SavedJobsBody(
                 savedJobViewModel = savedJobViewModel,
-                jobViewModel = jobViewModel
+                jobViewModel = jobViewModel,
+                jobSeekerId = jobSeekerId
             )
         }
     }
@@ -54,9 +56,9 @@ class SavedJobsActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavedJobsBody(savedJobViewModel: SavedJobViewModel,
-                  jobViewModel: JobViewModel) {
-
-
+                  jobViewModel: JobViewModel,
+                  jobSeekerId: String)
+{
     val savedJobs by savedJobViewModel.savedJobs.observeAsState(emptyList())
     val allJobs by jobViewModel.allJobs.observeAsState(emptyList())
     val loading by savedJobViewModel.loading.observeAsState(false)
