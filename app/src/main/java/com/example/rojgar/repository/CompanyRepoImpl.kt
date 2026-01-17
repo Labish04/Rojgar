@@ -474,13 +474,13 @@ class CompanyRepoImpl : CompanyRepo {
 
     override fun uploadVerificationDocument(
         companyId: String,
+        context: Context, // Add context parameter
         imageUri: Uri,
         callback: (Boolean, String) -> Unit
     ) {
         val executor = Executors.newSingleThreadExecutor()
         executor.execute {
             try {
-                val context = getAppContext() ?: throw Exception("Context not available")
                 val inputStream: InputStream? = context.contentResolver.openInputStream(imageUri)
                 var fileName = getFileNameFromUri(context, imageUri)
 
@@ -520,6 +520,7 @@ class CompanyRepoImpl : CompanyRepo {
             }
         }
     }
+
 
     override fun requestVerification(
         companyId: String,

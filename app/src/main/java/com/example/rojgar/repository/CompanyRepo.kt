@@ -109,6 +109,7 @@ interface CompanyRepo {
 
     fun uploadVerificationDocument(
         companyId: String,
+        context: Context, // Add context parameter
         imageUri: Uri,
         callback: (Boolean, String) -> Unit
     )
