@@ -1,29 +1,19 @@
 package com.example.rojgar.view
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,19 +22,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -58,22 +43,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.R
-import com.example.rojgar.model.CompanyModel
-import com.example.rojgar.model.JobModel
-import com.example.rojgar.model.JobSeekerModel
-import com.example.rojgar.repository.CompanyRepoImpl
-import com.example.rojgar.repository.JobRepoImpl
-import com.example.rojgar.repository.JobSeekerRepoImpl
+import com.example.rojgar.model.*
+import com.example.rojgar.repository.*
 import com.example.rojgar.ui.theme.*
 import com.example.rojgar.view.ui.theme.RojgarTheme
-import com.example.rojgar.viewmodel.CompanyViewModel
-import com.example.rojgar.viewmodel.JobSeekerViewModel
-import com.example.rojgar.viewmodel.JobViewModel
+import com.example.rojgar.viewmodel.*
+import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import coil.request.ImageRequest
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.text.style.TextOverflow
+import kotlinx.coroutines.delay
+import java.util.*
 
 data class JobFilterState(
     val selectedCategories: List<String> = emptyList(),
@@ -117,7 +101,7 @@ class JobSeekerSearchActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun JobSeekerSearchScreen(
     initialSearchQuery: String,
@@ -126,7 +110,9 @@ fun JobSeekerSearchScreen(
 ) {
     val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
+    val searchViewModel = remember { SearchViewModel(SearchRepoImpl()) }
     val context = LocalContext.current
+    val currentUser = FirebaseAuth.getInstance().currentUser
 
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Jobs", "Companies", "Job Seekers")
@@ -134,6 +120,7 @@ fun JobSeekerSearchScreen(
     var searchQuery by remember { mutableStateOf(initialSearchQuery) }
     var filterState by remember { mutableStateOf(initialFilterState) }
     var showFilterSheet by remember { mutableStateOf(false) }
+    var showSearchHistory by remember { mutableStateOf(false) }
     val activeFiltersCount = remember(filterState) { countActiveFilters(filterState) }
 
     var allJobs by remember { mutableStateOf<List<JobModel>>(emptyList()) }
@@ -141,6 +128,29 @@ fun JobSeekerSearchScreen(
     var companyDetailsMap by remember { mutableStateOf<Map<String, CompanyModel>>(emptyMap()) }
 
     val companyDetails by companyViewModel.companyDetails.observeAsState()
+    val searchHistory by searchViewModel.recentSearches.observeAsState(emptyList())
+
+     var lastSavedSearch by remember { mutableStateOf("") }
+    var lastSavedTab by remember { mutableStateOf(-1) }
+
+    var searchHistoryRefreshTrigger by remember { mutableStateOf(0) }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
+    val shimmerAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shimmerAlpha"
+    )
+
+    LaunchedEffect(currentUser?.uid, searchHistoryRefreshTrigger) {
+        currentUser?.uid?.let { userId ->
+            searchViewModel.getRecentSearches(userId, 10)
+        }
+    }
 
     LaunchedEffect(companyDetails) {
         companyDetails?.let { company ->
@@ -157,13 +167,10 @@ fun JobSeekerSearchScreen(
                 return@getAllJobPosts
             }
 
-            // Filter out expired jobs
             val activePosts = posts.filter { !isDeadlineExpired(it.deadline) }
             allJobs = activePosts
-
             isLoading = false
 
-            // Get unique company IDs and fetch company details
             val uniqueCompanyIds = activePosts.map { it.companyId }.distinct()
             uniqueCompanyIds.forEach { companyId ->
                 companyViewModel.getCompanyDetails(companyId)
@@ -171,185 +178,410 @@ fun JobSeekerSearchScreen(
         }
     }
 
+    LaunchedEffect(searchQuery, selectedTabIndex) {
+        if (searchQuery.isNotEmpty() && currentUser?.uid != null) {
+            val isDifferentSearch = searchQuery != lastSavedSearch || selectedTabIndex != lastSavedTab
+
+            if (isDifferentSearch) {
+                delay(1000)
+
+                val searchType = tabs[selectedTabIndex]
+                val search = SearchHistoryModel(
+                    userId = currentUser.uid,
+                    userType = "JobSeeker",
+                    query = searchQuery,
+                    searchType = searchType,
+                    filterState = FilterStateData(
+                        selectedCategories = filterState.selectedCategories,
+                        selectedJobTypes = filterState.selectedJobTypes,
+                        selectedExperience = filterState.selectedExperience,
+                        selectedEducation = filterState.selectedEducation,
+                        minSalary = filterState.minSalary,
+                        maxSalary = filterState.maxSalary,
+                        location = filterState.location
+                    )
+                )
+
+                searchViewModel.saveSearch(search) { success, message ->
+                    if (success) {
+                        lastSavedSearch = searchQuery
+                        lastSavedTab = selectedTabIndex
+
+                        searchHistoryRefreshTrigger++
+                    }
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Blue,
-                    navigationIconContentColor = Color.Black,
-                    titleContentColor = Color.Black
-                ),
-                title = { Text("Search") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back"
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF60A5FA),
+                                Color(0xFF3B82F6),
+                                Color(0xFF2563EB)
+                            )
                         )
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Blue)
-                .padding(padding)
-        ) {
-            // Tab Navigation
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = Blue,
-                contentColor = Color.Black,
-                indicator = { tabPositions ->
-                    TabRowDefaults.Indicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                        color = Purple
                     )
-                }
             ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = { Text(title) }
-                    )
-                }
-            }
-
-            // Search Bar with Filter Button (only for Jobs tab)
-            if (selectedTabIndex == 0) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = {
+                CenterAlignedTopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        navigationIconContentColor = Color.White,
+                        titleContentColor = Color.White
+                    ),
+                    title = {
                         Text(
-                            "Search ",
+                            "Discover",
                             style = TextStyle(
-                                fontSize = 16.sp,
-                                color = Color.Gray
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp
                             )
                         )
                     },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(R.drawable.searchicon),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = Gray
-                        )
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Clear",
-                                    modifier = Modifier.size(20.dp),
-                                    tint = Gray
-                                )
-                            }
+                    navigationIcon = {
+                        IconButton(
+                            onClick = onBackClick,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
                         }
                     },
-                    shape = RoundedCornerShape(15.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = White,
-                        unfocusedContainerColor = White,
-                        focusedIndicatorColor = NormalBlue,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ),
-                    modifier = Modifier
-                        .height(56.dp)
-                        .weight(1f)
-                )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                // Filter Button with Badge
-                BadgedBox(
-                    badge = {
-                        if (activeFiltersCount > 0) {
-                            Badge(
-                                containerColor = Purple
+                    actions = {
+                        BadgedBox(
+                            badge = {
+                                if (searchHistory.isNotEmpty()) {
+                                    Badge(
+                                        containerColor = Color(0xFFEF4444),
+                                        modifier = Modifier.scale(0.8f)
+                                    ) {
+                                        Text(
+                                            text = searchHistory.size.toString(),
+                                            color = Color.White,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        ) {
+                            IconButton(
+                                onClick = { showSearchHistory = !showSearchHistory },
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (showSearchHistory)
+                                            Color.White.copy(alpha = 0.3f)
+                                        else
+                                            Color.White.copy(alpha = 0.2f)
+                                    )
                             ) {
-                                Text(
-                                    text = activeFiltersCount.toString(),
-                                    color = Color.White,
-                                    fontSize = 12.sp
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = "Search History",
+                                    tint = Color.White
                                 )
                             }
                         }
                     }
+                )
+            }
+        }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFEFF6FF),
+                            Color(0xFFDBEAFE),
+                            Color(0xFFBFDBFE)
+                        )
+                    )
+                )
+                .padding(padding)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
-                    Button(
-                        onClick = { showFilterSheet = true },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Purple
-                        ),
-                        contentPadding = PaddingValues(0.dp),
-                        modifier = Modifier
-                            .height(56.dp)
-                            .width(56.dp)
+                    TabRow(
+                        selectedTabIndex = selectedTabIndex,
+                        containerColor = Color.Transparent,
+                        contentColor = Color(0xFF2563EB),
+                        indicator = { tabPositions ->
+                            Box(
+                                modifier = Modifier
+                                    .tabIndicatorOffset(tabPositions[selectedTabIndex])
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .padding(horizontal = 16.dp)
+                                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                    .background(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(
+                                                Color(0xFF3B82F6),
+                                                Color(0xFF60A5FA)
+                                            )
+                                        )
+                                    )
+                            )
+                        }
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.filter),
-                            contentDescription = "Filter",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
+                        tabs.forEachIndexed { index, title ->
+                            Tab(
+                                selected = selectedTabIndex == index,
+                                onClick = { selectedTabIndex = index },
+                                modifier = Modifier.padding(vertical = 12.dp)
+                            ) {
+                                AnimatedContent(
+                                    targetState = selectedTabIndex == index,
+                                    transitionSpec = {
+                                        fadeIn() + scaleIn() with fadeOut() + scaleOut()
+                                    },
+                                    label = "tabAnimation"
+                                ) { isSelected ->
+                                    Text(
+                                        title,
+                                        style = TextStyle(
+                                            fontSize = if (isSelected) 16.sp else 14.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isSelected) Color(0xFF2563EB) else Color(0xFF64748B)
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = showSearchHistory && searchHistory.isNotEmpty(),
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    SearchHistoryCard(
+                        searchHistory = searchHistory,
+                        onSearchClick = { historyItem ->
+                            searchQuery = historyItem.query
+
+                            val targetTabIndex = when (historyItem.searchType) {
+                                "Jobs" -> 0
+                                "Companies" -> 1
+                                "Job Seekers" -> 2
+                                else -> 0
+                            }
+                            selectedTabIndex = targetTabIndex
+
+                            historyItem.filterState?.let { savedFilters ->
+                                filterState = JobFilterState(
+                                    selectedCategories = savedFilters.selectedCategories,
+                                    selectedJobTypes = savedFilters.selectedJobTypes,
+                                    selectedExperience = savedFilters.selectedExperience,
+                                    selectedEducation = savedFilters.selectedEducation,
+                                    minSalary = savedFilters.minSalary,
+                                    maxSalary = savedFilters.maxSalary,
+                                    location = savedFilters.location
+                                )
+                            }
+
+                            showSearchHistory = false
+                        },
+                        onClearHistory = {
+                            currentUser?.uid?.let { userId ->
+                                searchViewModel.clearAllSearchHistory(userId) { success, message ->
+                                    if (success) {
+                                        searchHistoryRefreshTrigger++
+                                    }
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        onDeleteItem = { historyItem ->
+                            currentUser?.uid?.let { userId ->
+                                searchViewModel.deleteSearchHistory(
+                                    userId = userId,
+                                    timestamp = historyItem.timestamp
+                                ) { success, message ->
+                                    if (success) {
+                                        searchHistoryRefreshTrigger++
+                                    }
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    )
+                }
+
+                if (selectedTabIndex == 0) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                placeholder = {
+                                    Text(
+                                        "Search jobs, companies...",
+                                        style = TextStyle(
+                                            fontSize = 15.sp,
+                                            color = Color(0xFF94A3B8)
+                                        )
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.searchicon),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(22.dp),
+                                        tint = Color(0xFF3B82F6)
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { searchQuery = "" }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Clear",
+                                                modifier = Modifier.size(20.dp),
+                                                tint = Color(0xFF94A3B8)
+                                            )
+                                        }
+                                    }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color(0xFFF8FAFC),
+                                    unfocusedContainerColor = Color(0xFFF8FAFC),
+                                    focusedIndicatorColor = Color(0xFF3B82F6),
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                modifier = Modifier
+                                    .height(56.dp)
+                                    .weight(1f)
+                            )
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            BadgedBox(
+                                badge = {
+                                    if (activeFiltersCount > 0) {
+                                        Badge(
+                                            containerColor = Color(0xFFEF4444),
+                                            modifier = Modifier.scale(1.2f)
+                                        ) {
+                                            Text(
+                                                text = activeFiltersCount.toString(),
+                                                color = Color.White,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            ) {
+                                Button(
+                                    onClick = { showFilterSheet = true },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF3B82F6)
+                                    ),
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier
+                                        .height(56.dp)
+                                        .width(56.dp)
+                                        .shadow(
+                                            elevation = 4.dp,
+                                            shape = RoundedCornerShape(12.dp),
+                                            spotColor = Color(0xFF3B82F6).copy(alpha = 0.4f)
+                                        )
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.filter),
+                                        contentDescription = "Filter",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = activeFiltersCount > 0,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        ActiveFiltersChips(
+                            filterState = filterState,
+                            onClearFilter = { filterState = it }
                         )
                     }
                 }
-            }
 
-                // Active Filters Display
-                if (activeFiltersCount > 0) {
-                    ActiveFiltersChips(
+                // Tab Content
+                when (selectedTabIndex) {
+                    0 -> JobsTabContent(
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
                         filterState = filterState,
-                        onClearFilter = { filterState = it }
+                        onFilterStateChange = { filterState = it },
+                        showFilterSheet = showFilterSheet,
+                        onShowFilterSheetChange = { showFilterSheet = it },
+                        allJobs = allJobs,
+                        isLoading = isLoading,
+                        companyDetailsMap = companyDetailsMap,
+                        context = context,
+                        activeFiltersCount = activeFiltersCount,
+                        shimmerAlpha = shimmerAlpha
+                    )
+                    1 -> CompaniesTabContent(
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
+                        allJobs = allJobs,
+                        companyDetailsMap = companyDetailsMap,
+                        context = context
+                    )
+                    2 -> JobSeekersTabContent(
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it }
                     )
                 }
             }
 
-            // Tab Content
-            when (selectedTabIndex) {
-                0 -> JobsTabContent(
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { searchQuery = it },
-                    filterState = filterState,
-                    onFilterStateChange = { filterState = it },
-                    showFilterSheet = showFilterSheet,
-                    onShowFilterSheetChange = { showFilterSheet = it },
-                    allJobs = allJobs,
-                    isLoading = isLoading,
-                    companyDetailsMap = companyDetailsMap,
-                    context = context,
-                    activeFiltersCount = activeFiltersCount
-                )
-                1 -> CompaniesTabContent(
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { searchQuery = it },
-                    allJobs = allJobs,
-                    companyDetailsMap = companyDetailsMap,
-                    context = context
-                )
-                2 -> JobSeekersTabContent(
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { searchQuery = it }
-                )
-            }
-
-        }
-
-            // Filter Bottom Sheet (only for Jobs tab)
             if (selectedTabIndex == 0) {
                 JobFilterBottomSheet(
                     showFilter = showFilterSheet,
@@ -359,7 +591,199 @@ fun JobSeekerSearchScreen(
                 )
             }
         }
+    }
 }
+
+@Composable
+fun SearchHistoryCard(
+    searchHistory: List<SearchHistoryModel>,
+    onSearchClick: (SearchHistoryModel) -> Unit,
+    onClearHistory: () -> Unit,
+    onDeleteItem: (SearchHistoryModel) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = Color(0xFF3B82F6)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Recent Searches",
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E293B)
+                        )
+                    )
+                }
+                TextButton(onClick = onClearHistory) {
+                    Text(
+                        "Clear All",
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            color = Color(0xFFEF4444),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            searchHistory.take(10).forEach { historyItem ->
+                SearchHistoryItem(
+                    historyItem = historyItem,
+                    onClick = { onSearchClick(historyItem) },
+                    onDelete = { onDeleteItem(historyItem) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SearchHistoryItem(
+    historyItem: SearchHistoryModel,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(
+                    color = when (historyItem.searchType) {
+                        "Jobs" -> Color(0xFF3B82F6).copy(alpha = 0.1f)
+                        "Companies" -> Color(0xFF10B981).copy(alpha = 0.1f)
+                        "Job Seekers" -> Color(0xFF8B5CF6).copy(alpha = 0.1f)
+                        else -> Color(0xFF64748B).copy(alpha = 0.1f)
+                    },
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = when (historyItem.searchType) {
+                    "Jobs" -> Icons.Default.Search
+                    "Companies" -> Icons.Default.AccountBox
+                    "Job Seekers" -> Icons.Default.Person
+                    else -> Icons.Default.Info
+                },
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = when (historyItem.searchType) {
+                    "Jobs" -> Color(0xFF3B82F6)
+                    "Companies" -> Color(0xFF10B981)
+                    "Job Seekers" -> Color(0xFF8B5CF6)
+                    else -> Color(0xFF64748B)
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = historyItem.query,
+                style = TextStyle(
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF1E293B)
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Search type badge
+                Surface(
+                    color = when (historyItem.searchType) {
+                        "Jobs" -> Color(0xFF3B82F6).copy(alpha = 0.1f)
+                        "Companies" -> Color(0xFF10B981).copy(alpha = 0.1f)
+                        "Job Seekers" -> Color(0xFF8B5CF6).copy(alpha = 0.1f)
+                        else -> Color(0xFF64748B).copy(alpha = 0.1f)
+                    },
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = historyItem.searchType,
+                        style = TextStyle(
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = when (historyItem.searchType) {
+                                "Jobs" -> Color(0xFF3B82F6)
+                                "Companies" -> Color(0xFF10B981)
+                                "Job Seekers" -> Color(0xFF8B5CF6)
+                                else -> Color(0xFF64748B)
+                            }
+                        ),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+
+                Text(
+                    text = formatTimestamp(historyItem.timestamp),
+                    style = TextStyle(
+                        fontSize = 11.sp,
+                        color = Color(0xFF94A3B8)
+                    )
+                )
+            }
+        }
+
+        // Delete button
+        IconButton(
+            onClick = onDelete,
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Delete",
+                modifier = Modifier.size(16.dp),
+                tint = Color(0xFF94A3B8)
+            )
+        }
+
+        Icon(
+            imageVector = Icons.Default.ArrowBack,
+            contentDescription = "Apply Search",
+            modifier = Modifier
+                .size(16.dp)
+                .graphicsLayer(rotationZ = 180f),
+            tint = Color(0xFF94A3B8)
+        )
+    }
+}
+
 
 @Composable
 fun ActiveFiltersChips(
@@ -369,122 +793,116 @@ fun ActiveFiltersChips(
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
             FilterChip(
                 selected = true,
                 onClick = { onClearFilter(JobFilterState()) },
-                label = { Text("Clear All") },
+                label = { Text("Clear All", fontSize = 13.sp) },
                 leadingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Purple,
+                    selectedContainerColor = Color(0xFFEF4444),
                     selectedLabelColor = Color.White
-                )
+                ),
+                border = null
             )
         }
 
         filterState.selectedCategories.forEach { category ->
             item {
-                FilterChip(
-                    selected = true,
-                    onClick = { onClearFilter(filterState.copy(selectedCategories = filterState.selectedCategories - category)) },
-                    label = { Text(category) },
-                    trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = NormalBlue,
-                        selectedLabelColor = Color.White
-                    )
+                AnimatedFilterChip(
+                    label = category,
+                    onRemove = { onClearFilter(filterState.copy(selectedCategories = filterState.selectedCategories - category)) }
                 )
             }
         }
 
         filterState.selectedJobTypes.forEach { jobType ->
             item {
-                FilterChip(
-                    selected = true,
-                    onClick = { onClearFilter(filterState.copy(selectedJobTypes = filterState.selectedJobTypes - jobType)) },
-                    label = { Text(jobType) },
-                    trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = NormalBlue,
-                        selectedLabelColor = Color.White
-                    )
+                AnimatedFilterChip(
+                    label = jobType,
+                    onRemove = { onClearFilter(filterState.copy(selectedJobTypes = filterState.selectedJobTypes - jobType)) }
                 )
             }
         }
 
         if (filterState.selectedExperience.isNotEmpty()) {
             item {
-                FilterChip(
-                    selected = true,
-                    onClick = { onClearFilter(filterState.copy(selectedExperience = "")) },
-                    label = { Text(filterState.selectedExperience) },
-                    trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = NormalBlue,
-                        selectedLabelColor = Color.White
-                    )
+                AnimatedFilterChip(
+                    label = filterState.selectedExperience,
+                    onRemove = { onClearFilter(filterState.copy(selectedExperience = "")) }
                 )
             }
         }
 
         filterState.selectedEducation.forEach { education ->
             item {
-                FilterChip(
-                    selected = true,
-                    onClick = { onClearFilter(filterState.copy(selectedEducation = filterState.selectedEducation - education)) },
-                    label = { Text(education) },
-                    trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = NormalBlue,
-                        selectedLabelColor = Color.White
-                    )
+                AnimatedFilterChip(
+                    label = education,
+                    onRemove = { onClearFilter(filterState.copy(selectedEducation = filterState.selectedEducation - education)) }
                 )
             }
         }
 
         if (filterState.minSalary.isNotEmpty() || filterState.maxSalary.isNotEmpty()) {
             item {
-                FilterChip(
-                    selected = true,
-                    onClick = { onClearFilter(filterState.copy(minSalary = "", maxSalary = "")) },
-                    label = { Text("Salary: ${filterState.minSalary}-${filterState.maxSalary}") },
-                    trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = NormalBlue,
-                        selectedLabelColor = Color.White
-                    )
+                AnimatedFilterChip(
+                    label = "₹${filterState.minSalary}-${filterState.maxSalary}",
+                    onRemove = { onClearFilter(filterState.copy(minSalary = "", maxSalary = "")) }
                 )
             }
         }
 
         if (filterState.location.isNotEmpty()) {
             item {
-                FilterChip(
-                    selected = true,
-                    onClick = { onClearFilter(filterState.copy(location = "")) },
-                    label = { Text(filterState.location) },
-                    trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = NormalBlue,
-                        selectedLabelColor = Color.White
-                    )
+                AnimatedFilterChip(
+                    label = filterState.location,
+                    onRemove = { onClearFilter(filterState.copy(location = "")) }
                 )
             }
         }
     }
 }
 
+@Composable
+fun AnimatedFilterChip(
+    label: String,
+    onRemove: () -> Unit
+) {
+    var isVisible by remember { mutableStateOf(true) }
+
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn() + scaleIn(),
+        exit = fadeOut() + scaleOut()
+    ) {
+        FilterChip(
+            selected = true,
+            onClick = {
+                isVisible = false
+                onRemove()
+            },
+            label = { Text(label, fontSize = 13.sp) },
+            trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(16.dp)) },
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = Color(0xFF3B82F6),
+                selectedLabelColor = Color.White
+            ),
+            border = null
+        )
+    }
+}
+
 // Helper function to count active filters
 fun countActiveFilters(filterState: JobFilterState): Int {
     return filterState.selectedCategories.size +
-           filterState.selectedJobTypes.size +
-           (if (filterState.selectedExperience.isNotEmpty()) 1 else 0) +
-           filterState.selectedEducation.size +
-           (if (filterState.minSalary.isNotEmpty() || filterState.maxSalary.isNotEmpty()) 1 else 0) +
-           (if (filterState.location.isNotEmpty()) 1 else 0)
+            filterState.selectedJobTypes.size +
+            (if (filterState.selectedExperience.isNotEmpty()) 1 else 0) +
+            filterState.selectedEducation.size +
+            (if (filterState.minSalary.isNotEmpty() || filterState.maxSalary.isNotEmpty()) 1 else 0) +
+            (if (filterState.location.isNotEmpty()) 1 else 0)
 }
 
 // Helper function to extract numeric value from salary string
@@ -679,44 +1097,75 @@ fun JobsTabContent(
     allJobs: List<JobModel>,
     isLoading: Boolean,
     companyDetailsMap: Map<String, CompanyModel>,
-    context: android.content.Context,
-    activeFiltersCount: Int
+    context: Context,
+    activeFiltersCount: Int,
+    shimmerAlpha: Float
 ) {
     val filteredJobs = remember(allJobs, searchQuery, filterState, companyDetailsMap) {
-        // First check if any filters are applied
-        val hasActiveFilters = searchQuery.isNotEmpty() ||
-            filterState.selectedCategories.isNotEmpty() ||
-            filterState.selectedJobTypes.isNotEmpty() ||
-            filterState.selectedExperience.isNotEmpty() ||
-            filterState.selectedEducation.isNotEmpty() ||
-            filterState.minSalary.isNotEmpty() ||
-            filterState.maxSalary.isNotEmpty() ||
-            filterState.location.isNotEmpty()
+        val normalizedSearchQuery = searchQuery.trim().lowercase()
+
+        val hasActiveFilters = normalizedSearchQuery.isNotEmpty() ||
+                filterState.selectedCategories.isNotEmpty() ||
+                filterState.selectedJobTypes.isNotEmpty() ||
+                filterState.selectedExperience.isNotEmpty() ||
+                filterState.selectedEducation.isNotEmpty() ||
+                filterState.minSalary.isNotEmpty() ||
+                filterState.maxSalary.isNotEmpty() ||
+                filterState.location.isNotEmpty()
 
         if (!hasActiveFilters) {
-            // No filters applied - show all jobs
             allJobs
         } else {
-            // Filters applied - filter jobs
-            val filteredResults = allJobs.filter { job ->
+            allJobs.filter { job ->
                 val companyName = companyDetailsMap[job.companyId]?.companyName ?: ""
 
-                val matchesSearch = searchQuery.isEmpty() ||
-                    listOf(job.title, job.position, job.jobDescription, job.skills, companyName)
-                        .any { it.contains(searchQuery, ignoreCase = true) }
+                val matchesSearch = if (normalizedSearchQuery.isEmpty()) {
+                    true
+                } else {
+                    val searchKeywords = normalizedSearchQuery.split(" ").filter { it.isNotBlank() }
 
+                    val searchableFields = listOf(
+                        job.title,
+                        job.position,
+                        job.jobDescription,
+                        job.skills,
+                        companyName,
+                        job.categories.joinToString(" "),
+                        job.jobType,
+                        job.experience,
+                        job.education
+                    ).map { it.lowercase() }
+
+                    searchKeywords.any { keyword ->
+                        searchableFields.any { field ->
+                            field.contains(keyword)
+                        }
+                    }
+                }
+
+                // Apply category filters
                 val matchesCategories = filterState.selectedCategories.isEmpty() ||
-                    filterState.selectedCategories.any { job.categories.contains(it) }
+                        filterState.selectedCategories.any { category ->
+                            job.categories.any { it.equals(category, ignoreCase = true) }
+                        }
 
+                // Apply job type filters
                 val matchesJobType = filterState.selectedJobTypes.isEmpty() ||
-                    filterState.selectedJobTypes.contains(job.jobType)
+                        filterState.selectedJobTypes.any {
+                            job.jobType.equals(it, ignoreCase = true)
+                        }
 
+                // Apply experience filters
                 val matchesExperience = filterState.selectedExperience.isEmpty() ||
-                    job.experience.contains(filterState.selectedExperience, ignoreCase = true)
+                        job.experience.contains(filterState.selectedExperience, ignoreCase = true)
 
+                // Apply education filters
                 val matchesEducation = filterState.selectedEducation.isEmpty() ||
-                    filterState.selectedEducation.any { job.education.contains(it, ignoreCase = true) }
+                        filterState.selectedEducation.any {
+                            job.education.contains(it, ignoreCase = true)
+                        }
 
+                // Apply salary filters
                 val matchesSalary = when {
                     filterState.minSalary.isEmpty() && filterState.maxSalary.isEmpty() -> true
                     else -> {
@@ -727,19 +1176,14 @@ fun JobsTabContent(
                     }
                 }
 
+                // Apply location filters with partial matching
                 val matchesLocation = filterState.location.isEmpty() ||
-                    (job.jobDescription.contains(filterState.location, ignoreCase = true) ||
-                     companyName.contains(filterState.location, ignoreCase = true))
+                        job.jobDescription.contains(filterState.location, ignoreCase = true) ||
+                        companyName.contains(filterState.location, ignoreCase = true)
 
+                // All conditions must match (AND logic for different filter types)
                 matchesSearch && matchesCategories && matchesJobType &&
-                    matchesExperience && matchesEducation && matchesSalary && matchesLocation
-            }
-
-            // If no jobs match the filters, show all jobs to ensure company jobs are visible
-            if (filteredResults.isEmpty() && allJobs.isNotEmpty()) {
-                allJobs
-            } else {
-                filteredResults
+                        matchesExperience && matchesEducation && matchesSalary && matchesLocation
             }
         }
     }
@@ -757,7 +1201,7 @@ fun JobsTabContent(
         }
     }
 
-    // Search Results
+    // Search Results UI
     if (isLoading) {
         Box(
             modifier = Modifier
@@ -804,22 +1248,42 @@ fun JobsTabContent(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(120.dp),
+                            .padding(vertical = 20.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = White
+                            containerColor = Color.White
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = Color(0xFF94A3B8)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "No jobs available at the moment.",
+                                "No jobs found",
                                 style = TextStyle(
-                                    fontSize = 16.sp,
-                                    color = Color.Gray
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1E293B)
                                 )
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Try adjusting your search or filters",
+                                style = TextStyle(
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF64748B)
+                                ),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
                     }
@@ -883,14 +1347,12 @@ fun CompaniesTabContent(
     var allCompanies by remember { mutableStateOf<List<CompanyModel>>(emptyList()) }
     var isCompaniesLoading by remember { mutableStateOf(true) }
 
-    // Fetch all companies from realtime database
     LaunchedEffect(Unit) {
         companyViewModel.getAllCompany { success, message, companies ->
             if (success && companies != null) {
                 allCompanies = companies
                 isCompaniesLoading = false
 
-                // Also fetch individual company details for any missing ones
                 companies.forEach { company ->
                     if (companyDetailsMap[company.companyId] == null) {
                         companyViewModel.getCompanyDetails(company.companyId)
@@ -902,26 +1364,40 @@ fun CompaniesTabContent(
         }
     }
 
-    // Filter companies based on search query
     val filteredCompanies = remember(allCompanies, searchQuery) {
-        allCompanies.filter { company ->
-            searchQuery.isEmpty() ||
-            company.companyName.contains(searchQuery, ignoreCase = true) ||
-            company.companyLocation.contains(searchQuery, ignoreCase = true)
+        val normalizedSearchQuery = searchQuery.trim().lowercase()
+
+        if (normalizedSearchQuery.isEmpty()) {
+            allCompanies
+        } else {
+            val searchKeywords = normalizedSearchQuery.split(" ").filter { it.isNotBlank() }
+
+            allCompanies.filter { company ->
+                val searchableFields = listOf(
+                    company.companyName,
+                    company.companyLocation,
+                    company.companyInformation
+                ).map { it.lowercase() }
+
+                searchKeywords.any { keyword ->
+                    searchableFields.any { field ->
+                        field.contains(keyword)
+                    }
+                }
+            }
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Search Bar for Companies
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
             placeholder = {
                 Text(
-                    "Search companies",
+                    "Search companies by name or location",
                     style = TextStyle(
-                        fontSize = 16.sp,
-                        color = Color.Gray
+                        fontSize = 15.sp,
+                        color = Color(0xFF94A3B8)
                     )
                 )
             },
@@ -929,8 +1405,8 @@ fun CompaniesTabContent(
                 Icon(
                     painter = painterResource(R.drawable.searchicon),
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = Gray
+                    modifier = Modifier.size(22.dp),
+                    tint = Color(0xFF3B82F6)
                 )
             },
             trailingIcon = {
@@ -940,16 +1416,16 @@ fun CompaniesTabContent(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Clear",
                             modifier = Modifier.size(20.dp),
-                            tint = Gray
+                            tint = Color(0xFF94A3B8)
                         )
                     }
                 }
             },
-            shape = RoundedCornerShape(15.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = White,
-                unfocusedContainerColor = White,
-                focusedIndicatorColor = NormalBlue,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedIndicatorColor = Color(0xFF3B82F6),
                 unfocusedIndicatorColor = Color.Transparent
             ),
             modifier = Modifier
@@ -1005,21 +1481,40 @@ fun CompaniesTabContent(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(120.dp),
+                                .padding(vertical = 20.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = White
+                                containerColor = Color.White
                             ),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                         ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = Color(0xFF94A3B8)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    "No companies found.",
+                                    "No companies found",
                                     style = TextStyle(
-                                        fontSize = 16.sp,
-                                        color = Color.Gray
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF1E293B)
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Try a different search term",
+                                    style = TextStyle(
+                                        fontSize = 14.sp,
+                                        color = Color(0xFF64748B)
                                     )
                                 )
                             }
@@ -1030,7 +1525,6 @@ fun CompaniesTabContent(
                         CompanyProfileCard(
                             company = company,
                             onClick = {
-                                // Navigate to company profile
                                 val intent = Intent(context, CompanyProfileActivity::class.java).apply {
                                     putExtra("COMPANY_ID", company.companyId)
                                 }
@@ -1058,14 +1552,13 @@ fun JobSeekersTabContent(
     var allJobSeekers by remember { mutableStateOf<List<JobSeekerModel>>(emptyList()) }
     var isJobSeekersLoading by remember { mutableStateOf(true) }
 
-    // Fetch all job seekers from realtime database
+    // Fetch all job seekers
     LaunchedEffect(Unit) {
         jobSeekerViewModel.getAllJobSeeker { success, message, jobSeekers ->
             if (success && jobSeekers != null) {
-                // Filter out invalid job seekers and ensure all have valid IDs
                 val validJobSeekers = jobSeekers.filter { jobSeeker ->
                     jobSeeker.jobSeekerId.isNotEmpty() &&
-                    jobSeeker.fullName.isNotEmpty()
+                            jobSeeker.fullName.isNotEmpty()
                 }
                 allJobSeekers = validJobSeekers
                 isJobSeekersLoading = false
@@ -1076,29 +1569,42 @@ fun JobSeekersTabContent(
         }
     }
 
-    // Filter job seekers based on search query with null-safety
     val filteredJobSeekers = remember(allJobSeekers, searchQuery) {
-        allJobSeekers.filter { jobSeeker ->
-            val safeSearchQuery = searchQuery.trim()
-            safeSearchQuery.isEmpty() ||
-            (jobSeeker.fullName.orEmpty().contains(safeSearchQuery, ignoreCase = true)) ||
-            (jobSeeker.email.orEmpty().contains(safeSearchQuery, ignoreCase = true)) ||
-            (jobSeeker.profession.orEmpty().contains(safeSearchQuery, ignoreCase = true)) ||
-            (jobSeeker.bio.orEmpty().contains(safeSearchQuery, ignoreCase = true))
+        val normalizedSearchQuery = searchQuery.trim().lowercase()
+
+        if (normalizedSearchQuery.isEmpty()) {
+            allJobSeekers
+        } else {
+            val searchKeywords = normalizedSearchQuery.split(" ").filter { it.isNotBlank() }
+
+            allJobSeekers.filter { jobSeeker ->
+                val searchableFields = listOf(
+                    jobSeeker.fullName.orEmpty(),
+                    jobSeeker.email.orEmpty(),
+                    jobSeeker.profession.orEmpty(),
+                    jobSeeker.bio.orEmpty()
+                ).map { it.lowercase() }
+
+                searchKeywords.any { keyword ->
+                    searchableFields.any { field ->
+                        field.contains(keyword)
+                    }
+                }
+            }
         }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Search Bar for Job Seekers
+        // Search Bar
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
             placeholder = {
                 Text(
-                    "Search job seekers",
+                    "Search by name, email, or profession",
                     style = TextStyle(
-                        fontSize = 16.sp,
-                        color = Color.Gray
+                        fontSize = 15.sp,
+                        color = Color(0xFF94A3B8)
                     )
                 )
             },
@@ -1106,8 +1612,8 @@ fun JobSeekersTabContent(
                 Icon(
                     painter = painterResource(R.drawable.searchicon),
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = Gray
+                    modifier = Modifier.size(22.dp),
+                    tint = Color(0xFF3B82F6)
                 )
             },
             trailingIcon = {
@@ -1117,16 +1623,16 @@ fun JobSeekersTabContent(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Clear",
                             modifier = Modifier.size(20.dp),
-                            tint = Gray
+                            tint = Color(0xFF94A3B8)
                         )
                     }
                 }
             },
-            shape = RoundedCornerShape(15.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = White,
-                unfocusedContainerColor = White,
-                focusedIndicatorColor = NormalBlue,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedIndicatorColor = Color(0xFF3B82F6),
                 unfocusedIndicatorColor = Color.Transparent
             ),
             modifier = Modifier
@@ -1182,21 +1688,40 @@ fun JobSeekersTabContent(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(120.dp),
+                                .padding(vertical = 20.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = White
+                                containerColor = Color.White
                             ),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                         ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = Color(0xFF94A3B8)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    "No job seekers found.",
+                                    "No job seekers found",
                                     style = TextStyle(
-                                        fontSize = 16.sp,
-                                        color = Color.Gray
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF1E293B)
+                                    )
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Try a different search term",
+                                    style = TextStyle(
+                                        fontSize = 14.sp,
+                                        color = Color(0xFF64748B)
                                     )
                                 )
                             }
@@ -1206,7 +1731,6 @@ fun JobSeekersTabContent(
                     items(
                         filteredJobSeekers,
                         key = { jobSeeker ->
-                            // Safe fallback ordering: jobSeekerId → firebase key → email → hash
                             jobSeeker.jobSeekerId.ifEmpty {
                                 jobSeeker.email.ifEmpty {
                                     jobSeeker.hashCode().toString()
@@ -1217,20 +1741,15 @@ fun JobSeekersTabContent(
                         JobSeekerProfileCard(
                             jobSeeker = jobSeeker,
                             onClick = {
-                                // Safe navigation with valid ID check
                                 val validId = jobSeeker.jobSeekerId.ifEmpty {
-                                    jobSeeker.email.ifEmpty {
-                                        null
-                                    }
+                                    jobSeeker.email.ifEmpty { null }
                                 }
                                 if (validId != null) {
-                                    // Navigate to job seeker profile
                                     val intent = Intent(context, JobSeekerProfileActivity::class.java).apply {
                                         putExtra("JOB_SEEKER_ID", validId)
                                     }
                                     context.startActivity(intent)
                                 } else {
-                                    // Handle invalid ID case
                                     Toast.makeText(context, "Unable to open profile", Toast.LENGTH_SHORT).show()
                                 }
                             }
@@ -1272,13 +1791,11 @@ fun JobSeekerProfileCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Job Seeker Avatar - Enhanced Circular Profile Image
             Box(
                 modifier = Modifier
                     .size(75.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Outer ring with gradient border effect
                 Box(
                     modifier = Modifier
                         .size(75.dp)
@@ -1288,10 +1805,9 @@ fun JobSeekerProfileCard(
                             ),
                             shape = CircleShape
                         )
-                        .padding(2.dp), // Creates the border effect
+                        .padding(2.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Inner circle for the actual profile image
                     Box(
                         modifier = Modifier
                             .size(71.dp)
@@ -1304,7 +1820,6 @@ fun JobSeekerProfileCard(
                     ) {
                         val profilePhotoUrl = jobSeeker.profilePhoto.orEmpty()
                         if (profilePhotoUrl.isNotEmpty()) {
-                            // Load job seeker profile image from URL using Coil
                             SubcomposeAsyncImage(
                                 model = ImageRequest.Builder(LocalContext.current)
                                     .data(profilePhotoUrl)
@@ -1314,9 +1829,8 @@ fun JobSeekerProfileCard(
                                 modifier = Modifier
                                     .size(71.dp)
                                     .clip(CircleShape),
-                                contentScale = ContentScale.Crop, // Ensures the image fills the entire circular area and crops any excess
+                                contentScale = ContentScale.Crop,
                                 loading = {
-                                    // Show loading indicator while image loads
                                     Box(
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center
@@ -1328,7 +1842,6 @@ fun JobSeekerProfileCard(
                                     }
                                 },
                                 error = {
-                                    // Show fallback with gradient background
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -1355,7 +1868,6 @@ fun JobSeekerProfileCard(
                                 }
                             )
                         } else {
-                            // Show first letter with gradient background if no image available
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -1384,7 +1896,7 @@ fun JobSeekerProfileCard(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Job Seeker Details - Enhanced Typography
+            // Job Seeker Details
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -1414,7 +1926,7 @@ fun JobSeekerProfileCard(
                     contentDescription = "View Profile",
                     modifier = Modifier
                         .size(16.dp)
-                        .graphicsLayer(rotationZ = 180f), // Rotate to point right
+                        .graphicsLayer(rotationZ = 180f),
                     tint = Color(0xFF6366F1)
                 )
             }
@@ -1448,13 +1960,13 @@ fun CompanyProfileCard(
                 .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Company Logo - Perfectly Circular Profile Image
+            // Company Logo -
             Box(
                 modifier = Modifier
                     .size(75.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Outer ring with gradient border effect
+
                 Box(
                     modifier = Modifier
                         .size(75.dp)
@@ -1464,10 +1976,9 @@ fun CompanyProfileCard(
                             ),
                             shape = CircleShape
                         )
-                        .padding(2.dp), // Creates the border effect
+                        .padding(2.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Inner circle for the actual profile image
                     Box(
                         modifier = Modifier
                             .size(71.dp)
@@ -1479,7 +1990,6 @@ fun CompanyProfileCard(
                         contentAlignment = Alignment.Center
                     ) {
                         if (company.companyProfileImage.isNotEmpty()) {
-                            // Load company profile image from URL using Coil
                             SubcomposeAsyncImage(
                                 model = ImageRequest.Builder(LocalContext.current)
                                     .data(company.companyProfileImage)
@@ -1491,7 +2001,6 @@ fun CompanyProfileCard(
                                     .clip(CircleShape),
                                 contentScale = ContentScale.Crop,
                                 loading = {
-                                    // Show loading indicator while image loads
                                     Box(
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center
@@ -1503,7 +2012,6 @@ fun CompanyProfileCard(
                                     }
                                 },
                                 error = {
-                                    // Show fallback with gradient background
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -1530,7 +2038,6 @@ fun CompanyProfileCard(
                                 }
                             )
                         } else {
-                            // Show first letter with gradient background if no image available
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -1559,7 +2066,7 @@ fun CompanyProfileCard(
 
             Spacer(modifier = Modifier.width(20.dp))
 
-            // Company Details - Enhanced Typography
+            // Company Details
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -1574,7 +2081,6 @@ fun CompanyProfileCard(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Location with icon
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1597,7 +2103,6 @@ fun CompanyProfileCard(
                     )
                 }
 
-                // Company establishment year if available
                 if (company.companyEstablishedDate.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
@@ -1636,7 +2141,7 @@ fun CompanyProfileCard(
                     contentDescription = "View Company",
                     modifier = Modifier
                         .size(20.dp)
-                        .graphicsLayer(rotationZ = 180f), // Rotate to point right
+                        .graphicsLayer(rotationZ = 180f),
                     tint = Color(0xFF6366F1)
                 )
             }

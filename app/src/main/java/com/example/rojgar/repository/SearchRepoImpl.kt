@@ -170,4 +170,36 @@ class SearchRepoImpl : SearchRepo {
             callback(false, "Error updating result count: ${e.message}")
         }
     }
+    override fun deleteSearchHistory(
+        userId: String,
+        timestamp: Long,
+        callback: (Boolean, String) -> Unit
+    ) {
+        val searchHistoryRef = database.getReference("SearchHistory")
+            .child(userId)
+            .orderByChild("timestamp")
+            .equalTo(timestamp.toDouble())
+
+        searchHistoryRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    snapshot.children.forEach { childSnapshot ->
+                        childSnapshot.ref.removeValue()
+                            .addOnSuccessListener {
+                                callback(true, "Search history deleted")
+                            }
+                            .addOnFailureListener { exception ->
+                                callback(false, "Failed to delete: ${exception.message}")
+                            }
+                    }
+                } else {
+                    callback(false, "Search history not found")
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                callback(false, "Error: ${error.message}")
+            }
+        })
+    }
 }

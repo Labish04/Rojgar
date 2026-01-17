@@ -87,4 +87,11 @@ class SearchViewModel(private val searchRepo: SearchRepo) : ViewModel() {
             }
         }
     }
+    fun deleteSearchHistory(
+        userId: String,
+        timestamp: Long,
+        callback: (Boolean, String) -> Unit
+    ) {
+        searchRepo.deleteSearchHistory(userId, timestamp, callback)
+    }
 }

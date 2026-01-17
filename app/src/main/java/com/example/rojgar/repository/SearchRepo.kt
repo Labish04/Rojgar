@@ -36,4 +36,9 @@ interface SearchRepo {
         resultCount: Int,
         callback: (Boolean, String) -> Unit
     )
+    fun deleteSearchHistory(
+        userId: String,
+        timestamp: Long,
+        callback: (Boolean, String) -> Unit
+    )
 }
