@@ -65,6 +65,12 @@ private val LightBlue700 = Color(0xFF1976D2)
 private val AccentCyan = Color(0xFF00BCD4)
 private val SoftWhite = Color(0xFFFAFBFF)
 
+// Additional colors for GlowingChatbotFAB
+private val PurpleGradientStart = Color(0xFF667EEA)
+private val PurpleGradientEnd = Color(0xFF764BA2)
+private val CyanGradient = Color(0xFF00D4FF)
+private val PinkGradient = Color(0xFFFF00FF)
+
 class MessageActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -193,7 +199,15 @@ fun MessageBody(
             )
     ) {
         Scaffold(
-            containerColor = Color.Transparent
+            containerColor = Color.Transparent,
+            floatingActionButton = {
+                GlowingChatbotFAB(
+                    onClick = {
+                        val intent = Intent(context, ChatbotActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                )
+            }
         ) { padding ->
             Column(
                 modifier = Modifier
@@ -321,6 +335,90 @@ fun MessageBody(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun GlowingChatbotFAB(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isPressed by remember { mutableStateOf(false) }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.9f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "scale"
+    )
+
+    // Breathing glow animation
+    val infiniteTransition = rememberInfiniteTransition(label = "glow")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
+    Box(
+        modifier = modifier
+            .size(80.dp)
+            .scale(scale),
+        contentAlignment = Alignment.Center
+    ) {
+        // Multiple glow layers for ethereal effect
+        repeat(3) { index ->
+            Box(
+                modifier = Modifier
+                    .size(64.dp + (index * 8).dp)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                // Using the app's light blue theme colors
+                                LightBlue400.copy(alpha = glowAlpha / (index + 1)),
+                                Color.Transparent
+                            )
+                        ),
+                        shape = CircleShape
+                    )
+            )
+        }
+
+        // Main button with gradient
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .shadow(16.dp, CircleShape, spotColor = LightBlue400)
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            LightBlue400,
+                            LightBlue600,
+                            AccentCyan.copy(alpha = 0.7f)
+                        )
+                    ),
+                    shape = CircleShape
+                )
+                .clickable {
+                    isPressed = true
+                    onClick()
+                    kotlinx.coroutines.GlobalScope.launch {
+                        kotlinx.coroutines.delay(100)
+                        isPressed = false
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.chatboticon),
+                contentDescription = "AI Assistant",
+                modifier = Modifier.size(26.dp),
+                tint = Color.White
+            )
         }
     }
 }
