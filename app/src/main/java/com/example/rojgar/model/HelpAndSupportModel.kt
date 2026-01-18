@@ -36,3 +36,19 @@ enum class RequestStatus(val displayName: String) {
     RESOLVED("Resolved"),
     CLOSED("Closed")
 }
+
+// Extension function to convert model to Map for Firebase updates
+fun HelpAndSupportModel.toMap(): Map<String, Any> {
+    return mapOf(
+        "id" to id,
+        "companyName" to companyName,
+        "companyEmail" to companyEmail,
+        "subject" to subject,
+        "category" to category.name,
+        "priority" to priority.name,
+        "description" to description,
+        "timestamp" to timestamp,
+        "status" to status.name,
+        "attachments" to attachments
+    )
+}
