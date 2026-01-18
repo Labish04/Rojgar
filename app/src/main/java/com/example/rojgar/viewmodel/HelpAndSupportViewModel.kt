@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rojgar.model.HelpAndSupportModel
 import com.example.rojgar.model.Priority
+import com.example.rojgar.model.RequestStatus
 import com.example.rojgar.model.SupportCategory
 import com.example.rojgar.repository.HelpAndSupportRepo
 import com.example.rojgar.repository.HelpAndSupportRepoImpl
@@ -22,6 +23,10 @@ class HelpAndSupportViewModel(
     private val _supportRequests = MutableStateFlow<List<HelpAndSupportModel>>(emptyList())
     val supportRequests: StateFlow<List<HelpAndSupportModel>> = _supportRequests.asStateFlow()
 
+    private val _selectedRequest = MutableStateFlow<HelpAndSupportModel?>(null)
+    val selectedRequest: StateFlow<HelpAndSupportModel?> = _selectedRequest.asStateFlow()
+
+    // Update functions for form fields
     fun updateCompanyName(name: String) {
         _uiState.value = _uiState.value.copy(companyName = name)
     }
@@ -46,14 +51,22 @@ class HelpAndSupportViewModel(
         _uiState.value = _uiState.value.copy(description = description)
     }
 
+    // Submit support request
     fun submitSupportRequest() {
         val state = _uiState.value
 
         // Validation
-        if (state.companyName.isBlank() || state.companyEmail.isBlank() ||
-            state.subject.isBlank() || state.description.isBlank()) {
+        if (state.companyName.isBlank()) {
             _uiState.value = state.copy(
-                errorMessage = "Please fill in all required fields",
+                errorMessage = "Company name is required",
+                isLoading = false
+            )
+            return
+        }
+
+        if (state.companyEmail.isBlank()) {
+            _uiState.value = state.copy(
+                errorMessage = "Company email is required",
                 isLoading = false
             )
             return
@@ -62,6 +75,22 @@ class HelpAndSupportViewModel(
         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(state.companyEmail).matches()) {
             _uiState.value = state.copy(
                 errorMessage = "Please enter a valid email address",
+                isLoading = false
+            )
+            return
+        }
+
+        if (state.subject.isBlank()) {
+            _uiState.value = state.copy(
+                errorMessage = "Subject is required",
+                isLoading = false
+            )
+            return
+        }
+
+        if (state.description.isBlank()) {
+            _uiState.value = state.copy(
+                errorMessage = "Description is required",
                 isLoading = false
             )
             return
@@ -95,6 +124,108 @@ class HelpAndSupportViewModel(
         }
     }
 
+    // Load support requests for a company
+    fun loadSupportRequests(companyEmail: String) {
+        viewModelScope.launch {
+            try {
+                repository.getSupportRequests(companyEmail).collect { requests ->
+                    _supportRequests.value = requests
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Failed to load requests: ${e.message}"
+                )
+            }
+        }
+    }
+
+    // Get all support requests (for admin view)
+    fun loadAllSupportRequests() {
+        repository.getAllSupportRequests { success, message, requests ->
+            if (success && requests != null) {
+                _supportRequests.value = requests
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = message
+                )
+            }
+        }
+    }
+
+    // Get support request by ID
+    fun loadSupportRequestById(requestId: String) {
+        repository.getSupportRequestById(requestId) { success, message, request ->
+            if (success && request != null) {
+                _selectedRequest.value = request
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = message
+                )
+            }
+        }
+    }
+
+    // Update request status
+    fun updateRequestStatus(requestId: String, newStatus: RequestStatus) {
+        viewModelScope.launch {
+            repository.updateRequestStatus(requestId, newStatus.name)
+                .onSuccess {
+                    _uiState.value = _uiState.value.copy(
+                        successMessage = "Status updated successfully"
+                    )
+                }
+                .onFailure { exception ->
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = "Failed to update status: ${exception.message}"
+                    )
+                }
+        }
+    }
+
+    // Delete support request
+    fun deleteSupportRequest(requestId: String) {
+        viewModelScope.launch {
+            repository.deleteSupportRequest(requestId)
+                .onSuccess {
+                    _uiState.value = _uiState.value.copy(
+                        successMessage = "Request deleted successfully"
+                    )
+                }
+                .onFailure { exception ->
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = "Failed to delete request: ${exception.message}"
+                    )
+                }
+        }
+    }
+
+    // Filter requests by status
+    fun filterByStatus(status: RequestStatus) {
+        repository.getSupportRequestsByStatus(status) { success, message, requests ->
+            if (success && requests != null) {
+                _supportRequests.value = requests
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = message
+                )
+            }
+        }
+    }
+
+    // Filter requests by category
+    fun filterByCategory(category: SupportCategory) {
+        repository.getSupportRequestsByCategory(category.name) { success, message, requests ->
+            if (success && requests != null) {
+                _supportRequests.value = requests
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = message
+                )
+            }
+        }
+    }
+
+    // Clear messages
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(
             successMessage = null,
@@ -102,12 +233,9 @@ class HelpAndSupportViewModel(
         )
     }
 
-    fun loadSupportRequests(companyEmail: String) {
-        viewModelScope.launch {
-            repository.getSupportRequests(companyEmail).collect { requests ->
-                _supportRequests.value = requests
-            }
-        }
+    // Reset form
+    fun resetForm() {
+        _uiState.value = HelpAndSupportUiState()
     }
 }
 
