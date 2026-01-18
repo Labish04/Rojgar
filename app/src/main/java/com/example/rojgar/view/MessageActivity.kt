@@ -216,7 +216,9 @@ fun MessageBody(
             ) {
                 // Premium Top Bar with Glassmorphism Effect
                 AnimatedTopBar(
-                    onBackClick = { (context as? ComponentActivity)?.finish() }
+                    onBackClick = { (context as? ComponentActivity)?.finish() },
+                    onClick = {val intent = Intent(context, CreateGroupActivity::class.java)
+                        context.startActivity(intent)}
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -424,7 +426,7 @@ fun GlowingChatbotFAB(
 }
 
 @Composable
-fun AnimatedTopBar(onBackClick: () -> Unit) {
+fun AnimatedTopBar(onBackClick: () -> Unit, onClick: () -> Unit) {
     var visible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -500,12 +502,12 @@ fun AnimatedTopBar(onBackClick: () -> Unit) {
                                 colors = listOf(AccentCyan, LightBlue500)
                             )
                         )
-                        .clickable { },
+                        .clickable { onClick()},
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.editmessage),
-                        contentDescription = "New Message",
+                        contentDescription = "Create Group",
                         modifier = Modifier.size(22.dp),
                         tint = Color.White
                     )
