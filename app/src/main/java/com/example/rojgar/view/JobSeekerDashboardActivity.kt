@@ -52,11 +52,13 @@ import com.example.rojgar.R
 import com.example.rojgar.model.PreferenceModel
 import com.example.rojgar.repository.CompanyRepoImpl
 import com.example.rojgar.repository.JobSeekerRepoImpl
+import com.example.rojgar.repository.SavedJobRepoImpl
 import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.RojgarTheme
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobSeekerViewModel
+import com.example.rojgar.viewmodel.SavedJobViewModel
 import com.google.firebase.auth.FirebaseAuth
 
 class JobSeekerDashboardActivity : ComponentActivity() {
@@ -80,6 +82,7 @@ fun JobSeekerDashboardBody() {
 
     val companyViewModel: CompanyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
     val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
+    val savedViewModel = remember { SavedJobViewModel(SavedJobRepoImpl()) }
 
     val jobSeeker = jobSeekerViewModel.jobSeeker.observeAsState(initial = null)
 
@@ -255,7 +258,7 @@ fun JobSeekerDashboardBody() {
         ) {
             when (selectedIndex) {
                 0 -> JobSeekerHomeScreenBody()
-                1 -> JobSeekerViewPostBody()
+                1 -> JobSeekerViewPostBody(savedViewModel)
                 2 -> MapScreen(viewModel = companyViewModel, context = context)
                 3 -> JobSeekerProfileBody()
             }
