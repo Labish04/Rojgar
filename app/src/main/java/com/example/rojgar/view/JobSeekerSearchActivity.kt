@@ -74,6 +74,8 @@ import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import coil.request.ImageRequest
 import androidx.compose.ui.layout.ContentScale
+import com.example.rojgar.repository.SavedJobRepoImpl
+import com.example.rojgar.viewmodel.SavedJobViewModel
 
 data class JobFilterState(
     val selectedCategories: List<String> = emptyList(),
@@ -682,6 +684,9 @@ fun JobsTabContent(
     context: android.content.Context,
     activeFiltersCount: Int
 ) {
+    val savedJobViewModel = remember { SavedJobViewModel(SavedJobRepoImpl()) }
+    val savedJobIds by savedJobViewModel.savedJobIds.observeAsState(emptySet())
+
     val filteredJobs = remember(allJobs, searchQuery, filterState, companyDetailsMap) {
         // First check if any filters are applied
         val hasActiveFilters = searchQuery.isNotEmpty() ||
@@ -839,9 +844,19 @@ fun JobsTabContent(
                                 Toast.makeText(context, "Job ID is empty", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        isSaved = false,
+                        isSaved = savedJobIds.contains(jobWithCompany.jobPost.postId),
                         onSaveClick = { postId ->
-                            Toast.makeText(context, "Job saved", Toast.LENGTH_SHORT).show()
+                            if (postId.isNotEmpty()) {
+                                // Use ViewModel to toggle save/unsave
+                                savedJobViewModel.toggleSaveJob(postId) { success, message, isSaved ->
+                                    if (success) {
+                                        val action = if (isSaved) "Saved" else "Unsaved"
+                                        Toast.makeText(context, "$action successfully", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Failed: $message", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
                         },
                         onShareClick = { job ->
                             val shareIntent = android.content.Intent().apply {
