@@ -120,131 +120,35 @@ class HelpAndSupportRepoImpl : HelpAndSupportRepo {
         }
     }
 
-    // Additional utility methods
-
-    fun getSupportRequestById(
+    override fun getSupportRequestById(
         requestId: String,
         callback: (Boolean, String, HelpAndSupportModel?) -> Unit
     ) {
-        supportRequestsRef.child(requestId).addListenerForSingleValueEvent(
-            object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        val request = snapshot.getValue(HelpAndSupportModel::class.java)
-                        callback(true, "Request fetched successfully", request)
-                    } else {
-                        callback(false, "Request not found", null)
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    callback(false, error.message, null)
-                }
-            }
-        )
     }
 
-    fun getAllSupportRequests(
-        callback: (Boolean, String, List<HelpAndSupportModel>?) -> Unit
-    ) {
-        supportRequestsRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val requestList = mutableListOf<HelpAndSupportModel>()
-
-                if (snapshot.exists()) {
-                    for (requestSnapshot in snapshot.children) {
-                        val request = requestSnapshot.getValue(HelpAndSupportModel::class.java)
-                        request?.let {
-                            requestList.add(it)
-                        }
-                    }
-                    requestList.sortByDescending { it.timestamp }
-                    callback(true, "All requests fetched", requestList)
-                } else {
-                    callback(true, "No requests found", emptyList())
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                callback(false, error.message, null)
-            }
-        })
+    override fun getAllSupportRequests(callback: (Boolean, String, List<HelpAndSupportModel>?) -> Unit) {
     }
 
-    fun getSupportRequestsByStatus(
+    override fun getSupportRequestsByStatus(
         status: RequestStatus,
         callback: (Boolean, String, List<HelpAndSupportModel>?) -> Unit
     ) {
-        supportRequestsRef.orderByChild("status")
-            .equalTo(status.name)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val requestList = mutableListOf<HelpAndSupportModel>()
-
-                    if (snapshot.exists()) {
-                        for (requestSnapshot in snapshot.children) {
-                            val request = requestSnapshot.getValue(HelpAndSupportModel::class.java)
-                            request?.let {
-                                requestList.add(it)
-                            }
-                        }
-                        requestList.sortByDescending { it.timestamp }
-                        callback(true, "Requests fetched by status", requestList)
-                    } else {
-                        callback(true, "No requests found with this status", emptyList())
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    callback(false, error.message, null)
-                }
-            })
     }
 
-    fun getSupportRequestsByCategory(
+    override fun getSupportRequestsByCategory(
         category: String,
         callback: (Boolean, String, List<HelpAndSupportModel>?) -> Unit
     ) {
-        supportRequestsRef.orderByChild("category")
-            .equalTo(category)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val requestList = mutableListOf<HelpAndSupportModel>()
-
-                    if (snapshot.exists()) {
-                        for (requestSnapshot in snapshot.children) {
-                            val request = requestSnapshot.getValue(HelpAndSupportModel::class.java)
-                            request?.let {
-                                requestList.add(it)
-                            }
-                        }
-                        requestList.sortByDescending { it.timestamp }
-                        callback(true, "Requests fetched by category", requestList)
-                    } else {
-                        callback(true, "No requests found in this category", emptyList())
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    callback(false, error.message, null)
-                }
-            })
     }
 
-    fun updateSupportRequest(
+    override fun updateSupportRequest(
         requestId: String,
         updatedRequest: HelpAndSupportModel,
         callback: (Boolean, String) -> Unit
     ) {
-        supportRequestsRef.child(requestId).updateChildren(updatedRequest.toMap())
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    callback(true, "Request updated successfully")
-                } else {
-                    callback(false, task.exception?.message ?: "Failed to update request")
-                }
-            }
     }
+
+
 }
 
 // Extension function to convert HelpAndSupportModel to Map
