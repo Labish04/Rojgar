@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,36 +38,48 @@ import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.repository.CompanyRepoImpl
 import com.example.rojgar.repository.JobRepoImpl
+import com.example.rojgar.repository.SavedJobRepoImpl
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobViewModel
+import com.example.rojgar.viewmodel.SavedJobViewModel
+import com.example.rojgar.viewmodel.SavedJobViewModelFactory
 import java.text.SimpleDateFormat
 import java.util.*
 
 class JobSeekerViewPost : ComponentActivity() {
+    // Add SavedJobViewModel
+    private val savedJobViewModel by viewModels<SavedJobViewModel> {
+        SavedJobViewModelFactory(SavedJobRepoImpl())
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            JobSeekerViewPostBody()
+            JobSeekerViewPostBody(savedJobViewModel = savedJobViewModel)
         }
     }
 }
 
 @Composable
-fun JobSeekerViewPostBody() {
+fun JobSeekerViewPostBody(savedJobViewModel: SavedJobViewModel) {
     val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
     val context = LocalContext.current
 
     var isLoading by remember { mutableStateOf(true) }
     var jobs by remember { mutableStateOf<List<JobModel>>(emptyList()) }
-    var savedJobIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var companies by remember { mutableStateOf<Map<String, CompanyModel>>(emptyMap()) }
 
+    // Observe saved job IDs from ViewModel
+    val savedJobIds by savedJobViewModel.savedJobIds.observeAsState(emptySet())
+    val loading by savedJobViewModel.loading.observeAsState(false)
 
-    // Fetch jobs first
+    // Load saved jobs when composable is launched
     LaunchedEffect(Unit) {
+        savedJobViewModel.loadSavedJobs()
+
         jobViewModel.getAllJobPosts { success, message, posts ->
             if (!success || posts == null) {
                 isLoading = false
@@ -113,7 +127,7 @@ fun JobSeekerViewPostBody() {
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        if (isLoading) {
+        if (isLoading || loading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -163,17 +177,15 @@ fun JobSeekerViewPostBody() {
                         isSaved = savedJobIds.contains(job.postId),
                         onSaveClick = { postId ->
                             if (postId.isNotEmpty()) {
-                                savedJobIds = if (savedJobIds.contains(postId)) {
-                                    savedJobIds - postId
-                                } else {
-                                    savedJobIds + postId
+                                // Use ViewModel to toggle save/unsave
+                                savedJobViewModel.toggleSaveJob(postId) { success, message, isSaved ->
+                                    if (success) {
+                                        val action = if (isSaved) "Saved" else "Unsaved"
+                                        Toast.makeText(context, "$action successfully", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Failed: $message", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
-                                val message = if (savedJobIds.contains(postId)) {
-                                    "Job saved"
-                                } else {
-                                    "Job unsaved"
-                                }
-                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                             }
                         },
                         onShareClick = { jobToShare ->
@@ -479,10 +491,4 @@ fun calculateDaysUntilDeadline(deadline: String): Int {
     } catch (e: Exception) {
         -1
     }
-}
-
-@Preview
-@Composable
-fun JobSeekerViewPostPreview() {
-    JobSeekerViewPostBody()
 }

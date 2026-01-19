@@ -23,4 +23,5 @@
     <string name="title_activity_feedback">FeedbackActivity</string>
     <string name="title_activity_company_verification">CompanyVerificationActivity</string>
     <string name="title_activity_admin_verification">AdminVerificationActivity</string>
+    <string name="title_activity_chatbot">ChatbotActivity</string>
 </resources>
