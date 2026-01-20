@@ -1,41 +1,21 @@
 package com.example.rojgar.view
 
 import android.content.Intent
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,61 +31,52 @@ import com.example.rojgar.repository.CompanyRepoImpl
 import com.example.rojgar.repository.ReviewRepoImpl
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.Gray
-import com.example.rojgar.ui.theme.NormalBlue
-import com.example.rojgar.ui.theme.Purple
 import com.example.rojgar.ui.theme.White
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.ReviewViewModel
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.delay
 
 @Composable
 fun CompanyHomeScreenBody(){
-
     val context = LocalContext.current
-
     var search by remember { mutableStateOf("") }
-    
-    // Initialize ViewModels
+
     val reviewViewModel = remember { ReviewViewModel(ReviewRepoImpl()) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
-    
-    // Get company ID and user ID
+
     val companyId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
     val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
-    
-    // Observe reviews and average rating
+
     val reviews by reviewViewModel.reviews.observeAsState(emptyList())
     val averageRating by reviewViewModel.averageRating.observeAsState(0.0)
     val company by companyViewModel.companyDetails.observeAsState(null)
-    
-    // Fetch company details
+
     LaunchedEffect(companyId) {
         if (companyId.isNotEmpty()) {
             companyViewModel.fetchCurrentCompany()
         }
     }
-    
-    // Setup real-time updates
+
     LaunchedEffect(companyId, currentUserId) {
         if (companyId.isNotEmpty() && currentUserId.isNotEmpty()) {
             reviewViewModel.setupRealTimeUpdates(companyId, currentUserId)
         }
     }
 
-    Column (
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Blue)
-    ){
-
+    ) {
         Spacer(modifier = Modifier.height(20.dp))
 
-        Row (
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp),
             verticalAlignment = Alignment.CenterVertically
-        ){
+        ) {
             Box(
                 modifier = Modifier
                     .height(50.dp)
@@ -123,7 +94,7 @@ fun CompanyHomeScreenBody(){
                     value = search,
                     onValueChange = {},
                     readOnly = true,
-                    enabled = false, // Important
+                    enabled = false,
                     placeholder = {
                         Text(
                             "Search",
@@ -151,12 +122,11 @@ fun CompanyHomeScreenBody(){
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Row (
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
-        ){
-            // Reviews & Ratings Card with overall rating display
+        ) {
             ReviewsRatingsCard(
                 averageRating = averageRating,
                 totalReviews = reviews.size,
@@ -170,7 +140,7 @@ fun CompanyHomeScreenBody(){
 
             Spacer(modifier = Modifier.width(20.dp))
 
-            Card (
+            Card(
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .height(200.dp)
@@ -183,11 +153,13 @@ fun CompanyHomeScreenBody(){
                 colors = CardDefaults.cardColors(
                     containerColor = Color.White
                 )
-            ){
-                Text("Calendar", style = TextStyle(
-                    fontSize = 18.sp,
-                    color = Color.DarkGray
-                ),
+            ) {
+                Text(
+                    "Calendar",
+                    style = TextStyle(
+                        fontSize = 18.sp,
+                        color = Color.DarkGray
+                    ),
                     modifier = Modifier
                         .padding(vertical = 10.dp)
                         .align(Alignment.CenterHorizontally)
@@ -195,34 +167,36 @@ fun CompanyHomeScreenBody(){
             }
         }
 
-        Row (
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 20.dp)
                 .padding(vertical = 20.dp),
             verticalAlignment = Alignment.CenterVertically
-        ){
+        ) {
             Text(
-                "Posted Jobs", style = TextStyle(
+                "Posted Jobs",
+                style = TextStyle(
                     fontWeight = FontWeight.Bold,
                     fontSize = 28.sp
                 )
             )
-            Row (
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(end = 20.dp),
                 horizontalArrangement = Arrangement.End
-            ){
+            ) {
                 Text(
-                    "Show All", style = TextStyle(
+                    "Show All",
+                    style = TextStyle(
                         fontSize = 18.sp
                     )
                 )
             }
         }
 
-        Card (
+        Card(
             shape = RoundedCornerShape(0.dp),
             modifier = Modifier
                 .fillMaxWidth()
@@ -231,9 +205,7 @@ fun CompanyHomeScreenBody(){
             colors = CardDefaults.cardColors(
                 containerColor = Color.Transparent
             )
-        ){
-
-        }
+        ) {}
     }
 }
 
@@ -247,7 +219,7 @@ fun ReviewsRatingsCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    // Calculate rating distribution
+
     val ratingDistribution = remember(reviews) {
         val distribution = mutableMapOf<Int, Int>()
         for (i in 1..5) {
@@ -255,149 +227,54 @@ fun ReviewsRatingsCard(
         }
         distribution
     }
-    
+
     Card(
-        shape = RoundedCornerShape(10.dp),
-        modifier = modifier
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = {
-                    val intent = Intent(context, CompanyReviewActivity::class.java)
-                    intent.putExtra("COMPANY_ID", companyId)
-                    intent.putExtra("COMPANY_NAME", companyName)
-                    context.startActivity(intent)
-                }
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
+        shape = RoundedCornerShape(16.dp),
+        modifier = modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = {
+                val intent = Intent(context, CompanyReviewActivity::class.java)
+                intent.putExtra("COMPANY_ID", companyId)
+                intent.putExtra("COMPANY_NAME", companyName)
+                context.startActivity(intent)
+            }
         ),
-        elevation = CardDefaults.cardElevation(4.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp)
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header with title and info icon
-            Row(
+            // Large animated rating number
+            AnimatedRatingNumber(rating = averageRating)
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Star rating display
+            StarRatingDisplay(rating = averageRating)
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Total reviews with animation
+            AnimatedReviewCount(count = totalReviews)
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Rating distribution bars
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    "Ratings and reviews",
-                    style = TextStyle(
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                (5 downTo 1).forEach { star ->
+                    AnimatedRatingBar(
+                        star = star,
+                        count = ratingDistribution[star] ?: 0,
+                        total = totalReviews
                     )
-                )
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Info",
-                    modifier = Modifier.size(16.dp),
-                    tint = Color.Gray
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Left side: Overall rating
-                Column(
-                    modifier = Modifier.weight(0.4f)
-                ) {
-                    Text(
-                        text = String.format("%.1f", averageRating),
-                        style = TextStyle(
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
-                    )
-                    
-                    // Star rating display with half-star support
-                    Row(
-                        modifier = Modifier.padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        repeat(5) { index ->
-                            val starValue = index + 1
-                            val isFilled = starValue <= averageRating.toInt()
-                            val isHalfFilled = starValue == averageRating.toInt() + 1 && 
-                                              averageRating - averageRating.toInt() >= 0.5
-                            
-                            Box(modifier = Modifier.size(14.dp)) {
-                                // Background (gray) star
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = Color(0xFFCCCCCC)
-                                )
-                                
-                                // Foreground (green) star - clipped for half stars
-                                if (isFilled || isHalfFilled) {
-                                    Box(
-                                        modifier = Modifier.size(14.dp)
-                                    ) {
-                                        if (isHalfFilled) {
-                                            // Half star using clipping
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth(0.5f)
-                                                    .fillMaxHeight()
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Star,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(14.dp),
-                                                    tint = Color(0xFF4CAF50)
-                                                )
-                                            }
-                                        } else {
-                                            Icon(
-                                                imageVector = Icons.Default.Star,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(14.dp),
-                                                tint = Color(0xFF4CAF50)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    Text(
-                        text = "${totalReviews}",
-                        style = TextStyle(
-                            fontSize = 12.sp,
-                            color = Color.Black
-                        ),
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-                
-                // Right side: Rating distribution
-                Column(
-                    modifier = Modifier
-                        .weight(0.6f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Display rating bars for 5, 4, 3, 2, 1 stars
-                    (5 downTo 1).forEach { star ->
-                        RatingDistributionBar(
-                            star = star,
-                            count = ratingDistribution[star] ?: 0,
-                            total = totalReviews
-                        )
-                    }
                 }
             }
         }
@@ -405,51 +282,205 @@ fun ReviewsRatingsCard(
 }
 
 @Composable
-fun RatingDistributionBar(
+fun AnimatedRatingNumber(rating: Double) {
+    var targetRating by remember { mutableStateOf(0.0) }
+
+    LaunchedEffect(rating) {
+        targetRating = rating
+    }
+
+    val animatedRating by animateFloatAsState(
+        targetValue = targetRating.toFloat(),
+        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+        label = "rating"
+    )
+
+    Text(
+        text = String.format("%.1f", animatedRating),
+        style = TextStyle(
+            fontSize = 36.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black,
+            letterSpacing = (-1).sp
+        )
+    )
+}
+
+@Composable
+fun StarRatingDisplay(rating: Double) {
+    val starColor = Color(0xFF5B68F4) // Blue color from reference
+
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(5) { index ->
+            val starValue = index + 1
+            val fillPercentage = when {
+                starValue <= rating.toInt() -> 1f
+                starValue == rating.toInt() + 1 -> {
+                    val decimal = rating - rating.toInt()
+                    if (decimal >= 0.5) 0.5f else 0f
+                }
+                else -> 0f
+            }
+
+            AnimatedStar(
+                fillPercentage = fillPercentage,
+                color = starColor,
+                index = index
+            )
+
+            if (index < 4) {
+                Spacer(modifier = Modifier.width(2.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun AnimatedStar(
+    fillPercentage: Float,
+    color: Color,
+    index: Int
+) {
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(index * 50L)
+        isVisible = true
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "star_scale"
+    )
+
+    Box(
+        modifier = Modifier
+            .size(20.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+    ) {
+        Icon(
+            imageVector = Icons.Default.Star,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            tint = Color(0xFFE8E8E8)
+        )
+
+        if (fillPercentage > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fillPercentage)
+                    .fillMaxHeight()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    tint = color
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AnimatedReviewCount(count: Int) {
+    var targetCount by remember { mutableStateOf(0) }
+
+    LaunchedEffect(count) {
+        targetCount = count
+    }
+
+    val animatedCount by animateIntAsState(
+        targetValue = targetCount,
+        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+        label = "count"
+    )
+
+    Text(
+        text = String.format("%,d", animatedCount),
+        style = TextStyle(
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Normal,
+            color = Color.Gray,
+            letterSpacing = 0.sp
+        )
+    )
+}
+
+@Composable
+fun AnimatedRatingBar(
     star: Int,
     count: Int,
     total: Int
 ) {
     val percentage = if (total > 0) (count.toFloat() / total.toFloat()) else 0f
-    
+    val barColor = Color(0xFF5B68F4) // Blue color from reference
+
+    var animateBar by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay((6 - star) * 80L)
+        animateBar = true
+    }
+
+    val animatedPercentage by animateFloatAsState(
+        targetValue = if (animateBar) percentage else 0f,
+        animationSpec = tween(
+            durationMillis = 600,
+            easing = FastOutSlowInEasing
+        ),
+        label = "bar_percentage"
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(12.dp),
+            .height(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Star label
         Text(
             text = "$star",
             style = TextStyle(
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 color = Color.Black,
-                fontWeight = FontWeight.Normal
+                fontWeight = FontWeight.Medium
             ),
-            modifier = Modifier.width(10.dp)
+            modifier = Modifier.width(8.dp)
         )
-        
-        Spacer(modifier = Modifier.width(4.dp))
-        
-        // Progress bar
+
+        Spacer(modifier = Modifier.width(6.dp))
+
         Box(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxHeight()
+                .height(6.dp)
                 .background(
-                    color = Color(0xFFE0E0E0),
-                    shape = RoundedCornerShape(2.dp)
+                    color = Color(0xFFE8E8E8),
+                    shape = RoundedCornerShape(3.dp)
                 )
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(percentage.coerceIn(0f, 1f))
-                    .background(
-                        color = Color(0xFF4CAF50), // Green color
-                        shape = RoundedCornerShape(2.dp)
-                    )
-            )
+            // Show bar only if there's actual percentage
+            if (animatedPercentage > 0) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(animatedPercentage.coerceIn(0f, 1f))
+                        .background(
+                            color = barColor,
+                            shape = RoundedCornerShape(3.dp)
+                        )
+                )
+            }
         }
     }
 }
