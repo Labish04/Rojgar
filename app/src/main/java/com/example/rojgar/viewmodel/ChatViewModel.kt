@@ -1,5 +1,7 @@
 package com.example.rojgar.viewmodel
 
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -9,15 +11,23 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.rojgar.model.ChatMessage
 import com.example.rojgar.model.ChatRoom
+import com.example.rojgar.model.GroupChat
 import com.example.rojgar.repository.ChatRepository
+import com.example.rojgar.repository.GroupChatRepository
+import com.example.rojgar.utils.ChatItem
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.*
 
-class ChatViewModel(private val chatRepository: ChatRepository) : ViewModel() {
+class ChatViewModel(private val chatRepository: ChatRepository,
+                    private val groupChatRepository: GroupChatRepository) : ViewModel() {
 
     private val _chatRooms = MutableLiveData<List<ChatRoom>>()
     val chatRooms: LiveData<List<ChatRoom>> = _chatRooms
+
+    private val _allChats = MutableLiveData<List<ChatItem>>()
+    val allChats: LiveData<List<ChatItem>> = _allChats
 
     private val _messages = MutableLiveData<List<ChatMessage>?>()
     val messages: LiveData<List<ChatMessage>> = _messages as LiveData<List<ChatMessage>>
@@ -45,6 +55,7 @@ class ChatViewModel(private val chatRepository: ChatRepository) : ViewModel() {
 
     private val _isUploading = MutableLiveData<Boolean>(false)
     val isUploading: LiveData<Boolean> = _isUploading
+
 
     fun loadChatRooms(userId: String) {
         _loading.value = true
@@ -356,6 +367,59 @@ class ChatViewModel(private val chatRepository: ChatRepository) : ViewModel() {
                     _uploadProgress.value = 0.0
                 }
             )
+        }
+    }
+
+    fun loadAllChats(userId: String) {
+        _loading.value = true
+
+        viewModelScope.launch {
+            // We need to wait for BOTH 1-on-1 and Groups to load
+            val privateChatsDeferred = async {
+                // You might need to suspendify your repo calls or use suspendCoroutine
+                fetchPrivateChatsSuspend(userId)
+            }
+
+            val groupChatsDeferred = async {
+                fetchGroupChatsSuspend(userId)
+            }
+
+            val privateChats = privateChatsDeferred.await()
+            val groupChats = groupChatsDeferred.await()
+
+            // 3. Convert to Unified ChatItems
+            val chatItems = mutableListOf<ChatItem>()
+
+            // Convert Private Chats
+            privateChats.forEach { room ->
+                val otherId = if (room.participant1Id == userId) room.participant2Id else room.participant1Id
+                chatItems.add(ChatItem.Private(room, otherId))
+            }
+
+            // Convert Group Chats
+            groupChats.forEach { group ->
+                chatItems.add(ChatItem.Group(group))
+            }
+
+            // 4. Sort by time descending (newest first)
+            val sortedChats = chatItems.sortedByDescending { it.lastMessageTime }
+
+            _allChats.value = sortedChats
+            _loading.value = false
+        }
+    }
+
+    // Helper to wrap your callback-based repo in coroutines
+    private suspend fun fetchPrivateChatsSuspend(userId: String): List<ChatRoom> = suspendCoroutine { cont ->
+        chatRepository.getChatRooms(userId) { success, _, rooms ->
+            cont.resume(if (success) rooms ?: emptyList() else emptyList())
+        }
+    }
+
+    private suspend fun fetchGroupChatsSuspend(userId: String): List<GroupChat> = suspendCoroutine { cont ->
+        groupChatRepository.getGroupsForUser(userId) { result ->
+            result.onSuccess { cont.resume(it) }
+            result.onFailure { cont.resume(emptyList()) }
         }
     }
 

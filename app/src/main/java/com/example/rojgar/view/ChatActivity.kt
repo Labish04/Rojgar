@@ -61,6 +61,8 @@ import coil.compose.AsyncImage
 import com.example.rojgar.R
 import com.example.rojgar.model.ChatMessage
 import com.example.rojgar.repository.ChatRepositoryImpl
+import com.example.rojgar.repository.GroupChatRepository
+import com.example.rojgar.repository.GroupChatRepositoryImpl
 import com.example.rojgar.ui.theme.DarkBlue3
 import com.example.rojgar.ui.theme.SkyBlue
 import com.example.rojgar.utils.VoicePlayer
@@ -73,10 +75,13 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.rojgar.utils.diagnoseAudio
+
 
 class ChatActivity : ComponentActivity() {
     private val chatViewModel: ChatViewModel by viewModels {
-        ChatViewModelFactory(ChatRepositoryImpl())
+        ChatViewModelFactory(ChatRepositoryImpl(),
+            groupChatRepository = GroupChatRepositoryImpl())
     }
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -307,6 +312,25 @@ fun ChatBody(
                             recordingDuration = 0L
 
                             if (audioFile != null && audioFile.exists()) {
+                                // Diagnostic check before upload
+                                Log.d("ChatActivity", "=== Voice Recording Completed ===")
+                                Log.d("ChatActivity", "File: ${audioFile.absolutePath}")
+                                Log.d("ChatActivity", "Size: ${audioFile.length()} bytes")
+
+                                // Run diagnostic
+                                val diagnostic = audioFile.diagnoseAudio()
+                                diagnostic.info.forEach { Log.d("ChatActivity", it) }
+                                diagnostic.issues.forEach { Log.w("ChatActivity", it) }
+
+                                if (!diagnostic.isValid) {
+                                    Toast.makeText(
+                                        context,
+                                        "Recording may be invalid. Check logs.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    // Still try to upload, but warn user
+                                }
+
                                 chatRoom?.let { cr ->
                                     chatViewModel.uploadAndSendVoiceMessage(
                                         audioFile = audioFile,
@@ -317,13 +341,23 @@ fun ChatBody(
                                         receiverName = receiverName
                                     )
                                 } ?: run {
-                                    Toast.makeText(context, "Chat room not found", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        "Chat room not found",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                     audioFile.delete()
                                 }
                             } else {
-                                Toast.makeText(context, "Failed to save recording", Toast.LENGTH_SHORT).show()
+                                Log.e("ChatActivity", "Recording failed - file is null or doesn't exist")
+                                Toast.makeText(
+                                    context,
+                                    "Failed to save recording. Please try again.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
+
                     )
                 } else {
                     MessageInputBar(
@@ -1105,6 +1139,8 @@ fun DateHeader(timestamp: Long) {
     }
 }
 
+// Replace the VoiceMessageBubble composable in ChatActivity.kt
+
 @Composable
 fun VoiceMessageBubble(
     message: ChatMessage,
@@ -1115,7 +1151,10 @@ fun VoiceMessageBubble(
     var isPlaying by remember(message.messageId) { mutableStateOf(false) }
     var currentPosition by remember(message.messageId) { mutableStateOf(0) }
     var duration by remember(message.messageId) { mutableStateOf(0) }
+    var hasError by remember(message.messageId) { mutableStateOf(false) }
+    var errorMessage by remember(message.messageId) { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     val alignment = if (isSentByMe) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = if (isSentByMe) {
@@ -1162,7 +1201,8 @@ fun VoiceMessageBubble(
                             modifier = Modifier
                                 .size(44.dp)
                                 .background(
-                                    color = if (isSentByMe) Color.White.copy(alpha = 0.3f) else Color(0xFFE3F2FD),
+                                    color = if (isSentByMe) Color.White.copy(alpha = 0.3f)
+                                    else Color(0xFFE3F2FD),
                                     shape = CircleShape
                                 )
                                 .clickable {
@@ -1172,33 +1212,87 @@ fun VoiceMessageBubble(
                                         currentPosition = 0
                                     } else {
                                         if (message.mediaUrl.isNotEmpty()) {
+                                            Log.d("VoicePlay", "=== Attempting to Play Voice ===")
+                                            Log.d("VoicePlay", "Message ID: ${message.messageId}")
+                                            Log.d("VoicePlay", "Media URL: ${message.mediaUrl}")
+
+                                            // FIXED: Run diagnostic async (optional, for debugging only)
+                                            // Comment out these lines if not needed
+                                            /*
+                                            coroutineScope.launch {
+                                                try {
+                                                    val diagnostic = message.mediaUrl.diagnoseAudioUrl()
+                                                    diagnostic.info.forEach {
+                                                        Log.d("VoicePlay", it)
+                                                    }
+                                                    diagnostic.issues.forEach {
+                                                        Log.w("VoicePlay", it)
+                                                    }
+
+                                                    if (!diagnostic.isValid) {
+                                                        hasError = true
+                                                        errorMessage = "Audio URL validation failed"
+                                                        Toast.makeText(
+                                                            context,
+                                                            "Cannot play audio. Check logs.",
+                                                            Toast.LENGTH_LONG
+                                                        ).show()
+                                                    }
+                                                } catch (e: Exception) {
+                                                    Log.e("VoicePlay", "Diagnostic failed", e)
+                                                }
+                                            }
+                                            */
+
                                             voicePlayer.playAudio(
                                                 audioUrl = message.mediaUrl,
                                                 onCompletion = {
+                                                    Log.d("VoicePlay", "Playback completed")
                                                     isPlaying = false
                                                     currentPosition = 0
+                                                    hasError = false
                                                 },
                                                 onError = { error ->
-                                                    Log.e("VoiceMessage", "Error: $error")
+                                                    Log.e("VoicePlay", "Playback error: $error")
                                                     isPlaying = false
                                                     currentPosition = 0
+                                                    hasError = true
+                                                    errorMessage = error
+
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Cannot play audio: $error",
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
                                                 }
                                             )
+
                                             isPlaying = true
+
                                             coroutineScope.launch {
+                                                delay(500) // Wait for preparation
                                                 duration = voicePlayer.getDuration()
+                                                Log.d("VoicePlay", "Audio duration: ${duration}ms")
+
                                                 while (isPlaying && voicePlayer.isCurrentlyPlaying()) {
                                                     currentPosition = voicePlayer.getCurrentPosition()
                                                     delay(100)
                                                 }
                                             }
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                "No audio URL available",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                         }
                                     }
                                 },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = if (isPlaying) Icons.Default.PlayArrow else Icons.Default.PlayArrow,
+                                imageVector = if (isPlaying) Icons.Default.PlayArrow
+                                else Icons.Default.PlayArrow,
                                 contentDescription = if (isPlaying) "Pause" else "Play",
                                 tint = if (isSentByMe) Color.White else Color(0xFF1976D2),
                                 modifier = Modifier.size(24.dp)
@@ -1215,19 +1309,24 @@ fun VoiceMessageBubble(
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(2.dp)),
                                 color = if (isSentByMe) Color.White else Color(0xFF1976D2),
-                                trackColor = if (isSentByMe) Color.White.copy(alpha = 0.3f) else Color(0xFFE3F2FD)
+                                trackColor = if (isSentByMe) Color.White.copy(alpha = 0.3f)
+                                else Color(0xFFE3F2FD)
                             )
 
                             Spacer(modifier = Modifier.height(6.dp))
 
                             Text(
-                                text = if (isPlaying && duration > 0) {
-                                    "${formatDuration(currentPosition.toLong())} / ${formatDuration(duration.toLong())}"
-                                } else {
-                                    message.messageText
+                                text = when {
+                                    hasError -> "⚠️ $errorMessage"
+                                    isPlaying && duration > 0 ->
+                                        "${formatDuration(currentPosition.toLong())} / ${formatDuration(duration.toLong())}"
+                                    else -> message.messageText
                                 },
                                 fontSize = 12.sp,
-                                color = if (isSentByMe) Color.White.copy(alpha = 0.8f) else Color.Gray
+                                color = if (isSentByMe) Color.White.copy(alpha = 0.8f)
+                                else if (hasError) Color.Red
+                                else Color.Gray,
+                                maxLines = 2
                             )
                         }
                     }
@@ -1250,7 +1349,8 @@ fun VoiceMessageBubble(
                                 imageVector = Icons.Default.Done,
                                 contentDescription = "Status",
                                 modifier = Modifier.size(14.dp),
-                                tint = if (message.isRead) Color(0xFF00C853) else Color.White.copy(alpha = 0.6f)
+                                tint = if (message.isRead) Color(0xFF00C853)
+                                else Color.White.copy(alpha = 0.6f)
                             )
                         }
                     }
