@@ -61,6 +61,8 @@ import coil.compose.AsyncImage
 import com.example.rojgar.R
 import com.example.rojgar.model.ChatMessage
 import com.example.rojgar.repository.ChatRepositoryImpl
+import com.example.rojgar.repository.GroupChatRepository
+import com.example.rojgar.repository.GroupChatRepositoryImpl
 import com.example.rojgar.ui.theme.DarkBlue3
 import com.example.rojgar.ui.theme.SkyBlue
 import com.example.rojgar.utils.VoicePlayer
@@ -78,7 +80,8 @@ import com.example.rojgar.utils.diagnoseAudio
 
 class ChatActivity : ComponentActivity() {
     private val chatViewModel: ChatViewModel by viewModels {
-        ChatViewModelFactory(ChatRepositoryImpl())
+        ChatViewModelFactory(ChatRepositoryImpl(),
+            groupChatRepository = GroupChatRepositoryImpl())
     }
 
     private val requestPermissionLauncher = registerForActivityResult(

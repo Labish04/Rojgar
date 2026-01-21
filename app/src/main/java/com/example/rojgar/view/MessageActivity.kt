@@ -51,7 +51,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.rojgar.repository.GroupChatRepositoryImpl
 import com.example.rojgar.repository.UserRepo
+import com.example.rojgar.ui.theme.White
+import com.example.rojgar.utils.ChatItem
 
 // Premium Light Blue Color Scheme
 private val LightBlue50 = Color(0xFFE3F2FD)
@@ -65,11 +68,6 @@ private val LightBlue700 = Color(0xFF1976D2)
 private val AccentCyan = Color(0xFF00BCD4)
 private val SoftWhite = Color(0xFFFAFBFF)
 
-// Additional colors for GlowingChatbotFAB
-private val PurpleGradientStart = Color(0xFF667EEA)
-private val PurpleGradientEnd = Color(0xFF764BA2)
-private val CyanGradient = Color(0xFF00D4FF)
-private val PinkGradient = Color(0xFFFF00FF)
 
 class MessageActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,7 +82,8 @@ class MessageActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun MessageBody(
-    chatViewModel: ChatViewModel = viewModel(factory = ChatViewModelFactory(ChatRepositoryImpl()))
+    chatViewModel: ChatViewModel = viewModel(factory = ChatViewModelFactory(ChatRepositoryImpl(),
+        groupChatRepository = GroupChatRepositoryImpl()))
 ) {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
@@ -93,6 +92,7 @@ fun MessageBody(
     var loadingMutualFollows by remember { mutableStateOf(false) }
 
     val chatRooms by chatViewModel.chatRooms.observeAsState(emptyList())
+    val allChats by chatViewModel.allChats.observeAsState(emptyList())
     val loading by chatViewModel.loading.observeAsState(false)
 
     val userRepo = remember { UserRepo() }
@@ -101,6 +101,13 @@ fun MessageBody(
     var currentUserType by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isNotEmpty()) {
+            // Call the new load function
+            chatViewModel.loadAllChats(currentUserId)
+        }
+    }
 
     LaunchedEffect(Unit) {
         userRepo.getUserType { userType ->
@@ -262,6 +269,7 @@ fun MessageBody(
                         currentUserName = currentUserName,
                         chatViewModel = chatViewModel
                     )
+
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -300,39 +308,49 @@ fun MessageBody(
                             .padding(horizontal = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(
-                            items = filteredChatRooms,
-                            key = { it.chatId }
-                        ) { chatRoom ->
-                            val otherParticipantId = if (chatRoom.participant1Id == currentUserId) {
-                                chatRoom.participant2Id
-                            } else {
-                                chatRoom.participant1Id
-                            }
-
-                            val otherParticipantName = if (chatRoom.participant1Id == currentUserId) {
-                                chatRoom.participant2Name
-                            } else {
-                                chatRoom.participant1Name
-                            }
-
-                            AnimatedChatUserItem(
-                                chatRoom = chatRoom,
-                                currentUserId = currentUserId,
-                                onClick = {
-                                    val intent = Intent(context, ChatActivity::class.java).apply {
-                                        putExtra("receiverId", otherParticipantId)
-                                        putExtra("receiverName", otherParticipantName)
-                                        putExtra("currentUserId", currentUserId)
-                                        putExtra("currentUserName", currentUserName)
-                                    }
-                                    context.startActivity(intent)
+                        // In MessageBody inside LazyColumn
+                        items(allChats, key = { it.id }) { item ->
+                            when (item) {
+                                // Case 1: Private 1-on-1 Chat
+                                is ChatItem.Private -> {
+                                    AnimatedChatUserItem(
+                                        name = item.name,
+                                        message = item.lastMessage,
+                                        timestamp = item.lastMessageTime,
+                                        unreadCount = item.unreadCount,
+                                        imageUrl = item.image,
+                                        onClick = {
+                                            val intent = Intent(context, ChatActivity::class.java).apply {
+                                                putExtra("receiverId", item.otherUserId)
+                                                putExtra("receiverName", item.name)
+                                                putExtra("currentUserId", currentUserId)
+                                                // Add other required extras
+                                            }
+                                            context.startActivity(intent)
+                                        }
+                                    )
                                 }
-                            )
-                        }
 
-                        item {
-                            Spacer(modifier = Modifier.height(16.dp))
+                                // Case 2: Group Chat
+                                is ChatItem.Group -> {
+                                    AnimatedChatUserItem(
+                                        name = item.name,
+                                        message = "${item.lastMessage}", // Optional: add sender name prefix
+                                        timestamp = item.lastMessageTime,
+                                        unreadCount = item.unreadCount,
+                                        imageUrl = item.image,
+                                        onClick = {
+                                            // Make sure you have created GroupChatActivity!
+                                            val intent = Intent(context, GroupChatActivity::class.java).apply {
+                                                putExtra("groupId", item.id)
+                                                putExtra("groupName", item.name)
+                                                putExtra("currentUserId", currentUserId)
+                                            }
+                                            context.startActivity(intent)
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -601,7 +619,8 @@ fun MutualFollowsSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .animateContentSize(),
+            .animateContentSize()
+            .background(color = Color.Transparent),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
@@ -620,7 +639,7 @@ fun MutualFollowsSection(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(AccentCyan)
+                        .background(LightBlue50)
                 )
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -831,8 +850,11 @@ fun AnimatedMutualFollowCard(
 
 @Composable
 fun AnimatedChatUserItem(
-    chatRoom: ChatRoom,
-    currentUserId: String,
+    name: String,
+    message: String,
+    timestamp: Long,
+    unreadCount: Int,
+    imageUrl: String?, // Added to support group/user images later
     onClick: () -> Unit
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -848,13 +870,8 @@ fun AnimatedChatUserItem(
         label = "chat_item_scale"
     )
 
-    val otherParticipantName = if (chatRoom.participant1Id == currentUserId) {
-        chatRoom.participant2Name
-    } else {
-        chatRoom.participant1Name
-    }
-
-    val lastMessageTime = formatRelativeTime(chatRoom.lastMessageTime)
+    // Helper to format time (ensure formatRelativeTime is defined in your file)
+    val timeDisplay = formatRelativeTime(timestamp)
 
     AnimatedVisibility(
         visible = visible,
@@ -891,8 +908,9 @@ fun AnimatedChatUserItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box {
+                    // Update this to load imageUrl if available, otherwise use default
                     Image(
-                        painter = painterResource(R.drawable.sampleimage),
+                        painter = painterResource(R.drawable.sampleimage), // Placeholder
                         contentDescription = "Profile",
                         modifier = Modifier
                             .size(64.dp)
@@ -901,21 +919,23 @@ fun AnimatedChatUserItem(
                         contentScale = ContentScale.Crop
                     )
 
-                    // Online indicator
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .align(Alignment.BottomEnd)
-                            .clip(CircleShape)
-                            .background(Color.White)
-                            .padding(2.dp)
-                    ) {
+                    // Online indicator (Optional logic)
+                    if (unreadCount > 0) { // Example logic
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .size(16.dp)
+                                .align(Alignment.BottomEnd)
                                 .clip(CircleShape)
-                                .background(Color(0xFF4CAF50))
-                        )
+                                .background(Color.White)
+                                .padding(2.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF4CAF50))
+                            )
+                        }
                     }
                 }
 
@@ -929,11 +949,11 @@ fun AnimatedChatUserItem(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = otherParticipantName,
+                            text = name,
                             style = TextStyle(
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = LightBlue700
+                                color = Color(0xFF1976D2) // LightBlue700
                             ),
                             modifier = Modifier.weight(1f),
                             maxLines = 1,
@@ -941,12 +961,12 @@ fun AnimatedChatUserItem(
                         )
 
                         Text(
-                            text = lastMessageTime,
+                            text = timeDisplay,
                             style = TextStyle(
                                 fontSize = 12.sp,
-                                color = LightBlue300,
-                                fontWeight = FontWeight.Medium
-                            )
+                                color = Color(0xFF64B5F6), // LightBlue300
+                            ),
+                            fontWeight = FontWeight.Medium
                         )
                     }
 
@@ -958,11 +978,11 @@ fun AnimatedChatUserItem(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = chatRoom.lastMessage,
+                            text = message,
                             style = TextStyle(
                                 fontSize = 14.sp,
                                 color = Color.Gray,
-                                fontWeight = if (chatRoom.unreadCount > 0)
+                                fontWeight = if (unreadCount > 0)
                                     FontWeight.SemiBold else FontWeight.Normal
                             ),
                             maxLines = 1,
@@ -970,7 +990,7 @@ fun AnimatedChatUserItem(
                             modifier = Modifier.weight(1f)
                         )
 
-                        if (chatRoom.unreadCount > 0) {
+                        if (unreadCount > 0) {
                             Spacer(modifier = Modifier.width(8.dp))
 
                             Box(
@@ -989,8 +1009,8 @@ fun AnimatedChatUserItem(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = if (chatRoom.unreadCount > 99) "99+"
-                                    else chatRoom.unreadCount.toString(),
+                                    text = if (unreadCount > 99) "99+"
+                                    else unreadCount.toString(),
                                     style = TextStyle(
                                         fontSize = 11.sp,
                                         color = Color.White,
