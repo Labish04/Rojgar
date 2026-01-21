@@ -308,7 +308,7 @@ fun AnimatedRatingNumber(rating: Double) {
 
 @Composable
 fun StarRatingDisplay(rating: Double) {
-    val starColor = Color(0xFF5B68F4) // Blue color from reference
+    val starColor = Color(0xFFFFC107) // Blue color from reference
 
     Row(
         horizontalArrangement = Arrangement.Center,
@@ -424,7 +424,7 @@ fun AnimatedRatingBar(
     total: Int
 ) {
     val percentage = if (total > 0) (count.toFloat() / total.toFloat()) else 0f
-    val barColor = Color(0xFF5B68F4) // Blue color from reference
+    val barColor = Color(0xFFE3C808) // Blue color from reference
 
     var animateBar by remember { mutableStateOf(false) }
 
