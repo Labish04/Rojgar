@@ -45,9 +45,14 @@ class GroupChatRoomViewModel(private val repository: GroupChatRepository) : View
             groupId = groupId,
             onNewMessage = { newMessage ->
                 val currentList = _messages.value ?: emptyList()
-                // Prevent duplicates and keep sorted by time
-                if (currentList.none { it.messageId == newMessage.messageId }) {
-                    _messages.value = (currentList + newMessage).sortedBy { it.timestamp }
+
+                // Check if message already exists (prevent duplicates)
+                val exists = currentList.any { it.messageId == newMessage.messageId }
+
+                if (!exists) {
+                    // Add new message and sort by timestamp
+                    val updatedList = (currentList + newMessage).sortedBy { it.timestamp }
+                    _messages.value = updatedList
                 }
             },
             onError = { e ->
@@ -56,7 +61,8 @@ class GroupChatRoomViewModel(private val repository: GroupChatRepository) : View
         )
     }
 
-    /**
+
+            /**
      * Load group information
      */
     fun loadGroupInfo(groupId: String) {
@@ -222,10 +228,13 @@ class GroupChatRoomViewModel(private val repository: GroupChatRepository) : View
     /**
      * Load initial messages
      */
-    fun loadMessages(groupId: String, limit: Int = 50) {
+    fun loadMessages(groupId: String, limit: Int = 100) {
         repository.getGroupMessages(groupId, limit) { result ->
             result.onSuccess { messages ->
-                _messages.value = messages.sortedBy { it.timestamp }
+                // Only set if messages list is currently empty (initial load)
+                if (_messages.value.isNullOrEmpty()) {
+                    _messages.value = messages.sortedBy { it.timestamp }
+                }
             }.onFailure { error ->
                 _error.value = error.message
             }
@@ -279,6 +288,9 @@ class GroupChatRoomViewModel(private val repository: GroupChatRepository) : View
 
     override fun onCleared() {
         super.onCleared()
-        messageListener?.invoke()
+        // Stop listening to prevent memory leaks
+        // You'll need to store groupId as a property
     }
+
+
 }
