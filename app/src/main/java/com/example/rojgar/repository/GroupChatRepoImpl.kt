@@ -290,14 +290,20 @@ class GroupChatRepositoryImpl : GroupChatRepository {
             ?: UUID.randomUUID().toString()
         val messageWithId = message.copy(messageId = messageId)
 
-        // Create updates for message and group last message
         val updates = hashMapOf<String, Any>()
         updates["GroupMessages/$groupId/$messageId"] = messageWithId.toMap()
-        updates["GroupChats/$groupId/lastMessage"] =
-            if (message.messageType == "voice") "🎤 Voice message" else message.messageText
+
+        // Better last message display
+        val lastMessageText = when (message.messageType) {
+            "voice" -> "🎤 Voice message"
+            "image" -> "📷 Photo"
+            "video" -> "🎥 Video"
+            "document" -> "📄 Document"
+            else -> message.messageText
+        }
+
+        updates["GroupChats/$groupId/lastMessage"] = lastMessageText
         updates["GroupChats/$groupId/lastMessageTime"] = message.timestamp
-        updates["GroupChats/$groupId/unreadCount"] =
-            ServerValue.increment(1)
 
         database.reference.updateChildren(updates)
             .addOnCompleteListener { task ->
@@ -340,9 +346,9 @@ class GroupChatRepositoryImpl : GroupChatRepository {
         onNewMessage: (GroupMessage) -> Unit,
         onError: (Exception) -> Unit
     ) {
+        // FIXED: Listen to all new messages, not just limitToLast(1)
         groupMessagesRef.child(groupId)
             .orderByChild("timestamp")
-            .limitToLast(1)
             .addChildEventListener(object : ChildEventListener {
                 override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                     val message = snapshot.getValue(GroupMessage::class.java)
@@ -350,7 +356,8 @@ class GroupChatRepositoryImpl : GroupChatRepository {
                 }
 
                 override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                    // Handle message updates (like read receipts)
+                    val message = snapshot.getValue(GroupMessage::class.java)
+                    message?.let { onNewMessage(it) }
                 }
 
                 override fun onChildRemoved(snapshot: DataSnapshot) {}
@@ -522,5 +529,14 @@ class GroupChatRepositoryImpl : GroupChatRepository {
 
     private fun getFileNameFromUri(context: Context, uri: Uri): String? {
         return uri.lastPathSegment ?: "file_${System.currentTimeMillis()}"
+    }
+
+    private var messageListener: ChildEventListener? = null
+
+    fun stopListeningForMessages(groupId: String) {
+        messageListener?.let {
+            groupMessagesRef.child(groupId).removeEventListener(it)
+        }
+        messageListener = null
     }
 }
