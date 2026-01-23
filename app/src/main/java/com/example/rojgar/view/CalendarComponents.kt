@@ -1,192 +1,191 @@
 package com.example.rojgar.view
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import com.example.rojgar.R
 import com.example.rojgar.model.CalendarEventModel
-import com.example.rojgar.util.CalendarDateUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun MiniCalendar(modifier: Modifier = Modifier, events: List<CalendarEventModel> = emptyList()) {
-    val calendar = Calendar.getInstance()
-    val currentMonth = calendar.get(Calendar.MONTH)
-    val currentYear = calendar.get(Calendar.YEAR)
-    val currentDay = calendar.get(Calendar.DAY_OF_MONTH)
+fun MiniEventList(
+    modifier: Modifier = Modifier,
+    events: List<CalendarEventModel> = emptyList(),
+    maxItems: Int = 3,
+    showAllEvents: Boolean = false
+) {
+    val context = LocalContext.current
+    val currentTime = System.currentTimeMillis()
 
-    val monthNames = arrayOf(
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-    )
-
-    // Get days of week (Sun, Mon, Tue, etc.)
-    val daysOfWeek = listOf("S", "M", "T", "W", "T", "F", "S")
-
-    // Generate calendar grid similar to CalendarActivity
-    val calendarGrid = generateCalendarDays(currentYear, currentMonth)
-    val todayCalendar = Calendar.getInstance()
-    val todayDay = todayCalendar.get(Calendar.DAY_OF_MONTH)
-    val todayMonth = todayCalendar.get(Calendar.MONTH)
-    val todayYear = todayCalendar.get(Calendar.YEAR)
-
-    // Helper function to get event colors for a specific day
-    fun getEventColorsForDay(day: Int): List<Color> {
-        val (dayStart, dayEnd) = CalendarDateUtils.dayRangeMillis(currentYear, currentMonth, day)
-        return events
-            .filter { event -> event.startTimeMillis < dayEnd && event.endTimeMillis > dayStart }
-            .map { event -> Color(android.graphics.Color.parseColor(event.colorHex)) }
-            .distinct()
+    // Get events based on filter preference
+    val displayEvents = if (showAllEvents) {
+        // Show all events
+        events.sortedBy { it.startTimeMillis }.take(maxItems)
+    } else {
+        // Get upcoming events (today and future)
+        events
+            .filter { event ->
+                // Show events that are today or in the future, or events that are currently ongoing
+                val eventEnd = event.endTimeMillis
+                eventEnd > currentTime
+            }
+            .sortedBy { it.startTimeMillis }
+            .take(maxItems)
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Month and Year
+    Column(modifier = modifier) {
         Text(
-            text = "${monthNames[currentMonth]} $currentYear",
+            text = if (showAllEvents) "All Events" else "Upcoming Events",
             style = TextStyle(
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
+                color = Color.Black,
+                textAlign = TextAlign.Center
+            ),
+            modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Days of week header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            daysOfWeek.forEach { day ->
-                Text(
-                    text = day,
-                    fontSize = 10.sp,
-                    color = Color.Gray,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f),
-                    style = TextStyle(textAlign = TextAlign.Center)
-                )
+        if (displayEvents.isEmpty()) {
+            // Empty state
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Surface(
+                        modifier = Modifier.size(40.dp),
+                        shape = CircleShape,
+                        color = Color(0xFFF8FAFC)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.calendaricon),
+                            contentDescription = null,
+                            tint = Color(0xFFCBD5E1),
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "No upcoming events",
+                        color = Color(0xFF94A3B8),
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
-        }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(displayEvents) { event ->
+                    MiniEventCard(event = event)
+                }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Calendar grid (showing only 4 weeks for mini view)
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            // Show weeks 2-5 (skipping first and last week if incomplete)
-            for (week in 1..4) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    for (dayIndex in 0 until 7) {
-                        val dayNumber = calendarGrid[week * 7 + dayIndex]
-                        val isToday = dayNumber == todayDay && currentMonth == todayMonth && currentYear == todayYear && dayNumber > 0
-                        val eventColors = if (dayNumber > 0) getEventColorsForDay(dayNumber) else emptyList()
-
-                        Box(
+                // Show "View All" if there are more events
+                if (events.size > maxItems) {
+                    item {
+                        Text(
+                            text = "View all events",
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF3B82F6)
+                            ),
                             modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
-                                .background(
-                                    if (isToday) Color(0xFF3B82F6) else Color.Transparent
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (dayNumber > 0) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    Text(
-                                        text = dayNumber.toString(),
-                                        fontSize = 10.sp,
-                                        color = if (isToday) Color.White else Color.Black,
-                                        fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+                                .fillMaxWidth()
+                                .clickable {
+                                    context.startActivity(
+                                        Intent(context, CalendarActivity::class.java)
                                     )
-
-                                    if (eventColors.isNotEmpty() && !isToday) {
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Row(
-                                            horizontalArrangement = Arrangement.Center,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            val displayColors = eventColors.take(2) // Show max 2 dots for mini calendar
-                                            displayColors.forEachIndexed { index, color ->
-                                                androidx.compose.foundation.Canvas(
-                                                    modifier = Modifier.size(3.dp)
-                                                ) {
-                                                    drawCircle(color)
-                                                }
-                                                if (index < displayColors.size - 1) {
-                                                    Spacer(modifier = Modifier.width(1.dp))
-                                                }
-                                            }
-                                            if (eventColors.size > 2) {
-                                                Spacer(modifier = Modifier.width(1.dp))
-                                                Text(
-                                                    text = "+",
-                                                    fontSize = 6.sp,
-                                                    color = Color(0xFF64748B),
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                        }
-                                    }
                                 }
-                            }
-                        }
+                                .padding(vertical = 8.dp),
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Current date display
-        val currentDate = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(calendar.time)
-        Text(
-            text = currentDate,
-            style = TextStyle(
-                fontSize = 12.sp,
-                color = Color.Gray,
-                fontWeight = FontWeight.Medium
-            )
-        )
     }
 }
 
-private fun generateCalendarDays(year: Int, month: Int): List<Int> {
-    val calendar = Calendar.getInstance().apply {
-        set(year, month, 1)
-    }
+@Composable
+fun MiniEventCard(event: CalendarEventModel) {
+    val context = LocalContext.current
+    val startTime = SimpleDateFormat("MMM dd, h:mm a", Locale.getDefault()).format(Date(event.startTimeMillis))
+    val eventColor = Color(android.graphics.Color.parseColor(event.colorHex))
 
-    val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
-    val startDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK) - 1 // 0 = Sunday, 1 = Monday, etc.
-    val totalCells = 42
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                context.startActivity(
+                    Intent(context, CalendarActivity::class.java)
+                )
+            },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Color indicator
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(eventColor)
+            )
 
-    return List(totalCells) { index ->
-        if (index >= startDayOfWeek && index < startDayOfWeek + daysInMonth) {
-            index - startDayOfWeek + 1
-        } else {
-            0
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = event.title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF0F172A),
+                    maxLines = 1
+                )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(
+                    text = startTime,
+                    fontSize = 12.sp,
+                    color = Color(0xFF64748B),
+                    maxLines = 1
+                )
+            }
         }
     }
 }

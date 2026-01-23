@@ -4,7 +4,6 @@ import android.content.Intent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,7 +37,6 @@ import com.example.rojgar.viewmodel.ReviewViewModel
 import com.example.rojgar.view.CalendarActivity
 import com.example.rojgar.repository.CalendarRepoImpl
 import com.example.rojgar.viewmodel.CalendarViewModel
-import com.example.rojgar.util.CalendarDateUtils
 import com.example.rojgar.model.CalendarEventModel
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
@@ -99,10 +97,7 @@ fun CompanyHomeScreenBody(){
                 modifier = Modifier
                     .height(50.dp)
                     .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
+                    .clickable {
                         context.startActivity(
                             Intent(context, JobSeekerSearchActivity::class.java)
                         )
@@ -152,7 +147,7 @@ fun CompanyHomeScreenBody(){
                 companyId = companyId,
                 companyName = company?.companyName ?: "Company",
                 modifier = Modifier
-                    .height(200.dp)
+                    .height(220.dp)
                     .width(200.dp)
             )
 
@@ -161,22 +156,20 @@ fun CompanyHomeScreenBody(){
             Card(
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
-                    .height(200.dp)
-                    .width(200.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            context.startActivity(
-                                Intent(context, CalendarActivity::class.java)
-                            )
-                        }
-                    ),
+                    .height(220.dp)
+                    .width(200.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 2.dp
                 )
             ) {
-                MiniCalendar(events = events)
+                MiniEventList(
+                    events = events,
+                    maxItems = 3,
+                    showAllEvents = true
+                )
             }
         }
 
@@ -242,16 +235,12 @@ fun ReviewsRatingsCard(
 
     Card(
         shape = RoundedCornerShape(16.dp),
-        modifier = modifier.clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-            onClick = {
-                val intent = Intent(context, CompanyReviewActivity::class.java)
-                intent.putExtra("COMPANY_ID", companyId)
-                intent.putExtra("COMPANY_NAME", companyName)
-                context.startActivity(intent)
-            }
-        ),
+        modifier = modifier.clickable {
+            val intent = Intent(context, CompanyReviewActivity::class.java)
+            intent.putExtra("COMPANY_ID", companyId)
+            intent.putExtra("COMPANY_NAME", companyName)
+            context.startActivity(intent)
+        },
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
@@ -310,7 +299,7 @@ fun AnimatedRatingNumber(rating: Double) {
     Text(
         text = String.format("%.1f", animatedRating),
         style = TextStyle(
-            fontSize = 36.sp,
+            fontSize = 44.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black,
             letterSpacing = (-1).sp
@@ -320,7 +309,7 @@ fun AnimatedRatingNumber(rating: Double) {
 
 @Composable
 fun StarRatingDisplay(rating: Double) {
-    val starColor = Color(0xFFFFC107) // Blue color from reference
+    val starColor = Color(0xFFFFD700) // Gold color
 
     Row(
         horizontalArrangement = Arrangement.Center,
@@ -421,7 +410,7 @@ fun AnimatedReviewCount(count: Int) {
     Text(
         text = String.format("%,d", animatedCount),
         style = TextStyle(
-            fontSize = 13.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Normal,
             color = Color.Gray,
             letterSpacing = 0.sp
@@ -436,7 +425,7 @@ fun AnimatedRatingBar(
     total: Int
 ) {
     val percentage = if (total > 0) (count.toFloat() / total.toFloat()) else 0f
-    val barColor = Color(0xFFE3C808) // Blue color from reference
+    val barColor = Color(0xFFFFD700) // Gold color
 
     var animateBar by remember { mutableStateOf(false) }
 
@@ -457,17 +446,17 @@ fun AnimatedRatingBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(10.dp),
+            .height(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = "$star",
             style = TextStyle(
-                fontSize = 11.sp,
+                fontSize = 14.sp,
                 color = Color.Black,
                 fontWeight = FontWeight.Medium
             ),
-            modifier = Modifier.width(8.dp)
+            modifier = Modifier.width(10.dp)
         )
 
         Spacer(modifier = Modifier.width(6.dp))

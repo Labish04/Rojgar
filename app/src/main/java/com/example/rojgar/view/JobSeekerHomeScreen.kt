@@ -4,7 +4,6 @@ import android.content.Intent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,7 +60,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.aspectRatio
 import coil.compose.AsyncImage
 import com.example.rojgar.R
 import com.example.rojgar.model.EducationModel
@@ -113,11 +111,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.example.rojgar.view.CalendarActivity
 import com.example.rojgar.repository.CalendarRepoImpl
 import com.example.rojgar.viewmodel.CalendarViewModel
-import com.example.rojgar.util.CalendarDateUtils
 import com.example.rojgar.model.CalendarEventModel
-import java.util.Calendar
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 // Filter State Data Class
 
@@ -210,10 +204,7 @@ fun JobSeekerHomeScreenBody() {
                 modifier = Modifier
                     .height(50.dp)
                     .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
+                    .clickable {
                         context.startActivity(
                             Intent(context, JobSeekerSearchActivity::class.java)
                         )
@@ -278,35 +269,30 @@ fun JobSeekerHomeScreenBody() {
                 modifier = Modifier
                     .height(200.dp)
                     .weight(1f)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            // TODO: Navigate to profile screen
-                        }
-                    )
+                    .clickable {
+                        // TODO: Navigate to profile screen
+                    }
             )
 
-            // Calendar Card
+            // Events Card
             Card(
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .height(200.dp)
-                    .weight(1f)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            context.startActivity(
-                                Intent(context, CalendarActivity::class.java)
-                            )
-                        }
-                    ),
+                    .weight(1f),
                 colors = CardDefaults.cardColors(
                     containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 2.dp
                 )
             ) {
-                MiniCalendar(events = events)
+                Column(modifier = Modifier.padding(16.dp)) {
+                    MiniEventList(
+                        events = events,
+                        maxItems = 3
+                    )
+                }
             }
         }
 
