@@ -17,6 +17,7 @@ data class ReviewModel(
             "reviewId" to reviewId,
             "userId" to userId,
             "companyId" to companyId,
+            "userId_companyId" to "${userId}_$companyId", // Composite field for efficient querying
             "userName" to userName,
             "userImageUrl" to userImageUrl,
             "rating" to rating,

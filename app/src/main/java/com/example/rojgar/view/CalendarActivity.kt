@@ -81,13 +81,12 @@ fun CalendarBody() {
     val context = LocalContext.current
     val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl()) }
     val events by calendarViewModel.events.observeAsState(emptyList())
-    val selectedDayEvents by calendarViewModel.selectedDayEvents.observeAsState(emptyList())
     val loading by calendarViewModel.loading.observeAsState(false)
     val message by calendarViewModel.message.observeAsState("")
 
-    var selectedDay by remember { mutableStateOf(Calendar.getInstance().get(Calendar.DAY_OF_MONTH)) }
     var currentMonth by remember { mutableStateOf(Calendar.getInstance().get(Calendar.MONTH)) }
     var currentYear by remember { mutableStateOf(Calendar.getInstance().get(Calendar.YEAR)) }
+    var selectedDay by remember { mutableStateOf(Calendar.getInstance().get(Calendar.DAY_OF_MONTH)) }
 
     // Dialog states
     var showAddEventDialog by remember { mutableStateOf(false) }
@@ -106,13 +105,6 @@ fun CalendarBody() {
         }
     }
 
-    // Observe events for selected day
-    LaunchedEffect(userId, selectedDay, currentMonth, currentYear) {
-        if (userId.isNotEmpty()) {
-            val (dayStart, dayEnd) = CalendarDateUtils.dayRangeMillis(currentYear, currentMonth, selectedDay)
-            calendarViewModel.observeEventsForUserInRange(userId, dayStart, dayEnd)
-        }
-    }
 
     // Show message as snackbar
     LaunchedEffect(message) {
@@ -468,11 +460,11 @@ fun CalendarBody() {
                 Spacer(modifier = Modifier.height(28.dp))
 
                 // Events Section
-                val selectedDate = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(
-                    Calendar.getInstance().apply {
-                        set(currentYear, currentMonth, selectedDay)
-                    }.time
+                val monthNames = arrayOf(
+                    "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"
                 )
+                val currentMonthName = monthNames[currentMonth]
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -480,7 +472,7 @@ fun CalendarBody() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Events for $selectedDate",
+                        text = "Events for $currentMonthName $currentYear",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -516,6 +508,15 @@ fun CalendarBody() {
                         containerColor = Color.White.copy(alpha = 0.95f)
                     )
                 ) {
+                    // Filter events for current month
+                    val currentMonthEvents = events.filter { event ->
+                        val eventCalendar = Calendar.getInstance().apply {
+                            timeInMillis = event.startTimeMillis
+                        }
+                        eventCalendar.get(Calendar.YEAR) == currentYear &&
+                        eventCalendar.get(Calendar.MONTH) == currentMonth
+                    }
+
                     if (loading) {
                         Box(
                             modifier = Modifier
@@ -528,7 +529,7 @@ fun CalendarBody() {
                                 modifier = Modifier.size(32.dp)
                             )
                         }
-                    } else if (selectedDayEvents.isEmpty()) {
+                    } else if (currentMonthEvents.isEmpty()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -577,7 +578,7 @@ fun CalendarBody() {
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(selectedDayEvents.sortedBy { it.startTimeMillis }) { event ->
+                            items(currentMonthEvents.sortedBy { it.startTimeMillis }) { event ->
                                 EventCard(
                                     event = event,
                                     onEdit = { editingEvent = event },

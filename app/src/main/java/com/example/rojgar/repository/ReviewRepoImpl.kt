@@ -152,7 +152,7 @@ class ReviewRepoImpl : ReviewRepo {
         callback: (Boolean, String, ReviewModel?) -> Unit
     ) {
         try {
-            // Query reviews by userId and companyId
+            // Query reviews using the composite field for efficient lookup
             val query: Query = ref.orderByChild("userId_companyId")
                 .equalTo("${userId}_$companyId")
 
@@ -163,6 +163,7 @@ class ReviewRepoImpl : ReviewRepo {
                             val reviewMap = childSnapshot.value as? Map<String, Any?>
                             if (reviewMap != null) {
                                 val review = ReviewModel.fromMap(reviewMap)
+                                // Double-check that the review matches (in case of data inconsistency)
                                 if (review.userId == userId && review.companyId == companyId) {
                                     callback(true, "User has already reviewed this company", review)
                                     return

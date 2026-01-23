@@ -321,6 +321,86 @@ fun JobSeekerSearchScreen(
                 }
             }
 
+            // Filter jobs based on current filters
+            val filteredJobs = remember(allJobs, searchQuery, filterState, companyDetailsMap) {
+                // First check if any filters are applied
+                val hasActiveFilters = searchQuery.isNotEmpty() ||
+                    filterState.selectedCategories.isNotEmpty() ||
+                    filterState.selectedJobTypes.isNotEmpty() ||
+                    filterState.selectedExperience.isNotEmpty() ||
+                    filterState.selectedEducation.isNotEmpty() ||
+                    filterState.minSalary.isNotEmpty() ||
+                    filterState.maxSalary.isNotEmpty() ||
+                    filterState.location.isNotEmpty()
+
+                if (!hasActiveFilters) {
+                    // No filters applied - show all jobs
+                    allJobs
+                } else {
+                    // Filters applied - filter jobs
+                    allJobs.filter { job ->
+                        val companyName = companyDetailsMap[job.companyId]?.companyName ?: ""
+
+                        val matchesSearch = searchQuery.isEmpty() ||
+                            job.title.contains(searchQuery, ignoreCase = true) ||
+                            job.position.contains(searchQuery, ignoreCase = true) ||
+                            job.jobDescription.contains(searchQuery, ignoreCase = true) ||
+                            job.skills.contains(searchQuery, ignoreCase = true) ||
+                            companyName.contains(searchQuery, ignoreCase = true)
+
+                        val matchesCategories = filterState.selectedCategories.isEmpty() ||
+                            filterState.selectedCategories.any { selectedCategory ->
+                                job.categories.any { jobCategory ->
+                                    jobCategory.contains(selectedCategory, ignoreCase = true) ||
+                                    selectedCategory.contains(jobCategory, ignoreCase = true)
+                                }
+                            }
+
+                        val matchesJobType = filterState.selectedJobTypes.isEmpty() ||
+                            filterState.selectedJobTypes.contains(job.jobType)
+
+                        val matchesExperience = filterState.selectedExperience.isEmpty() ||
+                            job.experience.contains(filterState.selectedExperience, ignoreCase = true)
+
+                        val matchesEducation = filterState.selectedEducation.isEmpty() ||
+                            filterState.selectedEducation.any { selectedEdu ->
+                                job.education.contains(selectedEdu, ignoreCase = true)
+                            }
+
+                        val matchesSalary = when {
+                            filterState.minSalary.isEmpty() && filterState.maxSalary.isEmpty() -> true
+                            else -> {
+                                val jobSalary = extractSalaryValue(job.salary)
+                                val min = filterState.minSalary.replace(",", "").toDoubleOrNull() ?: 0.0
+                                val max = filterState.maxSalary.replace(",", "").toDoubleOrNull() ?: Double.MAX_VALUE
+                                jobSalary in min..max
+                            }
+                        }
+
+                        val matchesLocation = filterState.location.isEmpty() ||
+                            job.jobDescription.contains(filterState.location, ignoreCase = true) ||
+                            companyName.contains(filterState.location, ignoreCase = true) ||
+                            job.position.contains(filterState.location, ignoreCase = true)
+
+                        matchesSearch && matchesCategories && matchesJobType &&
+                            matchesExperience && matchesEducation && matchesSalary && matchesLocation
+                    }
+                }
+            }
+
+            // Map filtered jobs to JobPostWithCompany
+            val filteredJobsWithCompany = remember(filteredJobs, companyDetailsMap) {
+                filteredJobs.map { job ->
+                    val companyInfo = companyDetailsMap[job.companyId]
+                    JobPostWithCompany(
+                        jobPost = job,
+                        companyName = companyInfo?.companyName ?: "",
+                        companyProfile = companyInfo?.companyProfileImage ?: "",
+                        isLoading = companyInfo == null
+                    )
+                }
+            }
+
             // Tab Content
             when (selectedTabIndex) {
                 0 -> JobsTabContent(
@@ -330,9 +410,8 @@ fun JobSeekerSearchScreen(
                     onFilterStateChange = { filterState = it },
                     showFilterSheet = showFilterSheet,
                     onShowFilterSheetChange = { showFilterSheet = it },
-                    allJobs = allJobs,
+                    filteredJobsWithCompany = filteredJobsWithCompany,
                     isLoading = isLoading,
-                    companyDetailsMap = companyDetailsMap,
                     context = context,
                     activeFiltersCount = activeFiltersCount
                 )
@@ -557,11 +636,16 @@ fun JobFilterBottomSheet(
     var tempFilterState by remember(initialFilterState) { mutableStateOf(initialFilterState) }
 
     val categoryOptions = listOf(
-        "IT & Telecommunication",
-        "Creative / Graphics / Designing",
         "Accounting / Finance",
-        "Sales / Public Relations",
-        "General Management"
+        "Architecture / Interior Designing",
+        "Banking / Insurance / Financial Services",
+        "Commercial / Logistics / Supply Chain",
+        "Construction / Engineering / Architects",
+        "Fashion / Textile Designing",
+        "General Management",
+        "IT & Software",
+        "Marketing & Sales",
+        "Human Resources"
     )
     val jobTypeOptions = listOf("Full Time", "Part Time", "Internship", "Contract", "Remote")
     val experienceOptions = listOf("Fresher", "1-2 years", "3-5 years", "5+ years")
@@ -678,89 +762,13 @@ fun JobsTabContent(
     onFilterStateChange: (JobFilterState) -> Unit,
     showFilterSheet: Boolean,
     onShowFilterSheetChange: (Boolean) -> Unit,
-    allJobs: List<JobModel>,
+    filteredJobsWithCompany: List<JobPostWithCompany>,
     isLoading: Boolean,
-    companyDetailsMap: Map<String, CompanyModel>,
     context: android.content.Context,
     activeFiltersCount: Int
 ) {
     val savedJobViewModel = remember { SavedJobViewModel(SavedJobRepoImpl()) }
     val savedJobIds by savedJobViewModel.savedJobIds.observeAsState(emptySet())
-
-    val filteredJobs = remember(allJobs, searchQuery, filterState, companyDetailsMap) {
-        // First check if any filters are applied
-        val hasActiveFilters = searchQuery.isNotEmpty() ||
-            filterState.selectedCategories.isNotEmpty() ||
-            filterState.selectedJobTypes.isNotEmpty() ||
-            filterState.selectedExperience.isNotEmpty() ||
-            filterState.selectedEducation.isNotEmpty() ||
-            filterState.minSalary.isNotEmpty() ||
-            filterState.maxSalary.isNotEmpty() ||
-            filterState.location.isNotEmpty()
-
-        if (!hasActiveFilters) {
-            // No filters applied - show all jobs
-            allJobs
-        } else {
-            // Filters applied - filter jobs
-            val filteredResults = allJobs.filter { job ->
-                val companyName = companyDetailsMap[job.companyId]?.companyName ?: ""
-
-                val matchesSearch = searchQuery.isEmpty() ||
-                    listOf(job.title, job.position, job.jobDescription, job.skills, companyName)
-                        .any { it.contains(searchQuery, ignoreCase = true) }
-
-                val matchesCategories = filterState.selectedCategories.isEmpty() ||
-                    filterState.selectedCategories.any { job.categories.contains(it) }
-
-                val matchesJobType = filterState.selectedJobTypes.isEmpty() ||
-                    filterState.selectedJobTypes.contains(job.jobType)
-
-                val matchesExperience = filterState.selectedExperience.isEmpty() ||
-                    job.experience.contains(filterState.selectedExperience, ignoreCase = true)
-
-                val matchesEducation = filterState.selectedEducation.isEmpty() ||
-                    filterState.selectedEducation.any { job.education.contains(it, ignoreCase = true) }
-
-                val matchesSalary = when {
-                    filterState.minSalary.isEmpty() && filterState.maxSalary.isEmpty() -> true
-                    else -> {
-                        val jobSalary = extractSalaryValue(job.salary)
-                        val min = filterState.minSalary.replace(",", "").toDoubleOrNull() ?: 0.0
-                        val max = filterState.maxSalary.replace(",", "").toDoubleOrNull() ?: Double.MAX_VALUE
-                        jobSalary in min..max
-                    }
-                }
-
-                val matchesLocation = filterState.location.isEmpty() ||
-                    (job.jobDescription.contains(filterState.location, ignoreCase = true) ||
-                     companyName.contains(filterState.location, ignoreCase = true))
-
-                matchesSearch && matchesCategories && matchesJobType &&
-                    matchesExperience && matchesEducation && matchesSalary && matchesLocation
-            }
-
-            // If no jobs match the filters, show all jobs to ensure company jobs are visible
-            if (filteredResults.isEmpty() && allJobs.isNotEmpty()) {
-                allJobs
-            } else {
-                filteredResults
-            }
-        }
-    }
-
-    // Map filtered jobs to JobPostWithCompany
-    val filteredJobsWithCompany = remember(filteredJobs, companyDetailsMap) {
-        filteredJobs.map { job ->
-            val companyInfo = companyDetailsMap[job.companyId]
-            JobPostWithCompany(
-                jobPost = job,
-                companyName = companyInfo?.companyName ?: "",
-                companyProfile = companyInfo?.companyProfileImage ?: "",
-                isLoading = companyInfo == null
-            )
-        }
-    }
 
     // Search Results
     if (isLoading) {

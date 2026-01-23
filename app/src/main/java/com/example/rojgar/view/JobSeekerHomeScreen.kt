@@ -4,7 +4,6 @@ import android.content.Intent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -108,6 +108,10 @@ import com.example.rojgar.viewmodel.ReferenceViewModel
 import com.example.rojgar.viewmodel.SkillViewModel
 import com.example.rojgar.viewmodel.TrainingViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.example.rojgar.view.CalendarActivity
+import com.example.rojgar.repository.CalendarRepoImpl
+import com.example.rojgar.viewmodel.CalendarViewModel
+import com.example.rojgar.model.CalendarEventModel
 
 // Filter State Data Class
 
@@ -115,7 +119,8 @@ import com.google.firebase.auth.FirebaseAuth
 fun JobSeekerHomeScreenBody() {
 
     val context = LocalContext.current
-    
+    val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
+
     // Initialize all ViewModels
     val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
     val jobSeekerRepo = JobSeekerRepoImpl()
@@ -129,6 +134,7 @@ fun JobSeekerHomeScreenBody() {
     val skillViewModel = remember { SkillViewModel(SkillRepoImpl()) }
     val trainingViewModel = remember { TrainingViewModel(TrainingRepoImpl()) }
     val languageViewModel = remember { LanguageViewModel(LanguageRepoImpl()) }
+    val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl()) }
 
     // Observe LiveData from ViewModels
     val recommendedJobs by jobViewModel.recommendedJobs.observeAsState(emptyList())
@@ -143,6 +149,7 @@ fun JobSeekerHomeScreenBody() {
     val references by referenceViewModel.allReferences.observeAsState(emptyList())
     val skills by skillViewModel.allSkills.observeAsState(emptyList())
     val training by trainingViewModel.allTrainings.observeAsState(emptyList())
+    val events by calendarViewModel.events.observeAsState(emptyList())
 
     var search by remember { mutableStateOf("") }
     var showFilterSheet by remember { mutableStateOf(false) }
@@ -171,6 +178,13 @@ fun JobSeekerHomeScreenBody() {
         }
     }
 
+    // Fetch calendar events for current month
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isNotEmpty()) {
+            calendarViewModel.observeAllEventsForUser(currentUserId)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -190,10 +204,7 @@ fun JobSeekerHomeScreenBody() {
                 modifier = Modifier
                     .height(50.dp)
                     .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
+                    .clickable {
                         context.startActivity(
                             Intent(context, JobSeekerSearchActivity::class.java)
                         )
@@ -258,50 +269,28 @@ fun JobSeekerHomeScreenBody() {
                 modifier = Modifier
                     .height(200.dp)
                     .weight(1f)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            // TODO: Navigate to profile screen
-                        }
-                    )
+                    .clickable {
+                        // TODO: Navigate to profile screen
+                    }
             )
 
-            // Calendar Card
+            // Events Card
             Card(
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .height(200.dp)
-                    .weight(1f)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            // TODO: Navigate to calendar screen
-                        }
-                    ),
+                    .weight(1f),
                 colors = CardDefaults.cardColors(
                     containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 2.dp
                 )
             ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.filter), // Replace with calendar icon
-                        contentDescription = "Calendar",
-                        modifier = Modifier.size(48.dp),
-                        tint = Purple
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "Calendar", style = TextStyle(
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.DarkGray
-                        )
+                Column(modifier = Modifier.padding(16.dp)) {
+                    MiniEventList(
+                        events = events,
+                        maxItems = 3
                     )
                 }
             }
