@@ -13,9 +13,15 @@ sealed class ChatItem {
 
     data class Private(val chatRoom: ChatRoom, val otherUserId: String) : ChatItem() {
         override val id = chatRoom.chatId
-        // Logic to pick the OTHER person's name/image
-        override val name = if (chatRoom.participant1Id == otherUserId) chatRoom.participant1Name else chatRoom.participant2Name
-        override val image = if (chatRoom.participant1Id == otherUserId) chatRoom.participant1Photo else chatRoom.participant2Photo
+
+        // Get the other person's name
+        override val name = if (chatRoom.participant1Id == otherUserId)
+            chatRoom.participant1Name else chatRoom.participant2Name
+
+        // Get the other person's image URL
+        override val image = if (chatRoom.participant1Id == otherUserId)
+            chatRoom.participant1Photo else chatRoom.participant2Photo
+
         override val lastMessage = chatRoom.lastMessage
         override val lastMessageTime = chatRoom.lastMessageTime
         override val unreadCount = chatRoom.unreadCount

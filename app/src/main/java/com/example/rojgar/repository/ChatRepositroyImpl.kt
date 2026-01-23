@@ -118,6 +118,8 @@ class ChatRepositoryImpl : ChatRepository {
         participant2Id: String,
         participant1Name: String,
         participant2Name: String,
+        participant1Photo: String,
+        participant2Photo: String,
         callback: (Boolean, String, ChatRoom?) -> Unit
     ) {
         val chatId = generateChatId(participant1Id, participant2Id)
@@ -134,6 +136,8 @@ class ChatRepositoryImpl : ChatRepository {
                         participant2Id = participant2Id,
                         participant1Name = participant1Name,
                         participant2Name = participant2Name,
+                        participant1Photo = participant1Photo,
+                        participant2Photo = participant2Photo,
                         lastMessage = "",
                         lastMessageTime = System.currentTimeMillis(),
                         createdAt = System.currentTimeMillis()

@@ -76,6 +76,8 @@ class ChatViewModel(private val chatRepository: ChatRepository,
         participant2Id: String,
         participant1Name: String,
         participant2Name: String,
+        participant1Photo: String,
+        participant2Photo: String,
         onSuccess: (ChatRoom) -> Unit = {}
     ) {
         _loading.value = true
@@ -84,7 +86,9 @@ class ChatViewModel(private val chatRepository: ChatRepository,
                 participant1Id = participant1Id,
                 participant2Id = participant2Id,
                 participant1Name = participant1Name,
-                participant2Name = participant2Name
+                participant2Name = participant2Name,
+                participant1Photo = participant1Photo,
+                participant2Photo = participant2Photo
             ) { success, message, chatRoom ->
                 _loading.value = false
                 if (success && chatRoom != null) {

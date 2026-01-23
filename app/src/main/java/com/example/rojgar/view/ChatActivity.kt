@@ -102,6 +102,7 @@ class ChatActivity : ComponentActivity() {
 
         val receiverId = intent.getStringExtra("receiverId") ?: ""
         val receiverName = intent.getStringExtra("receiverName") ?: "User"
+        val receiverImage = intent.getStringExtra("receiverImage") ?:""
         val currentUserId = intent.getStringExtra("currentUserId") ?: ""
         val currentUserName = intent.getStringExtra("currentUserName") ?: ""
 
@@ -109,12 +110,15 @@ class ChatActivity : ComponentActivity() {
             participant1Id = currentUserId,
             participant2Id = receiverId,
             participant1Name = currentUserName,
-            participant2Name = receiverName
+            participant2Name = receiverName,
+            participant1Photo = "",
+            participant2Photo = receiverImage
         )
 
         setContent {
             ChatBody(
                 receiverName = receiverName,
+                receiverImage = receiverImage,
                 receiverId = receiverId,
                 currentUserId = currentUserId,
                 currentUserName = currentUserName,
@@ -142,6 +146,7 @@ class ChatActivity : ComponentActivity() {
 @Composable
 fun ChatBody(
     receiverName: String,
+    receiverImage: String,
     receiverId: String,
     currentUserId: String,
     currentUserName: String,
@@ -238,7 +243,7 @@ fun ChatBody(
                     senderId = currentUserId,
                     receiverId = receiverId,
                     senderName = currentUserName,
-                    receiverName = receiverName
+                    receiverName = receiverName,
                 )
             }
         }
@@ -287,6 +292,7 @@ fun ChatBody(
         topBar = {
             ChatTopAppBar(
                 receiverName = receiverName,
+                receiverImage = receiverImage,
                 isReceiverTyping = isReceiverTyping,
                 onBackClick = { activity?.finish() },
                 onCallClick = { /* TODO */ },
@@ -608,6 +614,7 @@ fun RecordingBar(
 @Composable
 fun ChatTopAppBar(
     receiverName: String,
+    receiverImage: String,
     isReceiverTyping: Boolean,
     onBackClick: () -> Unit,
     onCallClick: () -> Unit,
@@ -654,8 +661,8 @@ fun ChatTopAppBar(
                         .clip(CircleShape)
                         .background(Color.White)
                 ) {
-                    Image(
-                        painter = painterResource(R.drawable.sampleimage),
+                    AsyncImage(
+                        model = receiverImage,
                         contentDescription = "Profile",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
