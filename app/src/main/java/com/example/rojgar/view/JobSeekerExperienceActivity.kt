@@ -2,7 +2,6 @@ package com.example.rojgar.view
 
 import android.app.Activity
 import android.app.DatePickerDialog
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -14,7 +13,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -45,7 +43,6 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.rojgar.R
 import com.example.rojgar.model.ExperienceModel
 import com.example.rojgar.repository.ExperienceRepoImpl
-import com.example.rojgar.ui.theme.*
 import com.example.rojgar.viewmodel.ExperienceViewModel
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
@@ -503,7 +500,7 @@ fun JobSeekerExperienceBody() {
 
                         ModernAddButton(
                             onClick = { openAddForm() },
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)
+                            text = if (experiences.isEmpty()) "Add Experience" else "Add Another",
                         )
                     } else {
                         LazyColumn(
@@ -529,8 +526,10 @@ fun JobSeekerExperienceBody() {
 
                         ModernAddButton(
                             onClick = { openAddForm() },
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)
+                            text = if (experiences.isEmpty()) "Add Experience" else "Add Another",
                         )
+                        Spacer(modifier = Modifier.height(24.dp))
+
                     }
                 }
             }
@@ -707,68 +706,6 @@ fun ModernExperienceCard(
     }
 }
 
-@Composable
-fun ModernAddButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var isPressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        )
-    )
-
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Button(
-            onClick = {
-                isPressed = true
-                onClick()
-            },
-            modifier = Modifier
-                .width(200.dp)
-                .height(56.dp)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF2196F3)
-            ),
-            shape = RoundedCornerShape(16.dp),
-            elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 4.dp,
-                pressedElevation = 8.dp
-            )
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.addexperience),
-                contentDescription = "Add",
-                modifier = Modifier.size(24.dp),
-                tint = Color.White
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "Add Experience",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-        }
-    }
-
-    LaunchedEffect(isPressed) {
-        if (isPressed) {
-            delay(150)
-            isPressed = false
-        }
-    }
-}
 
 @Composable
 fun ModernDetailDialog(
