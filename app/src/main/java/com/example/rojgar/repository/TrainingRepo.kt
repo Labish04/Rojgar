@@ -1,5 +1,7 @@
 package com.example.rojgar.repository
 
+import android.content.Context
+import android.net.Uri
 import com.example.rojgar.model.TrainingModel
 
 interface TrainingRepo {
@@ -28,4 +30,12 @@ interface TrainingRepo {
         trainingId: String,
         callback: (Boolean, String, TrainingModel?) -> Unit
     )
+
+    fun uploadCertificateImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    )
+
+    fun getFileNameFromUri(context: Context, imageUri: Uri): String?
 }

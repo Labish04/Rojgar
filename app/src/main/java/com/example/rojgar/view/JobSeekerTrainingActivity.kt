@@ -12,7 +12,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -44,7 +43,6 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.rojgar.R
 import com.example.rojgar.model.TrainingModel
 import com.example.rojgar.repository.TrainingRepoImpl
-import com.example.rojgar.ui.theme.*
 import com.example.rojgar.viewmodel.TrainingViewModel
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
@@ -77,6 +75,7 @@ fun JobSeekerTrainingBody() {
     var isEditing by remember { mutableStateOf(false) }
     var selectedTraining by remember { mutableStateOf<TrainingModel?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+    var isUploading by remember { mutableStateOf(false) }
     var showContent by remember { mutableStateOf(false) }
     var topBarVisible by remember { mutableStateOf(false) }
 
@@ -87,6 +86,8 @@ fun JobSeekerTrainingBody() {
     var completionDate by remember { mutableStateOf("") }
     var certificateUri by remember { mutableStateOf<Uri?>(null) }
     var certificateName by remember { mutableStateOf("") }
+    var certificateUrl by remember { mutableStateOf("") }
+    var isUploadingCertificate by remember { mutableStateOf(false) }
 
     var currentTrainingId by remember { mutableStateOf("") }
     var showDeleteAlert by remember { mutableStateOf(false) }
@@ -101,12 +102,14 @@ fun JobSeekerTrainingBody() {
 
     var showDatePicker by remember { mutableStateOf(false) }
 
+    // Gallery launcher for certificate
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
             certificateUri = it
-            certificateName = "Certificate uploaded"
+            certificateName = "Certificate selected"
+            certificateUrl = "" // Clear previous URL when new file is selected
         }
     }
 
@@ -141,8 +144,10 @@ fun JobSeekerTrainingBody() {
         completionDate = ""
         certificateUri = null
         certificateName = ""
+        certificateUrl = ""
         currentTrainingId = ""
         isEditing = false
+        isUploadingCertificate = false
     }
 
     fun openAddForm() {
@@ -157,17 +162,15 @@ fun JobSeekerTrainingBody() {
         durationType = training.durationType
         completionDate = training.completionDate
         certificateName = if (training.certificate.isNotEmpty()) "Certificate uploaded" else ""
+        certificateUrl = training.certificate
         currentTrainingId = training.trainingId
         isEditing = true
         showTrainingSheet = true
     }
 
-    fun saveTraining() {
-        if (trainingName.isEmpty() || instituteName.isEmpty() || duration.isEmpty() || completionDate.isEmpty()) {
-            Toast.makeText(context, "Please fill all required fields", Toast.LENGTH_SHORT).show()
-            return
-        }
 
+
+    fun saveTraining(certificateImageUrl: String) {
         val trainingModel = TrainingModel(
             trainingId = if (isEditing) currentTrainingId else "",
             trainingName = trainingName,
@@ -175,7 +178,7 @@ fun JobSeekerTrainingBody() {
             duration = duration,
             durationType = durationType,
             completionDate = completionDate,
-            certificate = certificateUri?.toString() ?: "",
+            certificate = certificateImageUrl,
             jobSeekerId = jobSeekerId
         )
 
@@ -211,7 +214,30 @@ fun JobSeekerTrainingBody() {
             }
         }
     }
+    fun uploadCertificateAndSave() {
+        if (trainingName.isEmpty() || instituteName.isEmpty() || duration.isEmpty() || completionDate.isEmpty()) {
+            Toast.makeText(context, "Please fill all required fields", Toast.LENGTH_SHORT).show()
+            return
+        }
 
+        isUploadingCertificate = true
+
+        if (certificateUri != null) {
+            // Upload new certificate
+            trainingViewModel.uploadCertificateImage(context, certificateUri!!) { uploadedUrl ->
+                isUploadingCertificate = false
+                if (uploadedUrl != null) {
+                    saveTraining(uploadedUrl)
+                } else {
+                    Toast.makeText(context, "Failed to upload certificate", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            // Use existing URL or empty if no certificate
+            isUploadingCertificate = false
+            saveTraining(certificateUrl)
+        }
+    }
     fun deleteTraining(trainingId: String) {
         trainingToDelete = trainingId
         showDeleteAlert = true
@@ -583,6 +609,7 @@ fun JobSeekerTrainingBody() {
             completionDate = completionDate,
             certificateName = certificateName,
             durationTypes = durationTypes,
+            isUploadingCertificate = isUploadingCertificate || isUploading,
             onTrainingNameChange = { trainingName = it },
             onInstituteNameChange = { instituteName = it },
             onDurationChange = { duration = it },
@@ -593,7 +620,7 @@ fun JobSeekerTrainingBody() {
                 showTrainingSheet = false
                 resetForm()
             },
-            onSave = { saveTraining() }
+            onSave = { uploadCertificateAndSave() }
         )
     }
 }
@@ -861,7 +888,8 @@ fun ModernTrainingFormDialog(
     onCompletionDateClick: () -> Unit,
     onCertificateClick: () -> Unit,
     onDismiss: () -> Unit,
-    onSave: () -> Unit
+    onSave: () -> Unit,
+    isUploadingCertificate: Boolean
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -1000,6 +1028,7 @@ fun ModernTrainingFormDialog(
                     // Certificate Upload Field
                     ModernTrainingFileUpload(
                         fileName = certificateName,
+                        isUploading = isUploadingCertificate,
                         onUploadClick = onCertificateClick
                     )
                 }
@@ -1018,7 +1047,8 @@ fun ModernTrainingFormDialog(
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color(0xFF78909C)
-                        )
+                        ),
+                        enabled = !isUploadingCertificate
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.outline_arrow_back_ios_24),
@@ -1039,13 +1069,22 @@ fun ModernTrainingFormDialog(
                         elevation = ButtonDefaults.buttonElevation(
                             defaultElevation = 4.dp,
                             pressedElevation = 8.dp
-                        )
+                        ),
+                        enabled = !isUploadingCertificate
                     ) {
-                        Text(
-                            text = if (isEditing) "Update" else "Save",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (isUploadingCertificate) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        } else {
+                            Text(
+                                text = if (isEditing) "Update" else "Save",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -1126,11 +1165,12 @@ fun ModernTrainingDateField(
 
 @Composable
 fun ModernTrainingFileUpload(
+    isUploading: Boolean,
     fileName: String,
     onUploadClick: () -> Unit
 ) {
     OutlinedTextField(
-        value = fileName,
+        value = if (isUploading) "Uploading..." else fileName,
         onValueChange = {},
         readOnly = true,
         label = { Text("Certificate (Optional)") },
@@ -1143,28 +1183,35 @@ fun ModernTrainingFileUpload(
             )
         },
         trailingIcon = {
-            Surface(
-                modifier = Modifier.size(40.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = Color(0xFF2196F3).copy(alpha = 0.1f)
-            ) {
-                IconButton(
-                    onClick = onUploadClick,
-                    modifier = Modifier.fillMaxSize()
+            if (isUploading) {
+                CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(20.dp)
+                )
+            }else {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF2196F3).copy(alpha = 0.1f)
                 ) {
-                    Icon(
-                        painterResource(R.drawable.baseline_upload_24),
-                        contentDescription = null,
-                        tint = Color(0xFF2196F3),
-                        modifier = Modifier.size(20.dp)
-                    )
+                    IconButton(
+                        onClick = onUploadClick,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.baseline_upload_24),
+                            contentDescription = null,
+                            tint = Color(0xFF2196F3),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         },
         modifier = Modifier
             .fillMaxWidth()
             .height(60.dp)
-            .clickable { onUploadClick() },
+            .clickable(enabled = !isUploading) { onUploadClick() },
         shape = RoundedCornerShape(16.dp),
         colors = OutlinedTextFieldDefaults.colors(
             disabledBorderColor = Color(0xFFE0E0E0),
