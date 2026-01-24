@@ -83,6 +83,9 @@ fun JobSeekerExperienceBody() {
     var endDate by remember { mutableStateOf("") }
     var currentlyWorking by remember { mutableStateOf(false) }
     var experienceLetterUrl by remember { mutableStateOf("") }
+    var isUploadingExperienceLetter by remember { mutableStateOf(false) }
+    var selectedExperienceLetterUri by remember { mutableStateOf<Uri?>(null) }
+    var experienceLetterFileName by remember { mutableStateOf("") }
 
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
@@ -94,8 +97,10 @@ fun JobSeekerExperienceBody() {
 
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        selectedImageUri = uri
-        experienceLetterUrl = uri?.toString() ?: ""
+        uri?.let {
+            selectedExperienceLetterUri = it
+            experienceLetterFileName = it.lastPathSegment ?: "Experience Letter"
+        }
     }
 
     var expandedCategory by remember { mutableStateOf(false) }
@@ -140,9 +145,11 @@ fun JobSeekerExperienceBody() {
         endDate = ""
         currentlyWorking = false
         experienceLetterUrl = ""
-        selectedImageUri = null
+        selectedExperienceLetterUri = null
+        experienceLetterFileName = ""
         currentExperienceId = ""
         isEditing = false
+        isUploadingExperienceLetter = false
     }
 
     fun openAddForm() {
@@ -159,58 +166,90 @@ fun JobSeekerExperienceBody() {
         endDate = experience.endDate
         currentlyWorking = experience.isCurrentlyWorking
         experienceLetterUrl = experience.experienceLetter
+        experienceLetterFileName = if (experience.experienceLetter.isNotEmpty()) "Experience Letter Uploaded" else ""
         currentExperienceId = experience.experienceId
         isEditing = true
         showSheet = true
     }
-
     fun saveExperience() {
         if (companyName.isEmpty() || jobTitle.isEmpty() || startDate.isEmpty()) {
             Toast.makeText(context, "Please fill required fields", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val experienceModel = ExperienceModel(
-            experienceId = if (isEditing) currentExperienceId else "",
-            companyName = companyName,
-            title = jobTitle,
-            jobCategory = selectedCategory,
-            level = jobLevel,
-            startDate = startDate,
-            endDate = if (currentlyWorking) "" else endDate,
-            isCurrentlyWorking = currentlyWorking,
-            experienceLetter = experienceLetterUrl,
-            jobSeekerId = jobSeekerId
-        )
-
-        if (isEditing) {
-            experienceViewModel.updateExperience(currentExperienceId, experienceModel) { success, message ->
-                if (success) {
-                    Toast.makeText(context, "Experience updated", Toast.LENGTH_SHORT).show()
-                    experienceViewModel.getExperiencesByJobSeekerId(jobSeekerId) { _, _, expList ->
-                        expList?.let { experiences = it }
+        fun saveOrUpdateExperience(experienceModel: ExperienceModel) {
+            if (isEditing) {
+                experienceViewModel.updateExperience(currentExperienceId, experienceModel) { success, message ->
+                    if (success) {
+                        Toast.makeText(context, "Experience updated", Toast.LENGTH_SHORT).show()
+                        experienceViewModel.getExperiencesByJobSeekerId(jobSeekerId) { _, _, expList ->
+                            expList?.let { experiences = it }
+                        }
+                        showSheet = false
+                        resetForm()
+                    } else {
+                        Toast.makeText(context, "Update failed: $message", Toast.LENGTH_SHORT).show()
                     }
-                    showSheet = false
-                    resetForm()
-                } else {
-                    Toast.makeText(context, "Update failed: $message", Toast.LENGTH_SHORT).show()
                 }
-            }
-        } else {
-            experienceViewModel.addExperience(experienceModel) { success, message ->
-                if (success) {
-                    Toast.makeText(context, "Experience added", Toast.LENGTH_SHORT).show()
-                    experienceViewModel.getExperiencesByJobSeekerId(jobSeekerId) { _, _, expList ->
-                        expList?.let { experiences = it }
+            } else {
+                experienceViewModel.addExperience(experienceModel) { success, message ->
+                    if (success) {
+                        Toast.makeText(context, "Experience added", Toast.LENGTH_SHORT).show()
+                        experienceViewModel.getExperiencesByJobSeekerId(jobSeekerId) { _, _, expList ->
+                            expList?.let { experiences = it }
+                        }
+                        showSheet = false
+                        resetForm()
+                    } else {
+                        Toast.makeText(context, "Add failed: $message", Toast.LENGTH_SHORT).show()
                     }
-                    showSheet = false
-                    resetForm()
-                } else {
-                    Toast.makeText(context, "Add failed: $message", Toast.LENGTH_SHORT).show()
                 }
             }
         }
+
+        // First upload image if selected
+        if (selectedExperienceLetterUri != null) {
+            isUploadingExperienceLetter = true
+            experienceViewModel.uploadExperienceLetterImage(context, selectedExperienceLetterUri!!) { uploadedUrl ->
+                isUploadingExperienceLetter = false
+                if (uploadedUrl != null) {
+                    // Image uploaded successfully, now save experience with the URL
+                    val experienceModel = ExperienceModel(
+                        experienceId = if (isEditing) currentExperienceId else "",
+                        companyName = companyName,
+                        title = jobTitle,
+                        jobCategory = selectedCategory,
+                        level = jobLevel,
+                        startDate = startDate,
+                        endDate = if (currentlyWorking) "" else endDate,
+                        isCurrentlyWorking = currentlyWorking,
+                        experienceLetter = uploadedUrl,
+                        jobSeekerId = jobSeekerId
+                    )
+                    saveOrUpdateExperience(experienceModel)
+                } else {
+                    Toast.makeText(context, "Failed to upload experience letter", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            // No image to upload, use existing URL
+            val experienceModel = ExperienceModel(
+                experienceId = if (isEditing) currentExperienceId else "",
+                companyName = companyName,
+                title = jobTitle,
+                jobCategory = selectedCategory,
+                level = jobLevel,
+                startDate = startDate,
+                endDate = if (currentlyWorking) "" else endDate,
+                isCurrentlyWorking = currentlyWorking,
+                experienceLetter = experienceLetterUrl,
+                jobSeekerId = jobSeekerId
+            )
+            saveOrUpdateExperience(experienceModel)
+        }
     }
+
+
 
     fun deleteExperience(experienceId: String) {
         experienceToDelete = experienceId
@@ -578,7 +617,9 @@ fun JobSeekerExperienceBody() {
                 currentlyWorking = it
                 if (it) endDate = ""
             },
-            selectedImageUri = selectedImageUri,
+            selectedImageUri = selectedExperienceLetterUri,
+            imageFileName = experienceLetterFileName,
+            isUploadingImage = isUploadingExperienceLetter,
             onImageSelect = { launcher.launch("image/*") },
             onDismiss = {
                 showSheet = false
@@ -905,6 +946,8 @@ fun ModernExperienceFormDialog(
     currentlyWorking: Boolean,
     onCurrentlyWorkingChange: (Boolean) -> Unit,
     selectedImageUri: Uri?,
+    imageFileName: String,
+    isUploadingImage: Boolean,
     onImageSelect: () -> Unit,
     onDismiss: () -> Unit,
     onSave: () -> Unit
@@ -916,7 +959,7 @@ fun ModernExperienceFormDialog(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.85f)
+                .fillMaxHeight(0.80f)
                 .padding(16.dp)
                 .shadow(16.dp, RoundedCornerShape(24.dp)),
             shape = RoundedCornerShape(24.dp),
@@ -1023,7 +1066,8 @@ fun ModernExperienceFormDialog(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     ModernFileUpload(
-                        fileName = selectedImageUri?.lastPathSegment ?: "No file chosen",
+                        fileName = imageFileName,
+                        isUploading = isUploadingImage,
                         onUploadClick = onImageSelect
                     )
                 }
@@ -1042,7 +1086,8 @@ fun ModernExperienceFormDialog(
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color(0xFF78909C)
-                        )
+                        ),
+                        enabled = !isUploadingImage
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.outline_arrow_back_ios_24),
@@ -1063,13 +1108,22 @@ fun ModernExperienceFormDialog(
                         elevation = ButtonDefaults.buttonElevation(
                             defaultElevation = 4.dp,
                             pressedElevation = 8.dp
-                        )
+                        ),
+                        enabled = !isUploadingImage
                     ) {
-                        Text(
-                            text = if (isEditing) "Update" else "Save",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (isUploadingImage) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        } else {
+                            Text(
+                                text = if (isEditing) "Update" else "Save",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -1188,67 +1242,90 @@ fun ModernDateField(
     enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = {},
-        readOnly = true,
-        enabled = enabled,
-        label = { Text(label) },
-        leadingIcon = {
-            Icon(
-                painter = painterResource(R.drawable.calendaricon),
-                contentDescription = null,
-                tint = if (enabled) Color(0xFF2196F3) else Color(0xFFBDBDBD),
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable(enabled) { onClick() }
-            )
-        },
+    Box(
         modifier = modifier
-            .height(60.dp)
-            .clickable(enabled) { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            disabledBorderColor = Color(0xFFE0E0E0),
-            disabledContainerColor = Color.White,
-            disabledTextColor = Color(0xFF263238),
-            disabledLabelColor = Color(0xFF78909C)
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            readOnly = true,
+            enabled = false,
+            label = { Text(label) },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.calendaricon),
+                    contentDescription = null,
+                    tint = if (enabled) Color(0xFF2196F3) else Color(0xFFBDBDBD),
+                    modifier = Modifier.size(24.dp)
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledBorderColor =
+                    if (enabled) Color(0xFF2196F3) else Color(0xFFE0E0E0),
+                disabledContainerColor = Color.White,
+                disabledTextColor = Color(0xFF263238),
+                disabledLabelColor = Color(0xFF78909C)
+            )
         )
-    )
+    }
 }
+
 
 @Composable
 fun ModernFileUpload(
     fileName: String,
+    isUploading: Boolean,
     onUploadClick: () -> Unit
 ) {
     OutlinedTextField(
-        value = fileName,
+        value = if (isUploading) "Uploading..." else fileName.ifEmpty { "No file chosen" },
         onValueChange = {},
         readOnly = true,
-        label = { Text("Experience Letter") },
+        label = { Text("Experience Letter (Optional)") },
+        leadingIcon = {
+            Icon(
+                painter = painterResource(R.drawable.baseline_upload_24),
+                contentDescription = null,
+                tint = Color(0xFF2196F3),
+                modifier = Modifier.size(24.dp)
+            )
+        },
         trailingIcon = {
-            Surface(
-                modifier = Modifier.size(40.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = Color(0xFF2196F3).copy(alpha = 0.1f)
-            ) {
-                IconButton(
-                    onClick = onUploadClick,
-                    modifier = Modifier.fillMaxSize()
+            if (isUploading) {
+                CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(20.dp)
+                )
+            } else {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF2196F3).copy(alpha = 0.1f)
                 ) {
-                    Icon(
-                        painterResource(R.drawable.baseline_upload_24),
-                        contentDescription = null,
-                        tint = Color(0xFF2196F3),
-                        modifier = Modifier.size(20.dp)
-                    )
+                    IconButton(
+                        onClick = onUploadClick,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.baseline_upload_24),
+                            contentDescription = null,
+                            tint = Color(0xFF2196F3),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         },
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp),
+            .height(60.dp)
+            .clickable(enabled = !isUploading) { onUploadClick() },
         shape = RoundedCornerShape(16.dp),
         colors = OutlinedTextFieldDefaults.colors(
             disabledBorderColor = Color(0xFFE0E0E0),

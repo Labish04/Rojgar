@@ -1,5 +1,7 @@
 package com.example.rojgar.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -15,6 +17,8 @@ class ExperienceViewModel(private val repo: ExperienceRepo) {
     private val _allExperiences = MutableLiveData<List<ExperienceModel>?>()
     val allExperiences : MutableLiveData<List<ExperienceModel>?> get() = _allExperiences
 
+    private val _uploading = MutableLiveData(false)
+    val uploading: LiveData<Boolean> = _uploading
     fun addExperience(
         experience: ExperienceModel,
         callback: (Boolean, String) -> Unit
@@ -67,4 +71,21 @@ class ExperienceViewModel(private val repo: ExperienceRepo) {
             }
         }
     }
+
+    fun uploadExperienceLetterImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    ) {
+        _uploading.value = true
+        repo.uploadExperienceLetterImage(context, imageUri) { url ->
+            _uploading.value = false
+            callback(url)
+        }
+    }
+
+    fun getFileNameFromUri(context: Context, imageUri: Uri): String? {
+        return repo.getFileNameFromUri(context, imageUri)
+    }
+
 }

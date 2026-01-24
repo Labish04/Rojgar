@@ -1348,32 +1348,38 @@ fun ModernEducationDateField(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = {},
-        readOnly = true,
-        label = { Text(label) },
-        leadingIcon = {
-            Icon(
-                painter = painterResource(R.drawable.calendaricon),
-                contentDescription = null,
-                tint = if (enabled) Color(0xFF2196F3) else Color(0xFFB0BEC5),
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable(enabled = enabled) { onClick() }
-            )
-        },
+    Box(
         modifier = modifier
-            .height(60.dp)
-            .clickable(enabled = enabled) { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            disabledBorderColor = Color(0xFFE0E0E0),
-            disabledContainerColor = Color.White,
-            disabledTextColor = if (enabled) Color(0xFF263238) else Color(0xFFB0BEC5),
-            disabledLabelColor = if (enabled) Color(0xFF78909C) else Color(0xFFB0BEC5)
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            readOnly = true,
+            enabled = false,
+            label = { Text(label) },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.calendaricon),
+                    contentDescription = null,
+                    tint = if (enabled) Color(0xFF2196F3) else Color(0xFFBDBDBD),
+                    modifier = Modifier.size(24.dp)
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledBorderColor =
+                    if (enabled) Color(0xFF2196F3) else Color(0xFFE0E0E0),
+                disabledContainerColor = Color.White,
+                disabledTextColor = Color(0xFF263238),
+                disabledLabelColor = Color(0xFF78909C)
+            )
         )
-    )
+    }
 }
 
 @Composable
