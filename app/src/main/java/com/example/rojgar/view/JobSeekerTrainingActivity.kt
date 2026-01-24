@@ -1135,32 +1135,38 @@ fun ModernTrainingDateField(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = {},
-        readOnly = true,
-        label = { Text(label) },
-        leadingIcon = {
-            Icon(
-                painter = painterResource(R.drawable.calendaricon),
-                contentDescription = null,
-                tint = Color(0xFF2196F3),
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable { onClick() }
-            )
-        },
+    Box(
         modifier = modifier
-            .height(60.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            disabledBorderColor = Color(0xFFE0E0E0),
-            disabledContainerColor = Color.White,
-            disabledTextColor = Color(0xFF263238),
-            disabledLabelColor = Color(0xFF78909C)
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            enabled = false,
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.calendaricon),
+                    contentDescription = null,
+                    tint = Color(0xFF2196F3),
+                    modifier = Modifier
+                        .size(24.dp)
+
+                )
+            },
+            modifier = modifier
+                .height(60.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledBorderColor = Color(0xFFE0E0E0),
+                disabledContainerColor = Color.White,
+                disabledTextColor = Color(0xFF263238),
+                disabledLabelColor = Color(0xFF78909C)
+            )
         )
-    )
+    }
 }
 
 @Composable
