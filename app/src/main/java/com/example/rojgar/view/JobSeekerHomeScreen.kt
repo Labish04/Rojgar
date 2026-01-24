@@ -26,6 +26,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -34,8 +35,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -112,9 +115,11 @@ import com.example.rojgar.view.CalendarActivity
 import com.example.rojgar.repository.CalendarRepoImpl
 import com.example.rojgar.viewmodel.CalendarViewModel
 import com.example.rojgar.model.CalendarEventModel
+import com.example.rojgar.ui.theme.Black
 
 // Filter State Data Class
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobSeekerHomeScreenBody() {
 
@@ -185,245 +190,331 @@ fun JobSeekerHomeScreenBody() {
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Blue)
-    ) {
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Search Bar and Filter Button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            Box(
-                modifier = Modifier
-                    .height(50.dp)
-                    .fillMaxWidth()
-                    .clickable {
-                        context.startActivity(
-                            Intent(context, JobSeekerSearchActivity::class.java)
-                        )
-                    }
-            ) {
-                OutlinedTextField(
-                    value = search,
-                    onValueChange = {},
-                    readOnly = true,
-                    enabled = false, // Important
-                    placeholder = {
-                        Text(
-                            "Search",
-                            fontSize = 20.sp,
-                            color = Color.Gray
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(R.drawable.searchicon),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = Gray
-                        )
-                    },
-                    shape = RoundedCornerShape(15.dp),
-                    colors = TextFieldDefaults.colors(
-                        disabledContainerColor = White,
-                        disabledIndicatorColor = Color.Transparent
+    Scaffold (
+        topBar = {
+                CenterAlignedTopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        titleContentColor = Black,
+                        actionIconContentColor = Black,
+                        containerColor = Blue,
+                        navigationIconContentColor = Black
                     ),
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+                    title = {
+                        Text("")
+                    },
+                    navigationIcon = {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 20.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
 
+                            Box(
+                                modifier = Modifier
+                                    .size(60.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF4CAF50)), // change color if you want
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AsyncImage(
+                                    model = jobSeeker?.profilePhoto,
+                                    contentDescription = "Profile Photo",
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
 
-            Spacer(modifier = Modifier.width(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
 
+                            Column {
+                                Text(
+                                    text = "Hi! ${jobSeeker?.fullName}",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "Let's find your dream job.",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
 
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Cards Row - Profile Completion and Calendar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            // Profile Completion Card
-            ProfileCompletionCard(
-                jobSeeker = jobSeeker ?: JobSeekerModel(),
-                objective = objective,
-                languages = languages,
-                education = education,
-                experience = experience,
-                portfolio = portfolio,
-                preference = userPreference,
-                references = references,
-                skills = skills,
-                training = training,
-                modifier = Modifier
-                    .height(200.dp)
-                    .weight(1f)
-                    .clickable {
-                        // TODO: Navigate to profile screen
+                    },
+                    actions = {
+                        Row(
+                            modifier = Modifier
+                                .width(130.dp)
+                        ) {
+                            IconButton(onClick = {
+                                val intent = Intent(context, MessageActivity::class.java)
+                                context.startActivity(intent)                            }) {
+                                Icon(
+                                    painter = painterResource(R.drawable.chat),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(20.dp))
+                            IconButton(onClick = {}) {
+                                Icon(
+                                    painter = painterResource(R.drawable.notification),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                )
+                            }
+                        }
                     }
-            )
-
-            // Events Card
-            Card(
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .height(200.dp)
-                    .weight(1f),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 2.dp
                 )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    MiniEventList(
-                        events = events,
-                        maxItems = 3
-                    )
-                }
-            }
-        }
 
-        // Recommended Jobs Section
-        Row(
+        },
+    ) { padding ->
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp)
-                .padding(vertical = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .padding(padding)
+                .background(Blue)
         ) {
-            Text(
-                "Recommended Jobs", style = TextStyle(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp
-                )
-            )
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Search Bar and Filter Button
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(end = 20.dp),
-                horizontalArrangement = Arrangement.End
+                    .padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "Show All",
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        color = Purple
-                    ),
-                    modifier = Modifier.clickable {
-                        // TODO: Navigate to all jobs screen
-                    }
-                )
-            }
-        }
 
-        // Jobs List
-        Card(
-            shape = RoundedCornerShape(0.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(horizontal = 20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.Transparent
-            )
-        ) {
-            Column(
+                Box(
+                    modifier = Modifier
+                        .height(50.dp)
+                        .fillMaxWidth()
+                        .clickable {
+                            context.startActivity(
+                                Intent(context, JobSeekerSearchActivity::class.java)
+                            )
+                        }
+                ) {
+                    OutlinedTextField(
+                        value = search,
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false, // Important
+                        placeholder = {
+                            Text(
+                                "Search",
+                                fontSize = 20.sp,
+                                color = Color.Gray
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.searchicon),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = Gray
+                            )
+                        },
+                        shape = RoundedCornerShape(15.dp),
+                        colors = TextFieldDefaults.colors(
+                            disabledContainerColor = White,
+                            disabledIndicatorColor = Color.Transparent
+                        ),
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Cards Row - Profile Completion and Calendar
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(10.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                if (recommendedJobs.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (message.isNotEmpty()) message else "No recommended jobs yet",
-                            color = Color.Gray,
-                            style = TextStyle(fontSize = 16.sp)
+                // Profile Completion Card
+                ProfileCompletionCard(
+                    jobSeeker = jobSeeker ?: JobSeekerModel(),
+                    objective = objective,
+                    languages = languages,
+                    education = education,
+                    experience = experience,
+                    portfolio = portfolio,
+                    preference = userPreference,
+                    references = references,
+                    skills = skills,
+                    training = training,
+                    modifier = Modifier
+                        .height(200.dp)
+                        .weight(1f)
+                        .clickable {
+                            // TODO: Navigate to profile screen
+                        }
+                )
+
+                // Events Card
+                Card(
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .height(200.dp)
+                        .weight(1f),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 2.dp
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        MiniEventList(
+                            events = events,
+                            maxItems = 3
                         )
                     }
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(recommendedJobs.size) { index ->
-                            val job = recommendedJobs[index]
+                }
+            }
 
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        // TODO: Navigate to job details
-                                    },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = Color.White
-                                ),
-                                elevation = CardDefaults.cardElevation(
-                                    defaultElevation = 2.dp
-                                )
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Text(
-                                        text = job.title,
-                                        style = TextStyle(
-                                            fontSize = 18.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.Black
-                                        )
+            // Recommended Jobs Section
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp)
+                    .padding(vertical = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Recommended Jobs", style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 28.sp
+                    )
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 20.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        "Show All",
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            color = Purple
+                        ),
+                        modifier = Modifier.clickable {
+                            // TODO: Navigate to all jobs screen
+                        }
+                    )
+                }
+            }
+
+            // Jobs List
+            Card(
+                shape = RoundedCornerShape(0.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.Transparent
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(10.dp)
+                ) {
+                    if (recommendedJobs.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (message.isNotEmpty()) message else "No recommended jobs yet",
+                                color = Color.Gray,
+                                style = TextStyle(fontSize = 16.sp)
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(recommendedJobs.size) { index ->
+                                val job = recommendedJobs[index]
+
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            // TODO: Navigate to job details
+                                        },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color.White
+                                    ),
+                                    elevation = CardDefaults.cardElevation(
+                                        defaultElevation = 2.dp
                                     )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = job.position,
-                                        style = TextStyle(
-                                            fontSize = 14.sp,
-                                            color = Color.DarkGray
-                                        )
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
                                         Text(
-                                            text = job.jobType,
+                                            text = job.title,
                                             style = TextStyle(
-                                                fontSize = 12.sp,
-                                                color = Purple,
-                                                fontWeight = FontWeight.Medium
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.Black
                                             )
                                         )
+                                        Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = job.salary,
+                                            text = job.position,
                                             style = TextStyle(
                                                 fontSize = 14.sp,
-                                                color = Color(0xFF4CAF50),
-                                                fontWeight = FontWeight.Bold
+                                                color = Color.DarkGray
                                             )
                                         )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = job.jobType,
+                                                style = TextStyle(
+                                                    fontSize = 12.sp,
+                                                    color = Purple,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                            )
+                                            Text(
+                                                text = job.salary,
+                                                style = TextStyle(
+                                                    fontSize = 14.sp,
+                                                    color = Color(0xFF4CAF50),
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = job.skills,
+                                            style = TextStyle(
+                                                fontSize = 12.sp,
+                                                color = Color.Gray
+                                            ),
+                                            maxLines = 2
+                                        )
                                     }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = job.skills,
-                                        style = TextStyle(
-                                            fontSize = 12.sp,
-                                            color = Color.Gray
-                                        ),
-                                        maxLines = 2
-                                    )
                                 }
                             }
                         }

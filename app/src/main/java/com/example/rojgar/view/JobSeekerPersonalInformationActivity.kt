@@ -177,8 +177,7 @@ fun JobSeekerPersonalInformationBody(
                 ) {
                     IconButton(
                         onClick = {
-                            val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
-                            context.startActivity(intent)
+                            (context as? ComponentActivity)?.finish()
                         }
                     ) {
                         Icon(

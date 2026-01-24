@@ -249,8 +249,7 @@ fun JobSeekerProfileDetailsBody(jobSeekerViewModel: JobSeekerViewModel) {
                     IconButton(
                         onClick = {
                             backPressed = true
-                            val intent = Intent(context, JobSeekerProfileActivity::class.java)
-                            context.startActivity(intent)
+                            (context as? ComponentActivity)?.finish()
                         },
                         modifier = Modifier.graphicsLayer {
                             scaleX = backScale
