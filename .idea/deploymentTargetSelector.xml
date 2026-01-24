@@ -8,6 +8,9 @@
       <SelectionState runConfigName="JobSeekerPortfolioAccountsActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
+      <SelectionState runConfigName="JobSeekerReferenceActivity">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
     </selectionStates>
   </component>
 </project>
