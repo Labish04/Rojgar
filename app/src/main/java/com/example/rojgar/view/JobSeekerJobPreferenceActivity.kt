@@ -6,7 +6,10 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,11 +22,15 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +41,7 @@ import com.example.rojgar.ui.theme.DarkBlue2
 import com.example.rojgar.ui.theme.White
 import com.example.rojgar.viewmodel.JobSeekerViewModel
 import com.example.rojgar.viewmodel.PreferenceViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class JobSeekerJobPreferenceActivity : ComponentActivity() {
@@ -79,10 +87,25 @@ fun JobSeekerJobPreferenceBody() {
     var selectedAvailability by remember { mutableStateOf(listOf<String>()) }
     var locationInput by remember { mutableStateOf("") }
 
+    // Animation states
+    var topBarVisible by remember { mutableStateOf(false) }
+    var contentVisible by remember { mutableStateOf(false) }
+    var fieldsVisible by remember { mutableStateOf(false) }
+    var buttonsVisible by remember { mutableStateOf(false) }
+
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Fetch existing preferences when activity starts
     LaunchedEffect(Unit) {
+        delay(100)
+        topBarVisible = true
+        delay(200)
+        contentVisible = true
+        delay(300)
+        fieldsVisible = true
+        delay(400)
+        buttonsVisible = true
+
         currentUser?.uid?.let { userId ->
             preferenceViewModel.getPreference(userId)
         }
@@ -101,244 +124,360 @@ fun JobSeekerJobPreferenceBody() {
 
     Scaffold(
         topBar = {
-            Card(
-                modifier = Modifier
-                    .height(140.dp)
-                    .padding(top = 55.dp)
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(5.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkBlue2),
+            AnimatedVisibility(
+                visible = topBarVisible,
+                enter = slideInVertically(
+                    initialOffsetY = { -it },
+                    animationSpec = tween(600, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(600))
             ) {
-                Row(
+                Card(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 15.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Start
+                        .height(140.dp)
+                        .padding(top = 55.dp)
+                        .fillMaxWidth()
+                        .shadow(8.dp, RoundedCornerShape(5.dp)),
+                    shape = RoundedCornerShape(5.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2196F3)),
                 ) {
-                    IconButton(onClick = {
-                        activity.finish()
-                    }) {
-                        Icon(
-                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                            contentDescription = "Back",
-                            tint = Color.White,
-                            modifier = Modifier.size(30.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 15.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        var backPressed by remember { mutableStateOf(false) }
+                        val backScale by animateFloatAsState(
+                            targetValue = if (backPressed) 0.85f else 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
                         )
+
+                        IconButton(
+                            onClick = {
+                                backPressed = true
+                                activity.finish()
+                            },
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = backScale
+                                scaleY = backScale
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                                contentDescription = "Back",
+                                tint = Color.White,
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
+
+                        var titleVisible by remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) {
+                            delay(300)
+                            titleVisible = true
+                        }
+
+                        AnimatedVisibility(
+                            visible = titleVisible,
+                            enter = fadeIn(animationSpec = tween(500)) +
+                                    slideInHorizontally(
+                                        initialOffsetX = { it / 2 },
+                                        animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                    ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "Job Preference",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.size(48.dp))
                     }
-                    Spacer(modifier = Modifier.width(70.dp))
-                    Text(
-                        "Job Preference",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
                 }
             }
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(White)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-        ) {
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                "Define your job preferences to receive more relevant and tailored job matches.",
-                fontWeight = FontWeight.Normal,
-                fontSize = 16.sp,
-                color = Color.Black
-            )
-
-            Spacer(modifier = Modifier.height(30.dp))
-
-            // Job Category Display
-            PreferenceField(
-                label = "Job Category",
-                selectedItems = selectedCategories,
-                onClick = {
-                    currentSection = "category"
-                    showBottomSheet = true
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Industry Display
-            PreferenceField(
-                label = "Industry",
-                selectedItems = selectedIndustries,
-                onClick = {
-                    currentSection = "industry"
-                    showBottomSheet = true
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Job Title Display
-            PreferenceField(
-                label = "Job Title",
-                selectedItems = selectedJobTitles,
-                onClick = {
-                    currentSection = "title"
-                    showBottomSheet = true
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Available For Display
-            PreferenceField(
-                label = "Available For",
-                selectedItems = selectedAvailability,
-                onClick = {
-                    currentSection = "availability"
-                    showBottomSheet = true
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Location
-            Column {
-                Text(
-                    text = "Job Preference Location",
-                    fontSize = 14.sp,
-                    color = Color.DarkGray,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = locationInput,
-                    onValueChange = { locationInput = it },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.locationicon),
-                            contentDescription = "Location",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(24.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFE3F2FD),
+                            Color(0xFFBBDEFB),
+                            Color(0xFF90CAF9)
                         )
-                    },
-                    placeholder = { Text("Enter job preference location", color = Color.Gray) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = White,
-                        unfocusedContainerColor = White,
-                        focusedBorderColor = DarkBlue2,
-                        unfocusedBorderColor = Color.Gray
                     )
                 )
-            }
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Bottom Buttons
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            AnimatedVisibility(
+                visible = contentVisible,
+                enter = fadeIn(animationSpec = tween(600))
             ) {
-                // Back Button
-                OutlinedButton(
-                    onClick = { activity.finish() },
-                    shape = RoundedCornerShape(15.dp),
+                Column(
                     modifier = Modifier
-                        .weight(0.7f)
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray,
-                        contentColor = Color.Black
-                    )
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp)
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.outline_arrow_back_ios_24),
-                        contentDescription = "Back",
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                Spacer(Modifier.width(10.dp))
+                    // Header Card
+                    AnimatedVisibility(
+                        visible = contentVisible,
+                        enter = slideInVertically(
+                            initialOffsetY = { -it / 2 },
+                            animationSpec = tween(500, easing = FastOutSlowInEasing)
+                        ) + fadeIn(animationSpec = tween(500))
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(8.dp, RoundedCornerShape(20.dp)),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier.size(56.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    // Animated background circle
+                                    var isAnimating by remember { mutableStateOf(false) }
+                                    val infiniteTransition = rememberInfiniteTransition(label = "")
+                                    val rotation by infiniteTransition.animateFloat(
+                                        initialValue = 0f,
+                                        targetValue = 360f,
+                                        animationSpec = infiniteRepeatable(
+                                            animation = tween(3000, easing = LinearEasing),
+                                            repeatMode = RepeatMode.Restart
+                                        ),
+                                        label = ""
+                                    )
 
-                Button(
-                    onClick = {
-                        scope.launch {
-                            if (currentUser != null) {
-                                val existingPreference = preferenceData
-
-                                val preference = PreferenceModel(
-                                    preferenceId = existingPreference?.preferenceId ?: "",
-                                    categories = selectedCategories,
-                                    industries = selectedIndustries,
-                                    titles = selectedJobTitles,
-                                    availabilities = selectedAvailability,
-                                    location = locationInput,
-                                    jobSeekerId = currentUser.uid
-                                )
-
-                                if (existingPreference == null) {
-                                    // Save new preference
-                                    preferenceViewModel.savePreference(preference) { success, message ->
-                                        if (success) {
-                                            Toast.makeText(context, "Preferences saved successfully!", Toast.LENGTH_SHORT).show()
-                                            activity.finish()
-                                        } else {
-                                            Toast.makeText(context, "Failed to save: $message", Toast.LENGTH_SHORT).show()
-                                        }
+                                    LaunchedEffect(Unit) {
+                                        isAnimating = true
                                     }
-                                } else {
-                                    // Update existing preference
-                                    preferenceViewModel.updatePreference(preference) { success, message ->
-                                        if (success) {
-                                            Toast.makeText(context, "Preferences updated successfully!", Toast.LENGTH_SHORT).show()
-                                            activity.finish()
+
+                                    // Outer ring
+                                    Surface(
+                                        modifier = Modifier
+                                            .size(56.dp)
+                                            .graphicsLayer { rotationZ = rotation },
+                                        shape = RoundedCornerShape(16.dp),
+                                        color = Color.Transparent,
+                                        border = ButtonDefaults.outlinedButtonBorder.copy(
+                                            width = 2.dp,
+                                            brush = Brush.sweepGradient(
+                                                colors = listOf(
+                                                    Color(0xFF2196F3).copy(alpha = 0.3f),
+                                                    Color(0xFF64B5F6).copy(alpha = 0.1f),
+                                                    Color(0xFF2196F3).copy(alpha = 0.3f)
+                                                )
+                                            )
+                                        )
+                                    ) {}
+
+                                    // Inner background
+                                    Surface(
+                                        modifier = Modifier.size(48.dp),
+                                        shape = RoundedCornerShape(14.dp),
+                                        color = Color(0xFF2196F3).copy(alpha = 0.15f)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.objectiveicon),
+                                            contentDescription = "Preferences",
+                                            tint = Color(0xFF2196F3),
+                                            modifier = Modifier.padding(12.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Job Preferences",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF263238)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Set your ideal job criteria",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFF78909C)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Preference Fields with animations
+                    AnimatedVisibility(
+                        visible = fieldsVisible,
+                        enter = slideInVertically(
+                            initialOffsetY = { it / 2 },
+                            animationSpec = tween(500, easing = FastOutSlowInEasing)
+                        ) + fadeIn(animationSpec = tween(500))
+                    ) {
+                        Column {
+                            // Job Category Display
+                            ModernPreferenceField(
+                                label = "Job Category",
+                                selectedItems = selectedCategories,
+                                icon = R.drawable.outline_keyboard_arrow_down_24,
+                                onClick = {
+                                    currentSection = "category"
+                                    showBottomSheet = true
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Industry Display
+                            ModernPreferenceField(
+                                label = "Industry",
+                                selectedItems = selectedIndustries,
+                                icon = R.drawable.outline_keyboard_arrow_down_24,
+                                onClick = {
+                                    currentSection = "industry"
+                                    showBottomSheet = true
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Job Title Display
+                            ModernPreferenceField(
+                                label = "Job Title",
+                                selectedItems = selectedJobTitles,
+                                icon = R.drawable.outline_keyboard_arrow_down_24,
+                                onClick = {
+                                    currentSection = "title"
+                                    showBottomSheet = true
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Available For Display
+                            ModernPreferenceField(
+                                label = "Available For",
+                                selectedItems = selectedAvailability,
+                                icon = R.drawable.outline_keyboard_arrow_down_24,
+                                onClick = {
+                                    currentSection = "availability"
+                                    showBottomSheet = true
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Location
+                            ModernLocationField(
+                                value = locationInput,
+                                onValueChange = { locationInput = it }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Action Buttons
+                    AnimatedVisibility(
+                        visible = buttonsVisible,
+                        enter = slideInVertically(
+                            initialOffsetY = { it / 2 },
+                            animationSpec = tween(500, easing = FastOutSlowInEasing)
+                        ) + fadeIn(animationSpec = tween(500))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Back Button
+                            ModernSecondaryButton(
+                                text = "Back",
+                                modifier = Modifier.weight(1f),
+                                onClick = { activity.finish() }
+                            )
+
+                            // Save/Update Button
+                            ModernPrimaryButton(
+                                text = if (preferenceData == null) "Save" else "Update",
+                                modifier = Modifier.weight(1f),
+                                isLoading = isLoading,
+                                onClick = {
+                                    scope.launch {
+                                        if (currentUser != null) {
+                                            val existingPreference = preferenceData
+
+                                            val preference = PreferenceModel(
+                                                preferenceId = existingPreference?.preferenceId ?: "",
+                                                categories = selectedCategories,
+                                                industries = selectedIndustries,
+                                                titles = selectedJobTitles,
+                                                availabilities = selectedAvailability,
+                                                location = locationInput,
+                                                jobSeekerId = currentUser.uid
+                                            )
+
+                                            if (existingPreference == null) {
+                                                preferenceViewModel.savePreference(preference) { success, message ->
+                                                    if (success) {
+                                                        Toast.makeText(context, "Preferences saved successfully!", Toast.LENGTH_SHORT).show()
+                                                        activity.finish()
+                                                    } else {
+                                                        Toast.makeText(context, "Failed to save: $message", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            } else {
+                                                preferenceViewModel.updatePreference(preference) { success, message ->
+                                                    if (success) {
+                                                        Toast.makeText(context, "Preferences updated successfully!", Toast.LENGTH_SHORT).show()
+                                                        activity.finish()
+                                                    } else {
+                                                        Toast.makeText(context, "Failed to update: $message", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            }
                                         } else {
-                                            Toast.makeText(context, "Failed to update: $message", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "No user logged in", Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 }
-                            } else {
-                                Toast.makeText(context, "No user logged in", Toast.LENGTH_SHORT).show()
-                            }
+                            )
                         }
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .weight(0.7f)
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = DarkBlue2,
-                        contentColor = Color.White
-                    ),
-                    enabled = !isLoading
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            color = Color.White,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    } else {
-                        Text(
-                            text = if (preferenceData == null) "Save" else "Update",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
                     }
+
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }
 
-        // Bottom Sheet (Only for category, industry, title, availability)
+        // Bottom Sheet
         if (showBottomSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showBottomSheet = false },
@@ -366,57 +505,430 @@ fun JobSeekerJobPreferenceBody() {
 }
 
 @Composable
-fun PreferenceField(
+fun ModernPreferenceField(
     label: String,
     selectedItems: List<String>,
+    icon: Int,
     onClick: () -> Unit
 ) {
-    Column {
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            color = Color.DarkGray,
-            fontWeight = FontWeight.Medium
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
         )
-        Spacer(modifier = Modifier.height(10.dp))
+    )
+
+    // Shimmer effect when empty
+    val infiniteTransition = rememberInfiniteTransition(label = "")
+    val shimmerAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = ""
+    )
+
+    // Get icon based on label
+    val iconRes = when (label) {
+        "Job Category" -> R.drawable.jobcategoryicon
+        "Industry" -> R.drawable.company
+        "Job Title" -> R.drawable.title
+        "Available For" -> R.drawable.jobtype
+        else -> icon
+    }
+
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 8.dp)
+        ) {
+            Surface(
+                modifier = Modifier.size(24.dp),
+                shape = RoundedCornerShape(6.dp),
+                color = Color(0xFF2196F3).copy(alpha = 0.15f)
+            ) {
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = null,
+                    tint = Color(0xFF2196F3),
+                    modifier = Modifier.padding(4.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = label,
+                fontSize = 14.sp,
+                color = Color(0xFF263238),
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onClick() },
-            shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            border = ButtonDefaults.outlinedButtonBorder
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clickable {
+                    isPressed = true
+                    onClick()
+                }
+                .shadow(
+                    elevation = if (selectedItems.isNotEmpty()) 6.dp else 4.dp,
+                    shape = RoundedCornerShape(16.dp)
+                ),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (selectedItems.isNotEmpty())
+                    Color.White
+                else
+                    Color.White.copy(alpha = 0.95f)
+            )
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(20.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (selectedItems.isEmpty()) {
-                    Text(
-                        text = "Select $label",
-                        color = Color.Gray,
-                        fontSize = 16.sp,
-                        modifier = Modifier.weight(1f)
-                    )
-                } else {
-                    Text(
-                        text = selectedItems.joinToString(", "),
-                        color = Color.Black,
-                        fontSize = 14.sp,
+                    Row(
                         modifier = Modifier.weight(1f),
-                        maxLines = 2
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = null,
+                            tint = Color(0xFF2196F3).copy(alpha = shimmerAlpha),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Select $label",
+                            color = Color(0xFFBDBDBD),
+                            fontSize = 15.sp
+                        )
+                    }
+                } else {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = selectedItems.joinToString(", "),
+                            color = Color(0xFF263238),
+                            fontSize = 14.sp,
+                            maxLines = 2,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFF2196F3).copy(alpha = 0.1f)
+                        ) {
+                            Text(
+                                text = "${selectedItems.size} selected",
+                                fontSize = 11.sp,
+                                color = Color(0xFF2196F3),
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                Box(
+                    modifier = Modifier.size(40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Animated background
+                    Surface(
+                        modifier = Modifier.size(36.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF2196F3).copy(alpha = if (selectedItems.isNotEmpty()) 0.2f else 0.12f)
+                    ) {}
+
+                    Icon(
+                        painter = painterResource(R.drawable.outline_keyboard_arrow_down_24),
+                        contentDescription = "Dropdown",
+                        tint = Color(0xFF2196F3),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
+            }
+        }
+    }
+
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            delay(150)
+            isPressed = false
+        }
+    }
+}
+
+@Composable
+fun ModernLocationField(
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    val borderColor by animateColorAsState(
+        targetValue = if (isFocused) Color(0xFF2196F3) else Color(0xFFE0E0E0),
+        animationSpec = tween(300)
+    )
+
+    val elevation by animateDpAsState(
+        targetValue = if (isFocused) 8.dp else 4.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
+    // Pulse animation for icon
+    val infiniteTransition = rememberInfiniteTransition(label = "")
+    val iconPulse by infiniteTransition.animateFloat(
+        initialValue = 0.9f,
+        targetValue = 1.1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = ""
+    )
+
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 8.dp)
+        ) {
+            Surface(
+                modifier = Modifier.size(24.dp),
+                shape = RoundedCornerShape(6.dp),
+                color = Color(0xFF2196F3).copy(alpha = 0.15f)
+            ) {
                 Icon(
-                    painter = painterResource(R.drawable.outline_keyboard_arrow_down_24),
-                    contentDescription = "Dropdown",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(24.dp)
+                    painter = painterResource(R.drawable.locationicon),
+                    contentDescription = null,
+                    tint = Color(0xFF2196F3),
+                    modifier = Modifier.padding(4.dp)
                 )
             }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Job Preference Location",
+                fontSize = 14.sp,
+                color = Color(0xFF263238),
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(elevation, RoundedCornerShape(16.dp)),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                leadingIcon = {
+                    Box(
+                        modifier = Modifier.size(40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .graphicsLayer {
+                                    scaleX = if (isFocused) iconPulse else 1f
+                                    scaleY = if (isFocused) iconPulse else 1f
+                                },
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF2196F3).copy(alpha = if (isFocused) 0.2f else 0.12f)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.locationicon),
+                                contentDescription = "Location",
+                                tint = Color(0xFF2196F3),
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+                },
+                placeholder = {
+                    Text(
+                        "Enter job preference location",
+                        color = Color(0xFFBDBDBD),
+                        fontSize = 15.sp
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = borderColor,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedTextColor = Color(0xFF263238),
+                    unfocusedTextColor = Color(0xFF263238)
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun ModernPrimaryButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
+    onClick: () -> Unit
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
+    // Gradient shimmer effect
+    val infiniteTransition = rememberInfiniteTransition(label = "")
+    val shimmerOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = ""
+    )
+
+    Button(
+        onClick = {
+            if (!isLoading) {
+                isPressed = true
+                onClick()
+            }
+        },
+        modifier = modifier
+            .height(56.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent
+        ),
+        contentPadding = PaddingValues(0.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 6.dp,
+            pressedElevation = 10.dp
+        ),
+        enabled = !isLoading
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF2196F3),
+                            Color(0xFF1976D2),
+                            Color(0xFF2196F3)
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = text,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            delay(150)
+            isPressed = false
+        }
+    }
+}
+
+@Composable
+fun ModernSecondaryButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
+    OutlinedButton(
+        onClick = {
+            isPressed = true
+            onClick()
+        },
+        modifier = modifier
+            .height(56.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = RoundedCornerShape(16.dp),
+        border = ButtonDefaults.outlinedButtonBorder.copy(
+            width = 2.dp,
+            brush = Brush.linearGradient(
+                colors = listOf(Color(0xFF2196F3), Color(0xFF64B5F6))
+            )
+        ),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = Color(0xFF2196F3)
+        )
+    ) {
+        Text(
+            text = text,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            delay(150)
+            isPressed = false
         }
     }
 }
@@ -500,7 +1012,6 @@ fun JobPreferenceBottomSheet(
         )
     }
 
-    // Industries list
     val industryList = remember {
         mutableStateListOf(
             PreferenceItem("Software Companies", initialIndustries.contains("Software Companies")),
@@ -564,8 +1075,6 @@ fun JobPreferenceBottomSheet(
         )
     }
 
-
-    // Job Titles list
     val jobTitleList = remember {
         mutableStateListOf(
             PreferenceItem("Baker", initialTitles.contains("Baker")),
@@ -636,8 +1145,6 @@ fun JobPreferenceBottomSheet(
         )
     }
 
-
-    // Available For list
     val availabilityList = remember {
         mutableStateListOf(
             PreferenceItem("Full Time", initialAvailability.contains("Full Time")),
@@ -659,7 +1166,6 @@ fun JobPreferenceBottomSheet(
         )
     }
 
-
     var searchQuery by remember { mutableStateOf("") }
 
     Column(
@@ -668,27 +1174,26 @@ fun JobPreferenceBottomSheet(
             .fillMaxHeight(0.6f)
             .padding(horizontal = 20.dp)
     ) {
-        // Header with tabs
         when (currentSection) {
-            "category" -> SectionHeader(
+            "category" -> ModernSectionHeader(
                 title = "Preferred Job Category",
                 subtitle = "You can add upto 5 category.",
                 count = categoryList.count { it.isSelected },
                 maxCount = 5
             )
-            "industry" -> SectionHeader(
+            "industry" -> ModernSectionHeader(
                 title = "Preferred Job Industry",
                 subtitle = "You can add upto 5 industry.",
                 count = industryList.count { it.isSelected },
                 maxCount = 5
             )
-            "title" -> SectionHeader(
+            "title" -> ModernSectionHeader(
                 title = "Select Job Title",
                 subtitle = "You can add upto 5 job title.",
                 count = jobTitleList.count { it.isSelected },
                 maxCount = 5
             )
-            "availability" -> SectionHeader(
+            "availability" -> ModernSectionHeader(
                 title = "Available For",
                 subtitle = "",
                 count = availabilityList.count { it.isSelected },
@@ -698,8 +1203,7 @@ fun JobPreferenceBottomSheet(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Search bar
-        SearchBar(
+        ModernSearchBar(
             searchQuery = searchQuery,
             onSearchChange = { searchQuery = it },
             placeholder = when (currentSection) {
@@ -711,7 +1215,7 @@ fun JobPreferenceBottomSheet(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
-        // List of items
+
         LazyColumn(
             modifier = Modifier.weight(1f)
         ) {
@@ -724,12 +1228,12 @@ fun JobPreferenceBottomSheet(
                         key = { it.name }
                     ) { category ->
                         val index = categoryList.indexOf(category)
-                        SelectableItem(
+                        ModernSelectableItem(
                             name = category.name,
                             isSelected = category.isSelected,
                             onToggle = {
                                 val selectedCount = categoryList.count { it.isSelected }
-                                if (!category.isSelected && selectedCount >= 5) return@SelectableItem
+                                if (!category.isSelected && selectedCount >= 5) return@ModernSelectableItem
                                 categoryList[index] = category.copy(isSelected = !category.isSelected)
                             }
                         )
@@ -743,12 +1247,12 @@ fun JobPreferenceBottomSheet(
                         key = { it.name }
                     ) { industry ->
                         val index = industryList.indexOf(industry)
-                        SelectableItem(
+                        ModernSelectableItem(
                             name = industry.name,
                             isSelected = industry.isSelected,
                             onToggle = {
                                 val selectedCount = industryList.count { it.isSelected }
-                                if (!industry.isSelected && selectedCount >= 5) return@SelectableItem
+                                if (!industry.isSelected && selectedCount >= 5) return@ModernSelectableItem
                                 industryList[index] = industry.copy(isSelected = !industry.isSelected)
                             }
                         )
@@ -762,12 +1266,12 @@ fun JobPreferenceBottomSheet(
                         key = { it.name }
                     ) { title ->
                         val index = jobTitleList.indexOf(title)
-                        SelectableItem(
+                        ModernSelectableItem(
                             name = title.name,
                             isSelected = title.isSelected,
                             onToggle = {
                                 val selectedCount = jobTitleList.count { it.isSelected }
-                                if (!title.isSelected && selectedCount >= 5) return@SelectableItem
+                                if (!title.isSelected && selectedCount >= 5) return@ModernSelectableItem
                                 jobTitleList[index] = title.copy(isSelected = !title.isSelected)
                             }
                         )
@@ -779,7 +1283,7 @@ fun JobPreferenceBottomSheet(
                         key = { it.name }
                     ) { availability ->
                         val index = availabilityList.indexOf(availability)
-                        SelectableItem(
+                        ModernSelectableItem(
                             name = availability.name,
                             isSelected = availability.isSelected,
                             onToggle = {
@@ -791,24 +1295,21 @@ fun JobPreferenceBottomSheet(
             }
         }
 
-        // Navigation buttons
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            OutlinedButton(
-                onClick = { onDismiss() },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp),
-                shape = RoundedCornerShape(25.dp)
-            ) {
-                Text("Cancel", fontSize = 16.sp)
-            }
+            ModernSecondaryButton(
+                text = "Cancel",
+                modifier = Modifier.weight(1f),
+                onClick = { onDismiss() }
+            )
 
-            Button(
+            ModernPrimaryButton(
+                text = "Done",
+                modifier = Modifier.weight(1f),
                 onClick = {
                     onSave(
                         categoryList.filter { it.isSelected }.map { it.name },
@@ -816,104 +1317,363 @@ fun JobPreferenceBottomSheet(
                         jobTitleList.filter { it.isSelected }.map { it.name },
                         availabilityList.filter { it.isSelected }.map { it.name }
                     )
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp),
-                shape = RoundedCornerShape(25.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = DarkBlue2)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun ModernSectionHeader(title: String, subtitle: String, count: Int, maxCount: Int) {
+    var headerVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        headerVisible = true
+    }
+
+    AnimatedVisibility(
+        visible = headerVisible,
+        enter = slideInVertically(
+            initialOffsetY = { -it / 2 },
+            animationSpec = tween(500, easing = FastOutSlowInEasing)
+        ) + fadeIn(animationSpec = tween(500))
+    ) {
+        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 8.dp)
             ) {
-                Text("Done", fontSize = 16.sp)
+                // Animated icon
+                val infiniteTransition = rememberInfiniteTransition(label = "")
+                val iconRotation by infiniteTransition.animateFloat(
+                    initialValue = -10f,
+                    targetValue = 10f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1000, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = ""
+                )
+
+                Surface(
+                    modifier = Modifier.size(32.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF2196F3).copy(alpha = 0.15f)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.objectiveicon),
+                        contentDescription = null,
+                        tint = Color(0xFF2196F3),
+                        modifier = Modifier
+                            .padding(6.dp)
+                            .graphicsLayer { rotationZ = iconRotation }
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Text(
+                    title,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF263238)
+                )
+            }
+
+            if (subtitle.isNotEmpty()) {
+                Text(
+                    subtitle,
+                    fontSize = 14.sp,
+                    color = Color(0xFF78909C),
+                    modifier = Modifier.padding(start = 44.dp, bottom = 8.dp)
+                )
+            }
+
+            Row(
+                modifier = Modifier.padding(start = 44.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (count >= maxCount) Color(0xFFFFEBEE) else Color(0xFFE3F2FD),
+                    modifier = Modifier.shadow(2.dp, RoundedCornerShape(12.dp))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = null,
+                            tint = if (count >= maxCount) Color(0xFFD32F2F) else Color(0xFF2196F3),
+                            modifier = Modifier
+                                .size(14.dp)
+                                .graphicsLayer { rotationZ = 180f }
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "$count/$maxCount",
+                            fontSize = 14.sp,
+                            color = if (count >= maxCount) Color(0xFFD32F2F) else Color(0xFF2196F3),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun SectionHeader(title: String, subtitle: String, count: Int, maxCount: Int) {
-    Column {
-        Text(
-            title,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
-        if (subtitle.isNotEmpty()) {
-            Text(
-                subtitle,
-                fontSize = 14.sp,
-                color = Color.Gray
-            )
-        }
-        Text(
-            "$count/$maxCount",
-            fontSize = 14.sp,
-            color = if (count >= maxCount) Color.Red else DarkBlue2,
-            modifier = Modifier.padding(top = 4.dp)
-        )
-    }
-}
+fun ModernSearchBar(searchQuery: String, onSearchChange: (String) -> Unit, placeholder: String) {
+    var isFocused by remember { mutableStateOf(false) }
 
-@Composable
-fun SearchBar(searchQuery: String, onSearchChange: (String) -> Unit, placeholder: String) {
-    Row(
+    val borderColor by animateColorAsState(
+        targetValue = if (isFocused) Color(0xFF2196F3) else Color.Transparent,
+        animationSpec = tween(300)
+    )
+
+    val elevation by animateDpAsState(
+        targetValue = if (isFocused) 8.dp else 4.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .shadow(elevation, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = ButtonDefaults.outlinedButtonBorder.copy(width = 2.dp, brush = Brush.linearGradient(listOf(borderColor, borderColor)))
     ) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            placeholder = { Text(placeholder, color = Color.Gray) },
-            modifier = Modifier.weight(1f),
+            placeholder = {
+                Text(
+                    placeholder,
+                    color = Color(0xFFBDBDBD),
+                    fontSize = 15.sp
+                )
+            },
+            leadingIcon = {
+                Box(
+                    modifier = Modifier.size(40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Rotating search icon background
+                    val infiniteTransition = rememberInfiniteTransition(label = "")
+                    val rotation by infiniteTransition.animateFloat(
+                        initialValue = 0f,
+                        targetValue = 360f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(3000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Restart
+                        ),
+                        label = ""
+                    )
+
+                    Surface(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .graphicsLayer { rotationZ = if (isFocused) rotation else 0f },
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color.Transparent,
+                        border = if (isFocused) ButtonDefaults.outlinedButtonBorder.copy(
+                            width = 2.dp,
+                            brush = Brush.sweepGradient(
+                                colors = listOf(
+                                    Color(0xFF2196F3).copy(alpha = 0.3f),
+                                    Color(0xFF64B5F6).copy(alpha = 0.1f),
+                                    Color(0xFF2196F3).copy(alpha = 0.3f)
+                                )
+                            )
+                        ) else null
+                    ) {}
+
+                    Surface(
+                        modifier = Modifier.size(32.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFF2196F3).copy(alpha = if (isFocused) 0.2f else 0.12f)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.searchicon),
+                            contentDescription = "Search",
+                            tint = Color(0xFF2196F3),
+                            modifier = Modifier.padding(6.dp)
+                        )
+                    }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged{ isFocused = it.isFocused },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
-                focusedBorderColor = DarkBlue2,
-                unfocusedBorderColor = Color.LightGray
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedTextColor = Color(0xFF263238),
+                unfocusedTextColor = Color(0xFF263238)
             ),
-            singleLine = true
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp)
         )
     }
 }
 
 @Composable
-fun SelectableItem(name: String, isSelected: Boolean, onToggle: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable { onToggle() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFFE3F2FD) else Color.White
+fun ModernSelectableItem(name: String, isSelected: Boolean, onToggle: () -> Unit) {
+    var isPressed by remember { mutableStateOf(false) }
+    var itemVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(50)
+        itemVisible = true
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
+    // Shimmer effect for selected items
+    val infiniteTransition = rememberInfiniteTransition(label = "")
+    val shimmer by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
         ),
-        shape = RoundedCornerShape(8.dp)
+        label = ""
+    )
+
+    AnimatedVisibility(
+        visible = itemVisible,
+        enter = fadeIn(animationSpec = tween(300)) +
+                slideInHorizontally(
+                    initialOffsetX = { -it / 4 },
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                )
     ) {
-        Row(
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                name,
-                fontSize = 16.sp,
-                color = Color.Black,
-                modifier = Modifier.weight(1f)
-            )
-            if (isSelected) {
-                Icon(
-                    painter = painterResource(R.drawable.outline_keyboard_arrow_down_24),
-                    contentDescription = "Selected",
-                    tint = DarkBlue2,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .graphicsLayer(rotationZ = 180f)
+                .padding(vertical = 4.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clickable {
+                    isPressed = true
+                    onToggle()
+                }
+                .shadow(
+                    elevation = if (isSelected) 8.dp else 3.dp,
+                    shape = RoundedCornerShape(12.dp)
+                ),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isSelected) Color(0xFFE3F2FD) else Color.White
+            ),
+            shape = RoundedCornerShape(12.dp),
+            border = if (isSelected) ButtonDefaults.outlinedButtonBorder.copy(
+                width = 2.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFF2196F3).copy(alpha = 0.5f),
+                        Color(0xFF64B5F6).copy(alpha = 0.3f)
+                    )
                 )
+            ) else null
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Category indicator dot
+                    Surface(
+                        modifier = Modifier.size(8.dp),
+                        shape = RoundedCornerShape(4.dp),
+                        color = if (isSelected) Color(0xFF2196F3) else Color(0xFFBDBDBD)
+                    ) {}
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Text(
+                        name,
+                        fontSize = 15.sp,
+                        color = if (isSelected) Color(0xFF1565C0) else Color(0xFF263238),
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                }
+
+                if (isSelected) {
+                    Box(
+                        modifier = Modifier.size(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Animated selection indicator
+                        Surface(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .graphicsLayer {
+                                    scaleX = 0.8f + (shimmer * 0.2f)
+                                    scaleY = 0.8f + (shimmer * 0.2f)
+                                },
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(0xFF2196F3)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                                contentDescription = "Selected",
+                                tint = Color.White,
+                                modifier = Modifier
+                                    .padding(6.dp)
+                                    .graphicsLayer { rotationZ = 180f }
+                            )
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier.size(28.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(24.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color.Transparent,
+                            border = ButtonDefaults.outlinedButtonBorder.copy(
+                                width = 2.dp,
+                                brush = Brush.linearGradient(
+                                    listOf(Color(0xFFE0E0E0), Color(0xFFE0E0E0))
+                                )
+                            )
+                        ) {}
+                    }
+                }
             }
+        }
+    }
+
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            delay(150)
+            isPressed = false
         }
     }
 }
