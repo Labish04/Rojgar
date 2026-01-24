@@ -1185,6 +1185,19 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                     )
 
                                     ModernDrawerMenuItem(
+                                        icon = R.drawable.helpicon,
+                                        text = "Help and Support",
+                                        subtitle = "Need Assistance",
+                                        iconColor = Color(0xFFB06E27),
+                                        onClick = {
+                                            isDrawerOpen = false
+                                            val intent =
+                                                Intent(context, HelpAndSupportActivity::class.java)
+                                            context.startActivity(intent)
+                                        }
+                                    )
+
+                                    ModernDrawerMenuItem(
                                         icon = R.drawable.settings,
                                         text = "Settings",
                                         subtitle = "Manage preferences",
@@ -1194,14 +1207,14 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                         }
                                     )
 
-                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Spacer(modifier = Modifier.height(5.dp))
 
                                     HorizontalDivider(
                                         modifier = Modifier.padding(horizontal = 20.dp),
                                         color = Color.Gray.copy(alpha = 0.2f)
                                     )
 
-                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Spacer(modifier = Modifier.height(5.dp))
                                 }
 
                                 // LOGOUT BUTTON

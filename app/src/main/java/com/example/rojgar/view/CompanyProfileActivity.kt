@@ -531,9 +531,37 @@ fun CompanyProfileBody(
                         }
                         Spacer(modifier = Modifier.height(20.dp))
                         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                            CompanyDrawerMenuItem(icon = R.drawable.outline_edit_24, text = "Edit Profile", subtitle = "Update company information", iconColor = Color(0xFF2196F3), onClick = { isDrawerOpen = false; showEditProfileDialog = true })
-                            CompanyDrawerMenuItem(icon = R.drawable.feedback, text = "Help & Support", subtitle = "Get help or send feedback", iconColor = Color(0xFF2196F3), onClick = { isDrawerOpen = false; Toast.makeText(context, "Support clicked", Toast.LENGTH_SHORT).show() })
-                            CompanyDrawerMenuItem(icon = R.drawable.settings, text = "Settings", subtitle = "Manage preferences", iconColor = Color(0xFF9C27B0), onClick = { isDrawerOpen = false; showSettingsDialog = true })
+                            CompanyDrawerMenuItem(
+                                icon = R.drawable.outline_edit_24,
+                                text = "Edit Profile",
+                                subtitle = "Update company information",
+                                iconColor = Color(0xFF2196F3),
+                                onClick = { isDrawerOpen = false;
+                                    showEditProfileDialog = true
+                                }
+                            )
+
+                            CompanyDrawerMenuItem(
+                                icon = R.drawable.feedback,
+                                text = "Help & Support",
+                                subtitle = "Get help or send feedback",
+                                iconColor = Color(0xFF2196F3),
+                                onClick = {
+                                    isDrawerOpen = false
+                                    val intent = Intent(context, HelpAndSupportActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                            )
+
+                            CompanyDrawerMenuItem(
+                                icon = R.drawable.settings,
+                                text = "Settings",
+                                subtitle = "Manage preferences",
+                                iconColor = Color(0xFF9C27B0),
+                                onClick = { isDrawerOpen = false; showSettingsDialog = true
+                                }
+                            )
+
                             CompanyDrawerMenuItem(
                                 icon = R.drawable.verified_badge,
                                 text = "Company Verification",
@@ -546,6 +574,7 @@ fun CompanyProfileBody(
                                     context.startActivity(intent)
                                 }
                             )
+
                             Spacer(modifier = Modifier.height(12.dp))
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color.Gray.copy(alpha = 0.2f))
                             Spacer(modifier = Modifier.height(12.dp))
