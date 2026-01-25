@@ -142,4 +142,32 @@ class ApplicationRepoImpl : ApplicationRepo {
                 callback(false, "Failed to delete application: ${e.message}")
             }
     }
+
+    override fun checkIfApplied(
+        jobSeekerId: String,
+        postId: String,
+        callback: (Boolean) -> Unit
+    ) {
+        Log.d("ApplicationRepo", "Checking if applied: jobSeekerId=$jobSeekerId, postId=$postId")
+
+        applicationsRef.orderByChild("jobSeekerId")
+            .equalTo(jobSeekerId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val hasApplied = snapshot.children.any {
+                        val applicationPostId = it.child("postId").getValue(String::class.java)
+                        Log.d("ApplicationRepo", "Checking application: postId=$applicationPostId")
+                        applicationPostId == postId
+                    }
+                    Log.d("ApplicationRepo", "Has applied: $hasApplied")
+                    callback(hasApplied)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("ApplicationRepo", "Error checking application: ${error.message}")
+                    callback(false)
+                }
+            }
+        )
+    }
 }

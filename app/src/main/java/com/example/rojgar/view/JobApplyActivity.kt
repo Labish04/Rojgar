@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -64,6 +65,12 @@ import com.example.rojgar.viewmodel.ReviewViewModel
 import com.example.rojgar.viewmodel.ReviewViewModelFactory
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.unit.Dp
 
 class JobApplyActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,13 +86,13 @@ class JobApplyActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobApplyBody(postId: String, companyId: String) {
     val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
     val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl()) }
 
-    // Initialize ReviewViewModel with factory
     val reviewViewModel: ReviewViewModel = viewModel(
         factory = ReviewViewModelFactory(ReviewRepoImpl())
     )
@@ -103,6 +110,25 @@ fun JobApplyBody(postId: String, companyId: String) {
     var userProfile by remember { mutableStateOf("") }
     val currentUser = FirebaseAuth.getInstance().currentUser
     val currentUserId = currentUser?.uid ?: ""
+
+    // Observe hasApplied from ViewModel
+    val hasApplied by applicationViewModel.hasApplied.observeAsState(false)
+    val isCheckingApplication by applicationViewModel.loading.observeAsState(false)
+
+    // Top bar scroll state for animations
+    var topBarElevation by remember { mutableStateOf(0.dp) }
+    val animatedElevation by animateDpAsState(
+        targetValue = topBarElevation,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "elevation"
+    )
+
+    // Check if user has already applied when screen loads
+    LaunchedEffect(currentUserId, postId) {
+        if (currentUserId.isNotEmpty() && postId.isNotEmpty()) {
+            applicationViewModel.checkIfApplied(currentUserId, postId)
+        }
+    }
 
     // Load reviews when companyId is available
     LaunchedEffect(companyId) {
@@ -165,14 +191,47 @@ fun JobApplyBody(postId: String, companyId: String) {
     }
 
     Scaffold(
+        topBar = {
+            StylishTopBar(
+                jobTitle = jobPost?.title ?: "Job Details",
+                onBackClick = { (context as? ComponentActivity)?.finish() },
+                onShareClick = {
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, jobPost?.title ?: "Job Opportunity")
+                        putExtra(Intent.EXTRA_TEXT,
+                            """
+                            🎯 Job Opportunity: ${jobPost?.title}
+                            
+                            📍 Position: ${jobPost?.position}
+                            🏢 Company: ${company?.companyName}
+                            💼 Type: ${jobPost?.jobType}
+                            📚 Experience: ${jobPost?.experience}
+                            💰 Salary: ${jobPost?.salary?.ifEmpty { "Negotiable" }}
+                            
+                            Apply now through Rojgar app!
+                            """.trimIndent()
+                        )
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "Share Job"))
+                },
+                elevation = animatedElevation
+            )
+        },
         bottomBar = {
             if (!isLoading && jobPost != null) {
-                ApplyNowButton(
+                AnimatedApplyButton(
+                    hasApplied = hasApplied,
+                    isLoading = isCheckingApplication,
                     onApplyClick = {
-                        // Check if user is logged in
                         if (currentUser == null) {
                             Toast.makeText(context, "Please login first", Toast.LENGTH_SHORT).show()
-                            return@ApplyNowButton
+                            return@AnimatedApplyButton
+                        }
+
+                        if (hasApplied) {
+                            Toast.makeText(context, "You have already applied for this job", Toast.LENGTH_SHORT).show()
+                            return@AnimatedApplyButton
                         }
 
                         val application = ApplicationModel(
@@ -191,7 +250,8 @@ fun JobApplyBody(postId: String, companyId: String) {
                         )
 
                         applicationViewModel.applyForJob(application)
-                        Toast.makeText(context, "Application submitted!", Toast.LENGTH_SHORT).show()
+                        applicationViewModel.checkIfApplied(currentUserId, postId)
+                        Toast.makeText(context, "Application submitted successfully!", Toast.LENGTH_SHORT).show()
                     }
                 )
             }
@@ -243,6 +303,199 @@ fun JobApplyBody(postId: String, companyId: String) {
 
                 item {
                     Spacer(modifier = Modifier.height(20.dp))
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StylishTopBar(
+    jobTitle: String,
+    onBackClick: () -> Unit,
+    onShareClick: () -> Unit,
+    elevation: Dp = 0.dp
+) {
+    val scale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shadowElevation = elevation
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFF2196F3),
+                            Color(0xFF1976D2)
+                        )
+                    )
+                )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .height(64.dp)
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Back Button with ripple effect
+                Surface(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .scale(scale),
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.15f),
+                    onClick = onBackClick
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                // Job Title with animation
+                Text(
+                    text = jobTitle,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 12.dp)
+                )
+
+                // Share Button with ripple effect
+                Surface(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .scale(scale),
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.15f),
+                    onClick = onShareClick
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+
+            // Bottom accent line
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.White.copy(alpha = 0.3f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+        }
+    }
+}
+
+// Animated Apply Button
+@Composable
+fun AnimatedApplyButton(
+    hasApplied: Boolean,
+    isLoading: Boolean,
+    onApplyClick: () -> Unit
+) {
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            isLoading -> Color(0xFF9E9E9E)
+            hasApplied -> Color(0xFF4CAF50)
+            else -> Color(0xFF00BCD4)
+        },
+        animationSpec = tween(300),
+        label = "backgroundColor"
+    )
+
+    val scale by animateFloatAsState(
+        targetValue = if (hasApplied) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "scale"
+    )
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White,
+        shadowElevation = 8.dp
+    ) {
+        Button(
+            onClick = onApplyClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .height(56.dp)
+                .scale(scale),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = backgroundColor,
+                disabledContainerColor = Color(0xFF9E9E9E)
+            ),
+            enabled = !hasApplied && !isLoading
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (hasApplied) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(
+                        text = when {
+                            hasApplied -> "Applied ✓"
+                            else -> "Apply Now"
+                        },
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
                 }
             }
         }
@@ -1415,7 +1668,7 @@ fun SimpleReviewCard(
 }
 
 @Composable
-fun ApplyNowButton(onApplyClick: () -> Unit) {
+fun ApplyNowButton(hasApplied: Boolean, onApplyClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = Color.White,
@@ -1429,11 +1682,13 @@ fun ApplyNowButton(onApplyClick: () -> Unit) {
                 .height(56.dp),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF00BCD4)
-            )
+                containerColor = if (hasApplied) Color.Gray else Color(0xFF00BCD4),
+                disabledContainerColor = Color.Gray
+            ),
+            enabled = !hasApplied
         ) {
             Text(
-                text = "Apply Now",
+                text = if (hasApplied) "Applied" else "Apply Now",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White

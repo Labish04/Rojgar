@@ -95,8 +95,7 @@ class HelpSupportRepoImpl : HelpSupportRepo {
                 val response = cloudinary.uploader().upload(
                     inputStream, ObjectUtils.asMap(
                         "public_id", publicId,
-                        "resource_type", "image",
-                        "folder" to "help_support"
+                        "resource_type", "image"
                     )
                 )
 
