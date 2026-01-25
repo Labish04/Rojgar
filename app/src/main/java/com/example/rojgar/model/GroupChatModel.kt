@@ -82,6 +82,14 @@ data class GroupMessage(
     }
 }
 
+data class GroupMember(
+    val userId: String,
+    val userName: String,
+    val userPhoto: String = "",
+    val role: String = "member", // "admin" or "member"
+    val joinedAt: Long = System.currentTimeMillis()
+)
+
 data class MutualContact(
     val userId: String,
     val userType: String, // "JobSeeker" or "Company"

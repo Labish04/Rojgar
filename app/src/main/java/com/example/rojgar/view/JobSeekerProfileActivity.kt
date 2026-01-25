@@ -984,7 +984,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                         .fillMaxSize()
                         .zIndex(10f)
                 ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1007,7 +1007,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                     )
                                 )
                         ) {
-                            Column(modifier = Modifier.fillMaxSize()) {
+                            Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f)) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
