@@ -6,6 +6,7 @@ import android.util.Log
 import com.cloudinary.Cloudinary
 import com.cloudinary.utils.ObjectUtils
 import com.example.rojgar.model.GroupChat
+import com.example.rojgar.model.GroupMember
 import com.example.rojgar.model.GroupMessage
 import com.google.firebase.database.*
 import com.google.firebase.storage.FirebaseStorage
@@ -523,6 +524,176 @@ class GroupChatRepositoryImpl : GroupChatRepository {
                 withContext(Dispatchers.Main) {
                     onFailure("Upload failed: ${e.message}")
                 }
+            }
+        }
+    }
+
+    override fun leaveGroup(
+        groupId: String,
+        userId: String,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        getGroupById(groupId) { result ->
+            result.onSuccess { group ->
+                // Check if user is creator
+                if (group.createdBy == userId) {
+                    // Creator leaving - need to assign new admin or delete group
+                    // For now, we'll show message that creator can't leave
+                    callback(Result.failure(Exception("Group creator cannot leave. Delete group instead.")))
+                    return@onSuccess
+                }
+
+                // Find user index
+                val memberIndex = group.members.indexOf(userId)
+                if (memberIndex == -1) {
+                    callback(Result.failure(Exception("User not found in group")))
+                    return@onSuccess
+                }
+
+                // Remove user from all arrays
+                val updatedMembers = group.members.toMutableList().apply { removeAt(memberIndex) }
+                val updatedMemberNames = group.memberNames.toMutableList().apply { removeAt(memberIndex) }
+                val updatedMemberPhotos = group.memberPhotos.toMutableList().apply { removeAt(memberIndex) }
+
+                val updates = hashMapOf<String, Any>()
+                updates["members"] = updatedMembers
+                updates["memberNames"] = updatedMemberNames
+                updates["memberPhotos"] = updatedMemberPhotos
+
+                // Remove group from user's group list
+                database.reference.child("UserGroups/$userId/$groupId").removeValue()
+
+                // Update group
+                groupsRef.child(groupId).updateChildren(updates)
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            callback(Result.success(Unit))
+                        } else {
+                            callback(Result.failure(task.exception ?: Exception("Failed to leave group")))
+                        }
+                    }
+            }.onFailure { error ->
+                callback(Result.failure(error))
+            }
+        }
+    }
+
+    override fun updateGroupMemberRole(
+        groupId: String,
+        memberId: String,
+        role: String,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        // Store roles in separate node for scalability
+        database.reference.child("GroupRoles/$groupId/$memberId")
+            .setValue(role)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    callback(Result.success(Unit))
+                } else {
+                    callback(Result.failure(task.exception ?: Exception("Failed to update role")))
+                }
+            }
+    }
+
+    override fun getGroupMembersDetails(
+        groupId: String,
+        callback: (Result<List<GroupMember>>) -> Unit
+    ) {
+        getGroupById(groupId) { result ->
+            result.onSuccess { group ->
+                val members = mutableListOf<GroupMember>()
+
+                // Fetch roles from separate node
+                database.reference.child("GroupRoles/$groupId")
+                    .addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(roleSnapshot: DataSnapshot) {
+                            val roles = mutableMapOf<String, String>()
+                            for (roleData in roleSnapshot.children) {
+                                roles[roleData.key.toString()] = roleData.getValue(String::class.java) ?: "member"
+                            }
+
+                            // Create GroupMember objects
+                            for (i in group.members.indices) {
+                                val member = GroupMember(
+                                    userId = group.members[i],
+                                    userName = group.memberNames[i],
+                                    userPhoto = group.memberPhotos.getOrElse(i) { "" },
+                                    role = roles[group.members[i]] ?:
+                                    if (group.members[i] == group.createdBy) "admin" else "member"
+                                )
+                                members.add(member)
+                            }
+
+                            callback(Result.success(members))
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            // If roles node doesn't exist, create members without roles
+                            for (i in group.members.indices) {
+                                val member = GroupMember(
+                                    userId = group.members[i],
+                                    userName = group.memberNames[i],
+                                    userPhoto = group.memberPhotos.getOrElse(i) { "" },
+                                    role = if (group.members[i] == group.createdBy) "admin" else "member"
+                                )
+                                members.add(member)
+                            }
+                            callback(Result.success(members))
+                        }
+                    })
+            }.onFailure { error ->
+                callback(Result.failure(error))
+            }
+        }
+    }
+
+    override fun updateGroupMember(
+        groupId: String,
+        oldMemberId: String,
+        newMemberId: String,
+        newMemberName: String,
+        newMemberPhoto: String,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        getGroupById(groupId) { result ->
+            result.onSuccess { group ->
+                val memberIndex = group.members.indexOf(oldMemberId)
+                if (memberIndex == -1) {
+                    callback(Result.failure(Exception("Member not found")))
+                    return@onSuccess
+                }
+
+                // Update the specific member in all arrays
+                val updatedMembers = group.members.toMutableList().apply {
+                    set(memberIndex, newMemberId)
+                }
+                val updatedMemberNames = group.memberNames.toMutableList().apply {
+                    set(memberIndex, newMemberName)
+                }
+                val updatedMemberPhotos = group.memberPhotos.toMutableList().apply {
+                    set(memberIndex, newMemberPhoto)
+                }
+
+                val updates = hashMapOf<String, Any>()
+                updates["members"] = updatedMembers
+                updates["memberNames"] = updatedMemberNames
+                updates["memberPhotos"] = updatedMemberPhotos
+
+                // Update user groups reference
+                database.reference.child("UserGroups/$oldMemberId/$groupId").removeValue()
+                database.reference.child("UserGroups/$newMemberId/$groupId").setValue(true)
+
+                groupsRef.child(groupId).updateChildren(updates)
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            callback(Result.success(Unit))
+                        } else {
+                            callback(Result.failure(task.exception ?: Exception("Failed to update member")))
+                        }
+                    }
+            }.onFailure { error ->
+                callback(Result.failure(error))
             }
         }
     }

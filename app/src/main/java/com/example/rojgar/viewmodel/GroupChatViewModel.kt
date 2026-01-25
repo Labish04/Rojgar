@@ -35,6 +35,9 @@ class GroupChatRoomViewModel(private val repository: GroupChatRepository) : View
     private val _isUploading = MutableLiveData(false)
     val isUploading: LiveData<Boolean> = _isUploading
 
+    private val _leaveGroupResult = MutableLiveData<LeaveGroupResult?>(null)
+    val leaveGroupResult: LiveData<LeaveGroupResult?> = _leaveGroupResult
+
     private var messageListener: (() -> Unit)? = null
 
     /**
@@ -241,6 +244,8 @@ class GroupChatRoomViewModel(private val repository: GroupChatRepository) : View
         }
     }
 
+
+
     /**
      * Create image URI for camera
      */
@@ -258,6 +263,20 @@ class GroupChatRoomViewModel(private val repository: GroupChatRepository) : View
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             contentValues
         ) ?: Uri.EMPTY
+    }
+
+    fun leaveGroup(groupId: String, userId: String) {
+        repository.leaveGroup(groupId, userId) { result ->
+            result.onSuccess {
+                _leaveGroupResult.value = LeaveGroupResult.Success
+            }.onFailure { error ->
+                _leaveGroupResult.value = LeaveGroupResult.Error(error.message ?: "Failed to leave group")
+            }
+        }
+    }
+
+    fun clearLeaveGroupResult() {
+        _leaveGroupResult.value = null
     }
 
     /**

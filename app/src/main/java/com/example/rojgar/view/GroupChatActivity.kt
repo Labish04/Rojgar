@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -59,6 +58,7 @@ import com.example.rojgar.model.GroupChat
 import com.example.rojgar.model.GroupMessage
 import com.example.rojgar.repository.GroupChatRepositoryImpl
 import com.example.rojgar.viewmodel.GroupChatRoomViewModel
+import com.example.rojgar.viewmodel.LeaveGroupResult
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -107,11 +107,15 @@ fun GroupChatScreen(
     val error by viewModel.error.observeAsState()
     val isUploading by viewModel.isUploading.observeAsState(false)
     val uploadProgress by viewModel.uploadProgress.observeAsState(0.0)
+    val leaveGroupResult by viewModel.leaveGroupResult.observeAsState()
 
     var textState by remember { mutableStateOf("") }
     var showGroupInfoDialog by remember { mutableStateOf(false) }
     var showMembersDialog by remember { mutableStateOf(false) }
     var showAttachmentOptions by remember { mutableStateOf(false) }
+    var showSettingsMenu by remember { mutableStateOf(false) }
+    var showLeaveGroupDialog by remember { mutableStateOf(false) }
+    var showEditMembersDialog by remember { mutableStateOf(false) }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
@@ -130,23 +134,33 @@ fun GroupChatScreen(
     LaunchedEffect(groupId) {
         isLoading = true
         viewModel.loadGroupInfo(groupId)
-        viewModel.loadMessages(groupId, limit = 100) // Load more messages
+        viewModel.loadMessages(groupId, limit = 100)
         viewModel.listenForMessages(groupId)
-        delay(1000) // Give time for data to load
+        delay(1000)
         isLoading = false
     }
 
     // Auto-scroll to bottom when new messages arrive
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
-            delay(100) // Small delay to ensure layout is ready
+            delay(100)
             listState.animateScrollToItem(messages.size - 1)
         }
     }
 
-    LaunchedEffect(groupInfo) {
-        if (groupInfo != null) {
-            // Group info loaded successfully
+    // Handle leave group result
+    LaunchedEffect(leaveGroupResult) {
+        when (leaveGroupResult) {
+            is LeaveGroupResult.Success -> {
+                Toast.makeText(context, "You have left the group", Toast.LENGTH_SHORT).show()
+                onBackPressed()
+                viewModel.clearLeaveGroupResult()
+            }
+            is LeaveGroupResult.Error -> {
+                Toast.makeText(context, (leaveGroupResult as LeaveGroupResult.Error).message, Toast.LENGTH_SHORT).show()
+                viewModel.clearLeaveGroupResult()
+            }
+            null -> {}
         }
     }
 
@@ -190,7 +204,9 @@ fun GroupChatScreen(
                 memberCount = groupInfo?.members?.size ?: 0,
                 onBackPressed = onBackPressed,
                 onGroupInfoClick = { showGroupInfoDialog = true },
-                onMembersClick = { showMembersDialog = true }
+                onMembersClick = { showMembersDialog = true },
+                onSettingsClick = { showSettingsMenu = true },
+                isCurrentUserCreator = groupInfo?.createdBy == currentUserId
             )
         },
         bottomBar = {
@@ -316,7 +332,52 @@ fun GroupChatScreen(
         }
     }
 
-    // Dialogs
+    // Settings menu
+    if (showSettingsMenu) {
+        GroupSettingsMenu(
+            onDismiss = { showSettingsMenu = false },
+            onLeaveGroup = {
+                showSettingsMenu = false
+                showLeaveGroupDialog = true
+            },
+            onEditMembers = {
+                showSettingsMenu = false
+                showEditMembersDialog = true
+            },
+            isCreator = groupInfo?.createdBy == currentUserId
+        )
+    }
+
+    // Leave group confirmation dialog
+    if (showLeaveGroupDialog) {
+        LeaveGroupDialog(
+            onDismiss = { showLeaveGroupDialog = false },
+            onConfirmLeave = {
+                showLeaveGroupDialog = false
+                viewModel.leaveGroup(groupId, currentUserId)
+            },
+            isCreator = groupInfo?.createdBy == currentUserId
+        )
+    }
+
+    // Edit members dialog
+    if (showEditMembersDialog && groupInfo != null) {
+        EditMembersDialog(
+            groupInfo = groupInfo!!,
+            currentUserId = currentUserId,
+            onDismiss = { showEditMembersDialog = false },
+            onRemoveMember = { memberId ->
+                // Implement remove member logic
+                Toast.makeText(context, "Remove member: $memberId", Toast.LENGTH_SHORT).show()
+            },
+            onAddMember = {
+                // Implement add member logic
+                Toast.makeText(context, "Add member clicked", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
+    // Other dialogs
     if (showGroupInfoDialog && groupInfo != null) {
         ModernGroupInfoDialog(
             groupInfo = groupInfo!!,
@@ -364,7 +425,9 @@ fun ModernGroupChatTopBar(
     memberCount: Int,
     onBackPressed: () -> Unit,
     onGroupInfoClick: () -> Unit,
-    onMembersClick: () -> Unit
+    onMembersClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    isCurrentUserCreator: Boolean
 ) {
     Card(
         modifier = Modifier
@@ -461,6 +524,21 @@ fun ModernGroupChatTopBar(
                         fontSize = 13.sp,
                         color = Color(0xFF757575)
                     )
+                    if (isCurrentUserCreator) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0xFFFFA726), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "Admin",
+                                fontSize = 10.sp,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
 
@@ -478,12 +556,12 @@ fun ModernGroupChatTopBar(
                     )
                 }
                 IconButton(
-                    onClick = onGroupInfoClick,
+                    onClick = onSettingsClick,
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
-                        contentDescription = "More",
+                        contentDescription = "Settings",
                         tint = Color(0xFF1976D2),
                         modifier = Modifier.size(24.dp)
                     )
@@ -494,6 +572,409 @@ fun ModernGroupChatTopBar(
 }
 
 @Composable
+fun GroupSettingsMenu(
+    onDismiss: () -> Unit,
+    onLeaveGroup: () -> Unit,
+    onEditMembers: () -> Unit,
+    isCreator: Boolean
+) {
+    val density = LocalDensity.current
+
+    Popup(
+        alignment = Alignment.TopEnd,
+        offset = IntOffset(
+            x = with(density) { (-16).dp.roundToPx() },
+            y = with(density) { 80.dp.roundToPx() }
+        ),
+        onDismissRequest = onDismiss,
+        properties = PopupProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        AnimatedVisibility(
+            visible = true,
+            enter = fadeIn() + scaleIn(initialScale = 0.8f) + slideInVertically { -20 },
+            exit = fadeOut() + scaleOut() + slideOutVertically { -20 }
+        ) {
+            Card(
+                modifier = Modifier
+                    .width(220.dp)
+                    .shadow(12.dp, RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    // Edit Members (only for creator)
+                    if (isCreator) {
+                        SettingsMenuItem(
+                            icon = Icons.Default.Edit,
+                            text = "Edit Members",
+                            iconColor = Color(0xFF1976D2),
+                            onClick = onEditMembers
+                        )
+                        Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                    }
+
+                    // Leave Group
+                    SettingsMenuItem(
+                        icon = Icons.Default.ExitToApp,
+                        text = "Leave Group",
+                        iconColor = Color.Red,
+                        textColor = Color.Red,
+                        onClick = onLeaveGroup
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsMenuItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    iconColor: Color,
+    textColor: Color = Color(0xFF212121),
+    onClick: () -> Unit
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "scale"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        try {
+                            tryAwaitRelease()
+                        } finally {
+                            isPressed = false
+                        }
+                    },
+                    onTap = { onClick() }
+                )
+            },
+        shape = RoundedCornerShape(0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = text,
+                modifier = Modifier.size(20.dp),
+                tint = iconColor
+            )
+            Text(
+                text = text,
+                style = TextStyle(
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = textColor
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun LeaveGroupDialog(
+    onDismiss: () -> Unit,
+    onConfirmLeave: () -> Unit,
+    isCreator: Boolean
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (isCreator) "Cannot Leave Group" else "Leave Group?",
+                color = if (isCreator) Color.Red else Color(0xFF212121)
+            )
+        },
+        text = {
+            Text(
+                text = if (isCreator)
+                    "You are the group creator. You cannot leave the group. If you want to leave, you must delete the group or transfer ownership first."
+                else "Are you sure you want to leave this group? You won't be able to see messages anymore.",
+                fontSize = 14.sp
+            )
+        },
+        confirmButton = {
+            if (!isCreator) {
+                TextButton(
+                    onClick = onConfirmLeave,
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) {
+                    Text("Leave")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(if (isCreator) "OK" else "Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun EditMembersDialog(
+    groupInfo: GroupChat,
+    currentUserId: String,
+    onDismiss: () -> Unit,
+    onRemoveMember: (String) -> Unit,
+    onAddMember: () -> Unit
+) {
+    var showRemoveConfirmation by remember { mutableStateOf(false) }
+    var selectedMemberId by remember { mutableStateOf<String?>(null) }
+    var selectedMemberName by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 500.dp)
+                .shadow(12.dp, RoundedCornerShape(24.dp))
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Manage Members",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF212121)
+                    )
+                    IconButton(
+                        onClick = onAddMember,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add Member",
+                            tint = Color(0xFF1976D2),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                Text(
+                    text = "${groupInfo.members.size} members",
+                    fontSize = 14.sp,
+                    color = Color(0xFF757575),
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    items(groupInfo.members.indices.toList()) { index ->
+                        val memberId = groupInfo.members[index]
+                        val memberName = groupInfo.memberNames.getOrNull(index) ?: "Unknown"
+                        val memberPhoto = groupInfo.memberPhotos.getOrNull(index) ?: ""
+                        val isCreator = memberId == groupInfo.createdBy
+                        val isCurrentUser = memberId == currentUserId
+
+                        EditableMemberItem(
+                            memberId = memberId,
+                            memberName = memberName,
+                            memberPhoto = memberPhoto,
+                            isCreator = isCreator,
+                            isCurrentUser = isCurrentUser,
+                            onRemoveClick = {
+                                if (!isCreator && !isCurrentUser) {
+                                    selectedMemberId = memberId
+                                    selectedMemberName = memberName
+                                    showRemoveConfirmation = true
+                                }
+                            }
+                        )
+                        if (index < groupInfo.members.size - 1) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                color = Color(0xFFE0E0E0)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1976D2)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Close", fontSize = 16.sp)
+                }
+            }
+        }
+    }
+
+    // Remove confirmation dialog
+    if (showRemoveConfirmation && selectedMemberId != null) {
+        AlertDialog(
+            onDismissRequest = { showRemoveConfirmation = false },
+            title = { Text("Remove Member") },
+            text = { Text("Are you sure you want to remove $selectedMemberName from the group?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onRemoveMember(selectedMemberId!!)
+                        showRemoveConfirmation = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun EditableMemberItem(
+    memberId: String,
+    memberName: String,
+    memberPhoto: String,
+    isCreator: Boolean,
+    isCurrentUser: Boolean,
+    onRemoveClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Member photo
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .shadow(2.dp, CircleShape)
+                .clip(CircleShape)
+                .background(Color(0xFF1976D2))
+        ) {
+            if (memberPhoto.isNotEmpty()) {
+                AsyncImage(
+                    model = memberPhoto,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = memberName.firstOrNull()?.uppercase() ?: "?",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (isCurrentUser) "$memberName (You)" else memberName,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 15.sp,
+                    color = Color(0xFF212121)
+                )
+                if (isCurrentUser) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFFE3F2FD), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "You",
+                            fontSize = 10.sp,
+                            color = Color(0xFF1976D2),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            if (isCreator) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFFFA726),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Group Admin",
+                        fontSize = 12.sp,
+                        color = Color(0xFFFFA726),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        // Remove button (not shown for creator or current user)
+        if (!isCreator && !isCurrentUser) {
+            IconButton(
+                onClick = onRemoveClick,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Remove",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+// The rest of the composables remain the same as before:
+// ModernGroupMessageItem, ModernChatInputBar, ModernGroupInfoDialog,
+// ModernGroupMembersDialog, ModernAttachmentPopup, ModernAttachmentOption, formatMessageTimes
+
+// Keep all the existing composables from the original file that are not modified
+
+@Composable
 fun ModernGroupMessageItem(
     message: GroupMessage,
     isMe: Boolean,
@@ -502,7 +983,6 @@ fun ModernGroupMessageItem(
 ) {
     val alignment = if (isMe) Alignment.End else Alignment.Start
 
-    // Get sender info
     val senderIndex = groupInfo?.members?.indexOf(message.senderId) ?: -1
     val senderName = if (senderIndex >= 0) {
         groupInfo?.memberNames?.getOrNull(senderIndex) ?: message.senderName
@@ -521,7 +1001,6 @@ fun ModernGroupMessageItem(
             horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start,
             verticalAlignment = Alignment.Top
         ) {
-            // Sender avatar (only for others)
             if (!isMe) {
                 Box(
                     modifier = Modifier
@@ -554,12 +1033,10 @@ fun ModernGroupMessageItem(
                 Spacer(modifier = Modifier.width(8.dp))
             }
 
-            // Message bubble
             Column(
                 modifier = Modifier.weight(1f),
                 horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
             ) {
-                // Sender name (only for others)
                 if (!isMe) {
                     Text(
                         text = message.senderName,
@@ -570,7 +1047,6 @@ fun ModernGroupMessageItem(
                     )
                 }
 
-                // Message card
                 Card(
                     modifier = Modifier
                         .shadow(3.dp, RoundedCornerShape(18.dp))
@@ -631,7 +1107,6 @@ fun ModernGroupMessageItem(
 
                         Spacer(modifier = Modifier.height(6.dp))
 
-                        // Timestamp and status
                         Row(
                             horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically,
@@ -712,7 +1187,6 @@ fun ModernChatInputBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Attachment button
                 Box(
                     modifier = Modifier
                         .size(48.dp)
@@ -733,7 +1207,6 @@ fun ModernChatInputBar(
                     )
                 }
 
-                // Text field
                 Card(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
@@ -762,7 +1235,6 @@ fun ModernChatInputBar(
                     )
                 }
 
-                // Send button
                 AnimatedContent(
                     targetState = text.isNotBlank(),
                     transitionSpec = {
@@ -825,7 +1297,6 @@ fun ModernGroupInfoDialog(groupInfo: GroupChat, onDismiss: () -> Unit) {
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Group Image
                 Box(
                     modifier = Modifier
                         .size(100.dp)
@@ -987,7 +1458,6 @@ fun ModernMemberItem(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Member photo
         Box(
             modifier = Modifier
                 .size(48.dp)
