@@ -61,6 +61,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.draw.scale
+import com.example.rojgar.repository.JobRepoImpl
+import com.example.rojgar.viewmodel.JobViewModel
 import kotlinx.coroutines.launch
 
 class CompanyProfileActivity : ComponentActivity() {
@@ -160,6 +162,9 @@ fun CompanyProfileBody(
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showConfirmPasswordDialog by remember { mutableStateOf(false) }
     var showEditProfileDialog by remember { mutableStateOf(false) }
+    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    val companyId = company.value?.companyId ?: ""
+    val jobPosts by jobViewModel.company.observeAsState(emptyList())
 
     fun shareCompanyProfile(context: Context, company: CompanyModel?) {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -177,6 +182,16 @@ fun CompanyProfileBody(
             putExtra(Intent.EXTRA_TEXT, shareText)
         }
         context.startActivity(Intent.createChooser(shareIntent, "Share Company Profile via"))
+    }
+
+    LaunchedEffect(companyId) {
+        if (companyId.isNotEmpty()) {
+            jobViewModel.getJobPostsByCompanyId(companyId)
+        }
+    }
+
+    val activeJobCount = remember(jobPosts) {
+        jobPosts.count { isJobActive(it.deadline) }
     }
 
     LaunchedEffect(Unit) {
@@ -416,9 +431,12 @@ fun CompanyProfileBody(
                     ) {
                         EnhancedStatCard(
                             label = "Active Jobs",
-                            value = "42",
+                            value = activeJobCount.toString(),
                             icon = Icons.Default.Email,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f).clickable {
+                                val intent = Intent(context, ActiveJob::class.java)
+                                context.startActivity(intent)
+                            }
                         )
                         EnhancedStatCard(
                             label = "Followers",
