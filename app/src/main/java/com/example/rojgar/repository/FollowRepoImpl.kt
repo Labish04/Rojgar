@@ -1,6 +1,9 @@
 package com.example.rojgar.repository
 
+import android.content.Context
+import android.util.Log
 import com.example.rojgar.model.FollowModel
+import com.example.rojgar.utils.NotificationHelper
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -8,7 +11,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import java.util.UUID
 
-class FollowRepoImpl : FollowRepo {
+class FollowRepoImpl(private val context: Context) : FollowRepo {
 
     private val database: FirebaseDatabase = FirebaseDatabase.getInstance()
     private val followsRef: DatabaseReference = database.getReference("Follows")
@@ -53,6 +56,8 @@ class FollowRepoImpl : FollowRepo {
                             incrementFollowingCount(followerId)
                             // Update following's followers count
                             incrementFollowersCount(followingId)
+                            // Send notification - FIXED: Now passes context
+                            sendFollowNotification(followerId, followerType, followingId, followingType)
                             callback(true, "Followed successfully")
                         } else {
                             callback(false, task.exception?.message ?: "Failed to follow")
@@ -195,7 +200,6 @@ class FollowRepoImpl : FollowRepo {
         userId: String,
         callback: (Int) -> Unit
     ) {
-        // Use the stat counter instead of querying all follows
         statsRef.child(userId).child("followingCount")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -348,5 +352,92 @@ class FollowRepoImpl : FollowRepo {
                     // Optional: Log transaction completion
                 }
             })
+    }
+
+    // FIXED: Updated to send actual notifications
+    private fun sendFollowNotification(
+        followerId: String,
+        followerType: String,
+        followingId: String,
+        followingType: String
+    ) {
+        // Get follower's name
+        when (followerType) {
+            "JobSeeker" -> {
+                FirebaseDatabase.getInstance()
+                    .getReference("JobSeekers")
+                    .child(followerId)
+                    .child("fullName")
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        val name = snapshot.getValue(String::class.java) ?: "Someone"
+                        // Store notification in database
+                        storeFollowNotification(followingId, followerId, followerType, name)
+                        // FIXED: Send actual push notification
+                        NotificationHelper.sendFollowNotification(
+                            context,
+                            followingId,
+                            name,
+                            followerId,
+                            followerType
+                        )
+                    }
+            }
+            "Company" -> {
+                FirebaseDatabase.getInstance()
+                    .getReference("Companys")
+                    .child(followerId)
+                    .child("companyName")
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        val name = snapshot.getValue(String::class.java) ?: "A company"
+                        // Store notification in database
+                        storeFollowNotification(followingId, followerId, followerType, name)
+                        // FIXED: Send actual push notification
+                        NotificationHelper.sendFollowNotification(
+                            context,
+                            followingId,
+                            name,
+                            followerId,
+                            followerType
+                        )
+                    }
+            }
+        }
+    }
+
+    private fun storeFollowNotification(
+        receiverId: String,
+        senderId: String,
+        senderType: String,
+        senderName: String
+    ) {
+        val notificationRef = FirebaseDatabase.getInstance()
+            .getReference("Notifications")
+            .child(receiverId)
+            .push()
+
+        val notificationId = notificationRef.key ?: ""
+        val timestamp = System.currentTimeMillis()
+
+        val notificationData = hashMapOf<String, Any>(
+            "notificationId" to notificationId,
+            "receiverId" to receiverId,
+            "senderId" to senderId,
+            "senderType" to senderType,
+            "senderName" to senderName,
+            "type" to "follow",
+            "message" to "$senderName started following you",
+            "timestamp" to timestamp,
+            "isRead" to false
+        )
+
+        notificationRef.setValue(notificationData)
+            .addOnSuccessListener {
+                Log.d("FollowRepo", "Follow notification stored successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.e("FollowRepo", "Failed to store follow notification: ${e.message}")
+            }
     }
 }

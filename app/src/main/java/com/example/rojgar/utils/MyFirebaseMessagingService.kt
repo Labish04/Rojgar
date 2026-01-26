@@ -59,6 +59,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         Log.d("FCM", "Token saved locally for later registration")
     }
 
+    // Update onMessageReceived function
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
 
@@ -66,7 +67,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         // Handle notification payload
         remoteMessage.notification?.let {
-            showNotification(it.title, it.body)
+            val data = remoteMessage.data
+            val type = data["type"] ?: "general"
+            NotificationHelper.showNotification(
+                this,
+                it.title,
+                it.body,
+                type,
+                data
+            )
         }
 
         // Handle data payload
@@ -75,7 +84,14 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val title = remoteMessage.data["title"]
             val message = remoteMessage.data["message"]
             val type = remoteMessage.data["type"]
-            showNotification(title, message, type)
+
+            NotificationHelper.showNotification(
+                this,
+                title,
+                message,
+                type,
+                remoteMessage.data
+            )
         }
     }
 

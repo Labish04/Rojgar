@@ -83,7 +83,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
     // Initialize repositories
     val repository = remember { JobSeekerRepoImpl() }
-    val followRepository = remember { FollowRepoImpl() }
+    val followRepository = remember { FollowRepoImpl(context) }
 
     // Initialize JobSeeker ViewModel
     val jobSeekerViewModel = remember { JobSeekerViewModel(repository) }

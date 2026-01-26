@@ -150,7 +150,7 @@ fun MessageBody(
             loadingMutualFollows = true
             scope.launch {
                 try {
-                    val helper = MutualFollowHelper(FollowRepoImpl())
+                    val helper = MutualFollowHelper(FollowRepoImpl(context))
                     val mutualFollowIds = helper.getMutualFollowers(currentUserId)
 
                     val companyRepo = CompanyRepoImpl()

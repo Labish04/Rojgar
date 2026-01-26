@@ -2,14 +2,22 @@ package com.example.rojgar.viewmodel
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.PreferenceModel
 import com.example.rojgar.repository.JobRepo
+import com.example.rojgar.utils.NotificationHelper
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 
 class JobViewModel(private val repo: JobRepo) : ViewModel() {
+
+    private val TAG = "JobViewModel"
 
     // Loading State
     private val _loading = MutableLiveData(false)
@@ -27,11 +35,67 @@ class JobViewModel(private val repo: JobRepo) : ViewModel() {
     private val _companyJobs = MutableLiveData<List<JobModel>>(emptyList())
     val company: MutableLiveData<List<JobModel>> get() = _companyJobs
 
+    fun createJobPost(
+        context: Context,
+        jobPost: JobModel,
+        callback: (Boolean, String) -> Unit
+    ) {
+        _loading.postValue(true)
+
+        repo.createJobPost(jobPost) { success, message ->
+            _loading.postValue(false)
+
+            if (success) {
+                Log.d(TAG, "✅ Job post created successfully: ${jobPost.title}")
+
+                // Send notifications to ALL job seekers
+                sendJobPostNotificationToAll(context, jobPost)
+
+                callback(true, "Job posted successfully! Notifying all job seekers...")
+            } else {
+                Log.e(TAG, "❌ Failed to create job post: $message")
+                callback(false, message)
+            }
+        }
+    }
+
+    /**
+     * Send job post notifications to ALL active job seekers
+     */
+    private fun sendJobPostNotificationToAll(context: Context, jobPost: JobModel) {
+        // Get company details first
+        FirebaseDatabase.getInstance()
+            .getReference("Companys")
+            .child(jobPost.companyId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val companyName = snapshot.child("companyName").getValue(String::class.java)
+                        ?: "A Company"
+
+                    Log.d(TAG, "📢 Sending broadcast notification for: ${jobPost.title} by $companyName")
+
+                    // Send to ALL active job seekers
+                    NotificationHelper.sendJobPostNotificationToAll(
+                        context,
+                        jobPost.postId,
+                        jobPost.title,
+                        companyName,
+                        jobPost.position
+                    )
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "Error fetching company details: ${error.message}")
+                }
+            })
+    }
+
     fun createJobPost(jobPost: JobModel, callback: (Boolean, String) -> Unit) {
         _loading.postValue(true)
         repo.createJobPost(jobPost) { success, message ->
             _loading.postValue(false)
             callback(success, message)
+
         }
     }
 

@@ -541,6 +541,9 @@ fun JobSeekerExperienceBody() {
                             onClick = { openAddForm() },
                             text = if (experiences.isEmpty()) "Add Experience" else "Add Another",
                         )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
                     } else {
                         LazyColumn(
                             modifier = Modifier

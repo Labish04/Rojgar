@@ -244,7 +244,12 @@ fun CompanyDashboardBody(
                                 )
                             }
                             Spacer(modifier = Modifier.width(20.dp))
-                            IconButton(onClick = {}) {
+                            IconButton(onClick = {
+                                val intent = Intent(context, NotificationActivity::class.java).apply {
+                                    putExtra("USER_TYPE", "JOBSEEKER") // or "COMPANY"
+                                }
+                                context.startActivity(intent)
+                            }) {
                                 Icon(
                                     painter = painterResource(R.drawable.notification),
                                     contentDescription = null,

@@ -48,6 +48,7 @@ import com.example.rojgar.R
 import com.example.rojgar.repository.CompanyRepoImpl
 import com.example.rojgar.repository.JobSeekerRepoImpl
 import com.example.rojgar.utils.FCMTokenManager
+import com.example.rojgar.utils.NotificationHelper
 import com.example.rojgar.utils.RememberMeManager
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobSeekerViewModel
@@ -137,11 +138,12 @@ class LoginActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        NotificationHelper.createNotificationChannels(this)
         enableEdgeToEdge()
         rememberMeManager = RememberMeManager(this)
 
         setContent {
-            ModernLoginScreen(
+            LoginScreen(
                 rememberMeManager = rememberMeManager,
                 jobSeekerViewModel = jobSeekerViewModel,
                 companyViewModel = companyViewModel,
@@ -237,7 +239,7 @@ class LoginActivity : ComponentActivity() {
 }
 
 @Composable
-fun ModernLoginScreen(
+fun LoginScreen(
     rememberMeManager: RememberMeManager? = null,
     jobSeekerViewModel: JobSeekerViewModel,
     companyViewModel: CompanyViewModel,
@@ -308,7 +310,7 @@ fun ModernLoginScreen(
                 )
             )
     ) {
-        EnhancedAnimatedBackground()
+        AnimatedBackgroundCircles()
 
         Column(
             modifier = Modifier
@@ -710,95 +712,52 @@ fun ModernLoginScreen(
 }
 
 @Composable
-fun EnhancedAnimatedBackground() {
+fun AnimatedBackgroundCircles() {
     val infiniteTransition = rememberInfiniteTransition(label = "")
 
-    val wave1 by infiniteTransition.animateFloat(
+    val circle1Offset by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 360f,
+        targetValue = 50f,
         animationSpec = infiniteRepeatable(
-            animation = tween(8000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
         ), label = ""
     )
 
-    val wave2 by infiniteTransition.animateFloat(
+    val circle2Offset by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 360f,
+        targetValue = -30f,
         animationSpec = infiniteRepeatable(
-            animation = tween(12000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ), label = ""
-    )
-
-    val wave3 by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(10000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            animation = tween(4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
         ), label = ""
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Floating orbs
         Box(
             modifier = Modifier
-                .offset(
-                    x = (sin(Math.toRadians(wave1.toDouble())) * 60).dp,
-                    y = 120.dp + (sin(Math.toRadians(wave1.toDouble() * 0.5)) * 40).dp
-                )
-                .size(220.dp)
-                .blur(60.dp)
-                .background(
-                    ModernLoginTheme.LightBlue.copy(alpha = 0.25f),
-                    CircleShape
-                )
+                .offset(x = (-50).dp + circle1Offset.dp, y = 100.dp)
+                .size(200.dp)
+                .clip(CircleShape)
+                .background(ModernLoginTheme.LightBlue.copy(alpha = 0.1f))
         )
 
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .offset(
-                    x = (sin(Math.toRadians(wave2.toDouble())) * 50).dp,
-                    y = (-40).dp + (sin(Math.toRadians(wave2.toDouble() * 0.7)) * 30).dp
-                )
-                .size(200.dp)
-                .blur(50.dp)
-                .background(
-                    ModernLoginTheme.AccentBlue.copy(alpha = 0.2f),
-                    CircleShape
-                )
+                .offset(x = 50.dp + circle2Offset.dp, y = (-50).dp)
+                .size(150.dp)
+                .clip(CircleShape)
+                .background(ModernLoginTheme.PrimaryBlue.copy(alpha = 0.1f))
         )
 
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .offset(
-                    x = (sin(Math.toRadians(wave3.toDouble())) * 40).dp,
-                    y = 80.dp + (sin(Math.toRadians(wave3.toDouble() * 0.6)) * 35).dp
-                )
-                .size(240.dp)
-                .blur(70.dp)
-                .background(
-                    ModernLoginTheme.PrimaryBlue.copy(alpha = 0.18f),
-                    CircleShape
-                )
-        )
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .offset(
-                    x = (sin(Math.toRadians(wave1.toDouble() * 1.3)) * 45).dp,
-                    y = 60.dp + (sin(Math.toRadians(wave1.toDouble() * 0.4)) * 30).dp
-                )
+                .offset(x = circle2Offset.dp, y = 100.dp)
                 .size(180.dp)
-                .blur(55.dp)
-                .background(
-                    ModernLoginTheme.SkyBlue.copy(alpha = 0.3f),
-                    CircleShape
-                )
+                .clip(CircleShape)
+                .background(ModernLoginTheme.AccentBlue.copy(alpha = 0.08f))
         )
     }
 }
@@ -1134,182 +1093,123 @@ fun ModernGoogleSignInDialog(
     ) {
         AnimatedVisibility(
             visible = showAnimation,
-            enter = fadeIn(tween(400)) + scaleIn(
-                initialScale = 0.7f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
-            ),
-            exit = fadeOut(tween(300)) + scaleOut(targetScale = 0.8f)
+            enter = fadeIn() + scaleIn(initialScale = 0.8f),
+            exit = fadeOut() + scaleOut(targetScale = 0.8f)
         ) {
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(32.dp),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = ModernLoginTheme.White
                 ),
                 elevation = CardDefaults.cardElevation(
-                    defaultElevation = 16.dp
+                    defaultElevation = 8.dp
                 )
             ) {
-                Box {
-                    // Decorative gradient bar
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(
-                                        ModernLoginTheme.DeepBlue,
-                                        ModernLoginTheme.PrimaryBlue,
-                                        ModernLoginTheme.LightBlue,
-                                        ModernLoginTheme.AccentBlue
-                                    )
-                                )
-                            )
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(ModernLoginTheme.SkyBlue),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.google),
+                            contentDescription = "Google",
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Text(
+                        text = "Sign in with Google",
+                        style = TextStyle(
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ModernLoginTheme.TextPrimary
+                        )
                     )
 
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Choose your account type",
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            color = ModernLoginTheme.TextSecondary
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    UserTypeOption(
+                        title = "Job Seeker",
+                        description = "Find your dream job",
+                        icon = R.drawable.employee,
+                        isSelected = selectedType == "JOBSEEKER",
+                        onClick = { selectedType = "JOBSEEKER" }
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    UserTypeOption(
+                        title = "Company",
+                        description = "Hire top talent",
+                        icon = R.drawable.office,
+                        isSelected = selectedType == "COMPANY",
+                        onClick = { selectedType = "COMPANY" }
+                    )
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Google Icon with animation
-                        Box(
+                        OutlinedButton(
+                            onClick = onDismiss,
                             modifier = Modifier
-                                .size(72.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    Brush.radialGradient(
-                                        colors = listOf(
-                                            ModernLoginTheme.IceBlue,
-                                            ModernLoginTheme.SkyBlue.copy(alpha = 0.5f)
-                                        )
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, ModernLoginTheme.GlassBlue)
                         ) {
-                            Image(
-                                painter = painterResource(R.drawable.google),
-                                contentDescription = "Google",
-                                modifier = Modifier.size(36.dp)
+                            Text(
+                                text = "Cancel",
+                                style = TextStyle(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = ModernLoginTheme.TextSecondary
+                                )
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Text(
-                            text = "Sign in with Google",
-                            style = TextStyle(
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                brush = Brush.linearGradient(
-                                    colors = listOf(
-                                        ModernLoginTheme.DeepBlue,
-                                        ModernLoginTheme.PrimaryBlue
-                                    )
+                        Button(
+                            onClick = { onUserTypeSelected(selectedType) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ModernLoginTheme.PrimaryBlue
+                            )
+                        ) {
+                            Text(
+                                text = "Continue",
+                                style = TextStyle(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ModernLoginTheme.White
                                 )
                             )
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Text(
-                            text = "Choose your account type to continue",
-                            style = TextStyle(
-                                fontSize = 15.sp,
-                                color = ModernLoginTheme.TextSecondary,
-                                fontWeight = FontWeight.Medium
-                            ),
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(32.dp))
-
-                        ModernUserTypeOption(
-                            title = "Job Seeker",
-                            description = "Find your dream job",
-                            icon = R.drawable.profileemptypic,
-                            isSelected = selectedType == "JOBSEEKER",
-                            onClick = { selectedType = "JOBSEEKER" }
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        ModernUserTypeOption(
-                            title = "Company",
-                            description = "Hire top talent",
-                            icon = R.drawable.profileemptypic,
-                            isSelected = selectedType == "COMPANY",
-                            onClick = { selectedType = "COMPANY" }
-                        )
-
-                        Spacer(modifier = Modifier.height(32.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = onDismiss,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(54.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                border = BorderStroke(2.dp, ModernLoginTheme.SkyBlue)
-                            ) {
-                                Text(
-                                    text = "Cancel",
-                                    style = TextStyle(
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = ModernLoginTheme.TextSecondary
-                                    )
-                                )
-                            }
-
-                            Button(
-                                onClick = { onUserTypeSelected(selectedType) },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(54.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.Transparent
-                                ),
-                                contentPadding = PaddingValues(0.dp),
-                                elevation = ButtonDefaults.buttonElevation(
-                                    defaultElevation = 8.dp
-                                )
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(
-                                            Brush.horizontalGradient(
-                                                colors = listOf(
-                                                    ModernLoginTheme.DeepBlue,
-                                                    ModernLoginTheme.PrimaryBlue
-                                                )
-                                            )
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Continue",
-                                        style = TextStyle(
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = ModernLoginTheme.White
-                                        )
-                                    )
-                                }
-                            }
                         }
                     }
                 }
@@ -1319,62 +1219,36 @@ fun ModernGoogleSignInDialog(
 }
 
 @Composable
-fun ModernUserTypeOption(
+fun UserTypeOption(
     title: String,
     description: String,
     icon: Int,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.02f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ), label = ""
-    )
+    val borderColor = if (isSelected) ModernLoginTheme.PrimaryBlue else ModernLoginTheme.GlassBlue
+    val backgroundColor = if (isSelected) ModernLoginTheme.SkyBlue else ModernLoginTheme.White
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .scale(scale)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) { onClick() },
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected)
-                ModernLoginTheme.IceBlue
-            else
-                ModernLoginTheme.White
+            containerColor = backgroundColor
         ),
         border = BorderStroke(
-            width = if (isSelected) 3.dp else 2.dp,
-            brush = if (isSelected) {
-                Brush.linearGradient(
-                    colors = listOf(
-                        ModernLoginTheme.PrimaryBlue,
-                        ModernLoginTheme.AccentBlue
-                    )
-                )
-            } else {
-                Brush.linearGradient(
-                    colors = listOf(
-                        ModernLoginTheme.SkyBlue,
-                        ModernLoginTheme.SkyBlue
-                    )
-                )
-            }
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 8.dp else 2.dp
+            width = if (isSelected) 2.dp else 1.dp,
+            color = borderColor
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             RadioButton(
@@ -1386,79 +1260,59 @@ fun ModernUserTypeOption(
                 )
             )
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
             Box(
                 modifier = Modifier
-                    .size(52.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .background(
                         if (isSelected)
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    ModernLoginTheme.PrimaryBlue.copy(alpha = 0.2f),
-                                    ModernLoginTheme.LightBlue.copy(alpha = 0.1f)
-                                )
-                            )
+                            ModernLoginTheme.PrimaryBlue.copy(alpha = 0.15f)
                         else
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    ModernLoginTheme.SkyBlue.copy(alpha = 0.5f),
-                                    ModernLoginTheme.IceBlue
-                                )
-                            )
+                            ModernLoginTheme.SkyBlue
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
+                Image(
                     painter = painterResource(icon),
                     contentDescription = title,
-                    tint = if (isSelected) ModernLoginTheme.PrimaryBlue else ModernLoginTheme.TextSecondary,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(20.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     style = TextStyle(
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isSelected) ModernLoginTheme.DeepBlue else ModernLoginTheme.TextPrimary
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ModernLoginTheme.TextPrimary
                     )
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = description,
                     style = TextStyle(
-                        fontSize = 14.sp,
-                        color = ModernLoginTheme.TextSecondary,
-                        fontWeight = FontWeight.Medium
+                        fontSize = 13.sp,
+                        color = ModernLoginTheme.TextSecondary
                     )
                 )
             }
 
             if (isSelected) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(ModernLoginTheme.PrimaryBlue),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.baseline_visibility_24),
-                        contentDescription = "Selected",
-                        tint = ModernLoginTheme.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                Icon(
+                    painter = painterResource(R.drawable.baseline_visibility_24),
+                    contentDescription = "Selected",
+                    tint = ModernLoginTheme.PrimaryBlue,
+                    modifier = Modifier.size(22.dp)
+                )
             }
         }
     }
 }
+
 
 @Composable
 fun ModernReactivationDialog(

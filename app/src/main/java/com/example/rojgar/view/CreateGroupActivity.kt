@@ -58,8 +58,9 @@ class CreateGroupActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
+            val context = LocalContext.current
             val userRepo = remember { UserRepo() }
-            val followRepo = remember { FollowRepoImpl() }
+            val followRepo = remember { FollowRepoImpl(context) }
             val companyRepo = remember { CompanyRepoImpl() }
             val jobSeekerRepo = remember { JobSeekerRepoImpl() }
 

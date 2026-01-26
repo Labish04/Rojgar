@@ -75,7 +75,7 @@ class FollowingListActivity : ComponentActivity() {
 @Composable
 fun FollowingListBody() {
     val context = LocalContext.current
-    val followViewModel: FollowViewModel = viewModel(factory = FollowViewModelFactory(FollowRepoImpl()))
+    val followViewModel = remember { FollowViewModel(FollowRepoImpl(context)) }
     val jobSeekerRepo = remember { JobSeekerRepoImpl() }
     val companyRepo = remember { CompanyRepoImpl() }
     val userRepo = remember { UserRepo() }
