@@ -19,6 +19,7 @@ data class JobSeekerModel(
     val profilePhoto: String = "",
     val isActive: Boolean = true,
     val video: String = "",
+    val fcmToken: String = ""
 ) {
     fun toMap(): Map<String, Any?> {
         return mapOf(
@@ -37,7 +38,8 @@ data class JobSeekerModel(
             "bio" to bio,
             "profilePhoto" to profilePhoto,
             "video" to video,
-            "isActive" to isActive // Added missing field
+            "isActive" to isActive,
+            "fcmToken" to fcmToken
         )
     }
 }

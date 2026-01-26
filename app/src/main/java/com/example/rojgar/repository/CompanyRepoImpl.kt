@@ -14,6 +14,7 @@ import com.example.rojgar.model.CompanyModel
 import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -100,6 +101,130 @@ class CompanyRepoImpl : CompanyRepo {
         }
     }
 
+    override fun signInWithGoogle(
+        idToken: String,
+        fullName: String,
+        email: String,
+        photoUrl: String,
+        callback: (Boolean, String, String?) -> Unit
+    ) {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val user = auth.currentUser
+                    if (user != null) {
+                        // Check if company already exists
+                        checkCompanyExistsAndProceed(
+                            uid = user.uid,
+                            email = email,
+                            fullName = fullName,
+                            photoUrl = photoUrl,
+                            callback = callback
+                        )
+                    } else {
+                        callback(false, "Authentication failed: User is null", null)
+                    }
+                } else {
+                    callback(false, "Google Sign-In failed: ${task.exception?.message}", null)
+                }
+            }
+    }
+
+    private fun checkCompanyExistsAndProceed(
+        uid: String,
+        email: String,
+        fullName: String,
+        photoUrl: String,
+        callback: (Boolean, String, String?) -> Unit
+    ) {
+        ref.child(uid).get().addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                // Company exists, check if active
+                val company = snapshot.getValue(CompanyModel::class.java)
+                if (company != null) {
+                    if (company.isActive) {
+                        callback(true, "Login Successful as Company", uid)
+                    } else {
+                        // Sign out since account is deactivated
+                        auth.signOut()
+                        callback(false, "Account is deactivated. Please contact support.", null)
+                    }
+                } else {
+                    callback(false, "Company data not found", null)
+                }
+            } else {
+                // Create new company account
+                createNewCompanyAccount(uid, email, fullName, photoUrl, callback)
+            }
+        }.addOnFailureListener { e ->
+            callback(false, "Error checking company: ${e.message}", null)
+        }
+    }
+
+    private fun createNewCompanyAccount(
+        uid: String,
+        email: String,
+        fullName: String,
+        photoUrl: String,
+        callback: (Boolean, String, String?) -> Unit
+    ) {
+        val companyName = if (fullName.isNotEmpty()) fullName else email.substringBefore("@")
+
+        val companyModel = CompanyModel(
+            companyId = uid,
+            companyName = companyName,
+            companyEmail = email,
+            companyProfileImage = photoUrl,
+            isActive = true,
+            isVerified = false,
+            verificationStatus = "pending"
+        )
+
+        ref.child(uid).setValue(companyModel.toMap())
+            .addOnSuccessListener {
+                // Save user role
+                saveUserRole(uid, "Company")
+                callback(true, "Company account created successfully!", uid)
+            }
+            .addOnFailureListener { e ->
+                callback(false, "Failed to create company account: ${e.message}", null)
+            }
+    }
+
+    override fun getCompanyByEmail(
+        email: String,
+        callback: (Boolean, String, CompanyModel?) -> Unit
+    ) {
+        val normalizedEmail = email.lowercase().trim()
+
+        ref.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    for (companySnapshot in snapshot.children) {
+                        val company = companySnapshot.getValue(CompanyModel::class.java)
+                        if (company != null) {
+                            val companyEmailNormalized = company.companyEmail.lowercase().trim()
+                            if (companyEmailNormalized == normalizedEmail) {
+                                val companyWithId = company.copy(companyId = companySnapshot.key ?: "")
+                                callback(true, "Company found", companyWithId)
+                                return
+                            }
+                        }
+                    }
+                    callback(false, "No company found with this email", null)
+                } else {
+                    callback(false, "No companies found", null)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                callback(false, error.message, null)
+            }
+        })
+    }
+
     override fun getCurrentCompany(): FirebaseUser? {
         return auth.currentUser
     }
@@ -158,6 +283,7 @@ class CompanyRepoImpl : CompanyRepo {
         callback: (Boolean, String) -> Unit
     ) {
         try {
+            clearFCMToken(companyId)
             auth.signOut()
             callback(true, "Logout successfully")
         } catch (e: Exception) {
@@ -313,6 +439,7 @@ class CompanyRepoImpl : CompanyRepo {
         companyId: String,
         callback: (Boolean, String) -> Unit
     ) {
+        clearFCMToken(companyId)
         ref.child(companyId).removeValue()
             .addOnCompleteListener { dbTask ->
                 if (dbTask.isSuccessful) {
@@ -339,6 +466,7 @@ class CompanyRepoImpl : CompanyRepo {
         companyId: String,
         callback: (Boolean, String) -> Unit
     ) {
+        clearFCMToken(companyId)
         ref.child(companyId).child("isActive").setValue(false)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
@@ -594,5 +722,10 @@ class CompanyRepoImpl : CompanyRepo {
         // This is a placeholder - you'll need to pass context or use Application class
         // For now, we'll handle context differently in the ViewModel
         return null
+    }
+
+    private fun clearFCMToken(userId: String) {
+        database.getReference("Companys").child(userId).child("fcmToken").removeValue()
+        database.getReference("fcmTokens").child(userId).removeValue()
     }
 }

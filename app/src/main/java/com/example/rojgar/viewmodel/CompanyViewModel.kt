@@ -43,6 +43,23 @@ class CompanyViewModel(val repo: CompanyRepo) {
         repo.addCompanyToDatabase(companyId, model, callback)
     }
 
+    fun signInWithGoogle(
+        idToken: String,
+        fullName: String,
+        email: String,
+        photoUrl: String,
+        callback: (Boolean, String, String?) -> Unit
+    ) {
+        repo.signInWithGoogle(idToken, fullName, email, photoUrl, callback)
+    }
+
+    fun getCompanyByEmail(
+        email: String,
+        callback: (Boolean, String, CompanyModel?) -> Unit
+    ) {
+        repo.getCompanyByEmail(email, callback)
+    }
+
     fun getCurrentCompany(): FirebaseUser? {
         return repo.getCurrentCompany()
     }

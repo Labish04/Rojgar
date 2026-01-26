@@ -40,6 +40,16 @@ class JobSeekerViewModel(val repo: JobSeekerRepo) {
         repo.addJobSeekerToDatabase(jobSeekerId, model, callback)
     }
 
+    fun signInWithGoogle(
+        idToken: String,
+        fullName: String,
+        email: String,
+        photoUrl: String,
+        callback: (Boolean, String, String?) -> Unit
+    ) {
+        repo.signInWithGoogle(idToken, fullName, email, photoUrl, callback)
+    }
+
     fun getCurrentJobSeeker(): FirebaseUser? {
         return repo.getCurrentJobSeeker()
     }

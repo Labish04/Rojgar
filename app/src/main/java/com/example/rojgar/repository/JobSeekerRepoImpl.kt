@@ -13,6 +13,7 @@ import com.example.rojgar.model.JobSeekerModel
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -95,6 +96,94 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         }
     }
 
+    override fun signInWithGoogle(
+        idToken: String,
+        fullName: String,
+        email: String,
+        photoUrl: String,
+        callback: (Boolean, String, String?) -> Unit
+    ) {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val user = auth.currentUser
+                    if (user != null) {
+                        // Check if job seeker already exists
+                        checkJobSeekerExistsAndProceed(
+                            uid = user.uid,
+                            email = email,
+                            fullName = fullName,
+                            photoUrl = photoUrl,
+                            callback = callback
+                        )
+                    } else {
+                        callback(false, "Authentication failed: User is null", null)
+                    }
+                } else {
+                    callback(false, "Google Sign-In failed: ${task.exception?.message}", null)
+                }
+            }
+    }
+
+    private fun checkJobSeekerExistsAndProceed(
+        uid: String,
+        email: String,
+        fullName: String,
+        photoUrl: String,
+        callback: (Boolean, String, String?) -> Unit
+    ) {
+        ref.child(uid).get().addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                // Job seeker exists, check if active
+                val jobSeeker = snapshot.getValue(JobSeekerModel::class.java)
+                if (jobSeeker != null) {
+                    if (jobSeeker.isActive) {
+                        callback(true, "Login Successful as Job Seeker", uid)
+                    } else {
+                        // Sign out since account is deactivated
+                        auth.signOut()
+                        callback(false, "Account is deactivated. Please contact support.", null)
+                    }
+                } else {
+                    callback(false, "Job seeker data not found", null)
+                }
+            } else {
+                // Create new job seeker account
+                createNewJobSeekerAccount(uid, email, fullName, photoUrl, callback)
+            }
+        }.addOnFailureListener { e ->
+            callback(false, "Error checking job seeker: ${e.message}", null)
+        }
+    }
+
+    private fun createNewJobSeekerAccount(
+        uid: String,
+        email: String,
+        fullName: String,
+        photoUrl: String,
+        callback: (Boolean, String, String?) -> Unit
+    ) {
+        val jobSeekerModel = JobSeekerModel(
+            jobSeekerId = uid,
+            fullName = fullName,
+            email = email,
+            profilePhoto = photoUrl,
+            isActive = true
+        )
+
+        ref.child(uid).setValue(jobSeekerModel.toMap())
+            .addOnSuccessListener {
+                // Save user role
+                saveUserRole(uid, "JobSeeker")
+                callback(true, "Job seeker account created successfully!", uid)
+            }
+            .addOnFailureListener { e ->
+                callback(false, "Failed to create job seeker account: ${e.message}", null)
+            }
+    }
+
     override fun getCurrentJobSeeker(): FirebaseUser? {
         return auth.currentUser
     }
@@ -162,6 +251,7 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         callback: (Boolean, String) -> Unit
     ) {
         try {
+            clearFCMToken(jobSeekerId)
             auth.signOut()
             callback(true, "Logout successfully")
         } catch (e: Exception) {
@@ -173,6 +263,7 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         jobseekerId: String,
         callback: (Boolean, String) -> Unit
     ) {
+        clearFCMToken(jobseekerId)
         ref.child(jobseekerId).child("isActive").setValue(false)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
@@ -189,6 +280,7 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         jobseekerId: String,
         callback: (Boolean, String) -> Unit
     ) {
+        clearFCMToken(jobseekerId)
         ref.child(jobseekerId).removeValue()
             .addOnCompleteListener { dbTask ->
                 if (dbTask.isSuccessful) {
@@ -571,5 +663,10 @@ class JobSeekerRepoImpl : JobSeekerRepo {
             }
         }
         return fileName
+    }
+
+    private fun clearFCMToken(userId: String) {
+        database.getReference("JobSeekers").child(userId).child("fcmToken").removeValue()
+        database.getReference("fcmTokens").child(userId).removeValue()
     }
 }

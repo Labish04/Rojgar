@@ -28,6 +28,19 @@ interface JobSeekerRepo {
         callback: (Boolean, String) -> Unit
     )
 
+    fun signInWithGoogle(
+        idToken: String,
+        fullName: String,
+        email: String,
+        photoUrl: String,
+        callback: (Boolean, String, String?) -> Unit // success, message, jobSeekerId
+    )
+
+    fun getJobSeekerByEmail(
+        email: String,
+        callback: (Boolean, String, JobSeekerModel?) -> Unit
+    )
+
     fun getCurrentJobSeeker(): FirebaseUser?
 
     fun getJobSeekerById(
@@ -113,12 +126,6 @@ interface JobSeekerRepo {
 
     fun getJobSeekerDetails(
         jobSeekerId: String,
-        callback: (Boolean, String, JobSeekerModel?) -> Unit
-    )
-
-    // NEW METHOD: Get job seeker by email
-    fun getJobSeekerByEmail(
-        email: String,
         callback: (Boolean, String, JobSeekerModel?) -> Unit
     )
 }

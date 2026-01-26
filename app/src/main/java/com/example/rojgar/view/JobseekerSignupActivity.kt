@@ -114,7 +114,7 @@ fun JobSeekerSignUpScreen() {
                 modifier = Modifier
                     .padding(horizontal = 30.dp)
             ){
-                LoginTextField(
+                EnhancedTextField(
                     value = fullName,
                     onValueChange = { fullName = it },
                     label = "Full Name",
@@ -129,7 +129,7 @@ fun JobSeekerSignUpScreen() {
                 modifier = Modifier
                     .padding(horizontal = 30.dp)
             ){
-                LoginTextField(
+                EnhancedTextField(
                     value = phoneNumber,
                     onValueChange = { phoneNumber = it },
                     label = "Phone Number",
@@ -146,7 +146,7 @@ fun JobSeekerSignUpScreen() {
                     modifier = Modifier
                         .padding(horizontal = 30.dp)
                     ){
-                LoginTextField(
+                EnhancedTextField(
                     value = email,
                     onValueChange = { email = it },
                     label = "Email",
@@ -161,7 +161,7 @@ fun JobSeekerSignUpScreen() {
                 modifier = Modifier
                     .padding(horizontal = 30.dp)
             ){
-                LoginTextField(
+                EnhancedTextField(
                     value = password,
                     onValueChange = { password = it },
                     label = "Password",
@@ -176,7 +176,7 @@ fun JobSeekerSignUpScreen() {
                 modifier = Modifier
                     .padding(horizontal = 30.dp)
             ){
-                LoginTextField(
+                EnhancedTextField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
                     label = "Confirm Password",
