@@ -13,7 +13,7 @@
       </SelectionState>
       <SelectionState runConfigName="LoginActivity (2)">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-01-26T16:58:01.486961800Z">
+        <DropdownSelection timestamp="2026-01-27T14:40:54.766319Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\labis\.android\avd\Pixel_8_Pro.avd" />
