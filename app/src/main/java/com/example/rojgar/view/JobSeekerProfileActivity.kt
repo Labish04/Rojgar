@@ -111,11 +111,14 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
     var showConfirmPasswordDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
+
     // Follow states
     var isFollowing by remember { mutableStateOf(false) }
     var followersCount by remember { mutableStateOf(0) }
     var followingCount by remember { mutableStateOf(0) }
     var isLoadingFollow by remember { mutableStateOf(false) }
+    var hasCountedView by remember { mutableStateOf(false) }
+
 
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -180,6 +183,29 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
             jobSeekerViewModel.fetchJobSeekerById(finalTargetJobSeekerId)
         } else {
             jobSeekerViewModel.fetchCurrentJobSeeker()
+        }
+    }
+
+    LaunchedEffect(finalTargetJobSeekerId) {
+        // Reset the flag when viewing a different profile
+        hasCountedView = false
+
+        // Check all conditions for counting a profile view
+        val shouldCountView = finalTargetJobSeekerId.isNotEmpty() &&
+                currentUserId.isNotEmpty() &&
+                finalTargetJobSeekerId != currentUserId &&
+                !hasCountedView
+
+        if (shouldCountView) {
+            // Increment the profile view count
+            jobSeekerViewModel.incrementProfileView(finalTargetJobSeekerId) { success, message ->
+                if (success) {
+                    Log.d("ProfileView", "Profile view counted successfully: $message")
+                    hasCountedView = true // Mark as counted to prevent duplicate counts
+                } else {
+                    Log.e("ProfileView", "Failed to count profile view: $message")
+                }
+            }
         }
     }
 
@@ -512,10 +538,15 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                     )
 
                     StatCard(
-                        count = 156, // Posts count (can be updated later with real data)
-                        label = "Posts",
+                        count = jobSeekerState?.profileViews?.toInt() ?: 0,
+                        label = "Profile Views",
                         onClick = {
-                            Toast.makeText(context, "Posts: 156", Toast.LENGTH_SHORT).show()
+                            val viewCount = jobSeekerState?.profileViews ?: 0
+                            Toast.makeText(
+                                context,
+                                "Profile Views: ${formatCount(viewCount.toInt())}",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     )
                 }
@@ -1465,6 +1496,8 @@ fun StatCard(count: Int, label: String, onClick: () -> Unit) {
         }
     }
 }
+
+
 
 fun formatCount(count: Int): String {
     return when {

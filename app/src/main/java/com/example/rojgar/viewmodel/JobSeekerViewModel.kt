@@ -191,11 +191,17 @@ class JobSeekerViewModel(val repo: JobSeekerRepo) {
         }
     }
 
-    // NEW METHOD: Get job seeker by email
     fun getJobSeekerByEmail(
         email: String,
         callback: (Boolean, String, JobSeekerModel?) -> Unit
     ) {
         repo.getJobSeekerByEmail(email, callback)
+    }
+
+    fun incrementProfileView(
+        jobSeekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.incrementProfileView(jobSeekerId, callback)
     }
 }

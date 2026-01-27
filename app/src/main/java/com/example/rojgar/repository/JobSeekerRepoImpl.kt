@@ -18,6 +18,8 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.MutableData
+import com.google.firebase.database.Transaction
 import com.google.firebase.database.ValueEventListener
 import java.io.InputStream
 import java.util.concurrent.Executors
@@ -573,6 +575,36 @@ class JobSeekerRepoImpl : JobSeekerRepo {
 
             override fun onCancelled(error: DatabaseError) {
                 callback(false, error.message, null)
+            }
+        })
+    }
+
+    override fun incrementProfileView(
+        jobSeekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        val profileViewsRef = ref.child(jobSeekerId).child("profileViews")
+
+        profileViewsRef.runTransaction(object : Transaction.Handler {
+            override fun doTransaction(currentData: MutableData): Transaction.Result {
+                val currentViews = currentData.getValue(Long::class.java) ?: 0L
+                currentData.value = currentViews + 1
+                return Transaction.success(currentData)
+            }
+
+            override fun onComplete(
+                error: DatabaseError?,
+                committed: Boolean,
+                currentData: DataSnapshot?
+            ) {
+                if (error != null) {
+                    callback(false, "Failed to increment profile views: ${error.message}")
+                } else if (!committed) {
+                    callback(false, "Transaction not committed")
+                } else {
+                    val newCount = currentData?.getValue(Long::class.java) ?: 0L
+                    callback(true, "Profile view counted: $newCount")
+                }
             }
         })
     }

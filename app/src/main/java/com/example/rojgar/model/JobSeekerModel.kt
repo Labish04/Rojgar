@@ -19,7 +19,8 @@ data class JobSeekerModel(
     val profilePhoto: String = "",
     val isActive: Boolean = true,
     val video: String = "",
-    val fcmToken: String = ""
+    val fcmToken: String = "",
+    val profileViews: Long = 0L
 ) {
     fun toMap(): Map<String, Any?> {
         return mapOf(
@@ -39,7 +40,9 @@ data class JobSeekerModel(
             "profilePhoto" to profilePhoto,
             "video" to video,
             "isActive" to isActive,
-            "fcmToken" to fcmToken
+            "fcmToken" to fcmToken,
+            "profileViews" to profileViews
+
         )
     }
 }

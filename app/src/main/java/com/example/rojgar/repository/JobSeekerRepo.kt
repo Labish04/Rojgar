@@ -128,4 +128,9 @@ interface JobSeekerRepo {
         jobSeekerId: String,
         callback: (Boolean, String, JobSeekerModel?) -> Unit
     )
+
+    fun incrementProfileView(
+        jobSeekerId: String,
+        callback: (Boolean, String) -> Unit
+    )
 }
