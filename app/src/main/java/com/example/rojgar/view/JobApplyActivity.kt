@@ -93,7 +93,7 @@ fun JobApplyBody(postId: String, companyId: String) {
 
     val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
-    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl()) }
+    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl(context)) }
 
     val reviewViewModel: ReviewViewModel = viewModel(
         factory = ReviewViewModelFactory(ReviewRepoImpl())

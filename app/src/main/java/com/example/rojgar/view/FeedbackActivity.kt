@@ -75,7 +75,7 @@ fun FeedbackBody(
 ) {
     val context = LocalContext.current
 
-    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl()) }
+    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl(context)) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
     val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
 

@@ -27,18 +27,19 @@ object NotificationHelper {
     // Notification Channels
     const val CHANNEL_FOLLOW_ID = "follow_channel"
     const val CHANNEL_JOB_ID = "job_channel"
-
     const val CHANNEL_MESSAGE_ID = "message_channel"
     const val CHANNEL_GENERAL_ID = "general_channel"
     const val CHANNEL_VERIFICATION_ID = "verification_channel"
 
     // Notification Types
-    const val TYPE_FOLLOW = "follow"
-    const val TYPE_JOB = "job"
-    const val TYPE_MESSAGE = "message"
-    const val TYPE_GROUP_MESSAGE = "group_message"
-    const val TYPE_GENERAL = "general"
-    const val TYPE_VERIFICATION = "verification"
+    const val TYPE_FOLLOW = "PROFILE_UPDATE"
+    const val TYPE_JOB = "JOB_ALERT"
+    const val TYPE_MESSAGE = "MESSAGE"
+    const val TYPE_GROUP_MESSAGE = "MESSAGE"
+    const val TYPE_JOB_APPLICATION = "JOB_APPLICATION"
+    const val TYPE_APPLICATION_STATUS = "APPLICATION_STATUS"
+    const val TYPE_GENERAL = "GENERAL"
+    const val TYPE_VERIFICATION = "SYSTEM"
 
     /**
      * Create notification channels for Android 8.0+
@@ -127,9 +128,274 @@ object NotificationHelper {
             TYPE_VERIFICATION -> showVerificationNotification(context, title, message, data)
             TYPE_JOB -> showJobNotification(context, title, message, data)
             TYPE_MESSAGE, TYPE_GROUP_MESSAGE -> showMessageNotification(context, title, message, data)
+            TYPE_JOB_APPLICATION -> showJobApplicationNotification(context, title, message, data)
+            TYPE_APPLICATION_STATUS -> showApplicationStatusNotification(context, title, message, data)
             else -> showGeneralNotification(context, title, message)
         }
     }
+
+    fun sendJobApplicationNotification(
+        context: Context,
+        companyId: String,
+        jobSeekerName: String,
+        jobTitle: String,
+        applicationId: String,
+        jobId: String
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val title = "New Job Application 📄"
+                val message = "$jobSeekerName applied for $jobTitle"
+
+                // Show local notification
+                showNotification(
+                    context,
+                    title,
+                    message,
+                    TYPE_JOB_APPLICATION,
+                    mapOf(
+                        "companyId" to companyId,
+                        "jobSeekerName" to jobSeekerName,
+                        "jobTitle" to jobTitle,
+                        "applicationId" to applicationId,
+                        "jobId" to jobId
+                    )
+                )
+
+                // Save notification to database
+                saveNotificationToDatabase(
+                    userId = companyId,
+                    title = title,
+                    message = message,
+                    type = TYPE_JOB_APPLICATION,
+                    userType = "COMPANY",
+                    mapOf(
+                        "jobSeekerName" to jobSeekerName,
+                        "jobTitle" to jobTitle,
+                        "applicationId" to applicationId,
+                        "jobId" to jobId,
+                        "companyId" to companyId
+                    )
+                )
+
+                // Send FCM push notification
+                val token = getUserFcmToken(companyId)
+                if (token != null && token.isNotBlank()) {
+                    val fcmData = mapOf(
+                        "title" to title,
+                        "message" to message,
+                        "type" to TYPE_JOB_APPLICATION,
+                        "applicationId" to applicationId,
+                        "jobId" to jobId,
+                        "jobTitle" to jobTitle,
+                        "jobSeekerName" to jobSeekerName,
+                        "click_action" to "FLUTTER_NOTIFICATION_CLICK"
+                    )
+                    sendFcmPushNotification(token, title, message, fcmData)
+                }
+
+                Log.d(TAG, "Job application notification sent to company: $companyId")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending job application notification: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Send notification to job seeker when application status is updated
+     */
+    fun sendApplicationStatusNotification(
+        context: Context,
+        jobSeekerId: String,
+        companyName: String,
+        jobTitle: String,
+        status: String,
+        message: String,
+        feedback: String? = null,
+        applicationId: String,
+        jobId: String
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val title = when (status) {
+                    "Accepted" -> "Application Accepted! 🎉"
+                    "Rejected" -> "Application Update"
+                    "Shortlisted" -> "You've been Shortlisted! ⭐"
+                    else -> "Application Status Updated"
+                }
+
+                // Show local notification
+                showNotification(
+                    context,
+                    title,
+                    message,
+                    TYPE_APPLICATION_STATUS,
+                    mapOf(
+                        "jobSeekerId" to jobSeekerId,
+                        "companyName" to companyName,
+                        "jobTitle" to jobTitle,
+                        "status" to status,
+                        "message" to message,
+                        "applicationId" to applicationId,
+                        "jobId" to jobId,
+                        "feedback" to (feedback ?: "")
+                    )
+                )
+
+                // Save notification to database
+                saveNotificationToDatabase(
+                    userId = jobSeekerId,
+                    title = title,
+                    message = message,
+                    type = TYPE_APPLICATION_STATUS,
+                    userType = "JOBSEEKER",
+                    mapOf(
+                        "companyName" to companyName,
+                        "jobTitle" to jobTitle,
+                        "status" to status,
+                        "applicationId" to applicationId,
+                        "jobId" to jobId,
+                        "feedback" to (feedback ?: "")
+                    )
+                )
+
+                // Send FCM push notification
+                val token = getUserFcmToken(jobSeekerId)
+                if (token != null && token.isNotBlank()) {
+                    val fcmData = mapOf(
+                        "title" to title,
+                        "message" to message,
+                        "type" to TYPE_APPLICATION_STATUS,
+                        "applicationId" to applicationId,
+                        "jobId" to jobId,
+                        "jobTitle" to jobTitle,
+                        "companyName" to companyName,
+                        "status" to status,
+                        "click_action" to "FLUTTER_NOTIFICATION_CLICK"
+                    )
+                    sendFcmPushNotification(token, title, message, fcmData)
+                }
+
+                Log.d(TAG, "Application status notification sent to job seeker: $jobSeekerId")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending application status notification: ${e.message}")
+            }
+        }
+    }
+
+    private fun showJobApplicationNotification(
+        context: Context,
+        title: String?,
+        message: String?,
+        data: Map<String, String>
+    ) {
+        val applicationId = data["applicationId"] ?: ""
+        val jobId = data["jobId"] ?: ""
+
+        // Intent for opening application details
+        val intent = Intent(context, MainActivity::class.java).apply {
+            putExtra("applicationId", applicationId)
+            putExtra("jobId", jobId)
+            putExtra("openApplicationDetails", true)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            applicationId.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_JOB_ID)
+            .setSmallIcon(R.drawable.jobpost)
+            .setContentTitle(title ?: "New Job Application")
+            .setContentText(message ?: "You have a new job application")
+            .setAutoCancel(true)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+            .setContentIntent(pendingIntent)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+
+        // Add action to view application
+        val viewApplicationIntent = Intent(context, MainActivity::class.java).apply {
+            putExtra("applicationId", applicationId)
+            putExtra("openApplicationDetails", true)
+        }
+        val viewApplicationPendingIntent = PendingIntent.getActivity(
+            context,
+            applicationId.hashCode() + 1,
+            viewApplicationIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        notificationBuilder.addAction(
+            R.drawable.visibility,
+            "View Application",
+            viewApplicationPendingIntent
+        )
+
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(applicationId.hashCode(), notificationBuilder.build())
+    }
+
+    private fun showApplicationStatusNotification(
+        context: Context,
+        title: String?,
+        message: String?,
+        data: Map<String, String>
+    ) {
+        val applicationId = data["applicationId"] ?: ""
+        val status = data["status"] ?: ""
+
+        // Intent for opening application details
+        val intent = Intent(context, MainActivity::class.java).apply {
+            putExtra("applicationId", applicationId)
+            putExtra("openMyApplications", true)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            applicationId.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val icon = when (status) {
+            "Accepted" -> R.drawable.verified_badge
+            "Rejected" -> R.drawable.warning
+            "Shortlisted" -> R.drawable.following_icon
+            else -> R.drawable.notification
+        }
+
+        val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_JOB_ID)
+            .setSmallIcon(icon)
+            .setContentTitle(title ?: "Application Status Updated")
+            .setContentText(message ?: "Your application status has been updated")
+            .setAutoCancel(true)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+
+        // Add feedback if available for rejected applications
+        val feedback = data["feedback"]
+        if (status == "Rejected" && !feedback.isNullOrEmpty()) {
+            notificationBuilder.setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText("$message\n\nFeedback: $feedback")
+            )
+        }
+
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(applicationId.hashCode(), notificationBuilder.build())
+    }
+
+
 
     /**
      * Show follow notification when someone follows
@@ -348,12 +614,15 @@ object NotificationHelper {
                     else -> messageText
                 }
 
+                val userType = getUserType(receiverId)
+
                 // Save notification to database
                 saveNotificationToDatabase(
-                    receiverId,
-                    senderName,
-                    messageText,
-                    TYPE_MESSAGE,
+                    userId = receiverId,
+                    title = title,
+                    message = body,
+                    type = if (chatType == "group") TYPE_GROUP_MESSAGE else TYPE_MESSAGE,
+                    userType = userType,
                     mapOf(
                         "senderId" to senderId,
                         "senderName" to senderName,
@@ -717,10 +986,11 @@ object NotificationHelper {
 
                     // 1. Save notification to database for this job seeker
                     saveNotificationToDatabase(
-                        jobSeekerId,
-                        title,
-                        message,
-                        TYPE_JOB,
+                        userId = jobSeekerId,
+                        title = title,
+                        message = message,
+                        type = TYPE_APPLICATION_STATUS,
+                        userType = "JOBSEEKER",
                         mapOf(
                             "jobId" to jobId,
                             "jobTitle" to jobTitle,
@@ -803,6 +1073,7 @@ object NotificationHelper {
         title: String,
         message: String,
         type: String,
+        userType: String = "ALL",
         data: Map<String, String>
     ) {
         try {
@@ -1035,4 +1306,36 @@ object NotificationHelper {
             false
         }
     }
+
+    private suspend fun getUserType(userId: String): String {
+        return try {
+            // Check if user is in Companys collection
+            val companySnapshot = FirebaseDatabase.getInstance()
+                .getReference("Companys")
+                .child(userId)
+                .get()
+                .await()
+
+            if (companySnapshot.exists()) {
+                "COMPANY"
+            } else {
+                // Check if user is in JobSeekers collection
+                val jobSeekerSnapshot = FirebaseDatabase.getInstance()
+                    .getReference("JobSeekers")
+                    .child(userId)
+                    .get()
+                    .await()
+
+                if (jobSeekerSnapshot.exists()) {
+                    "JOBSEEKER"
+                } else {
+                    "ALL"
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting user type: ${e.message}")
+            "ALL"
+        }
+    }
+
 }

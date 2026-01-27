@@ -76,7 +76,8 @@ fun AppliedJobsScreen(
     jobSeekerId: String,
     onBackClick: () -> Unit = {}
 ) {
-    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl()) }
+    val context = LocalContext.current
+    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl(context)) }
     val applications by applicationViewModel.applications.observeAsState(emptyList())
     val isLoading by applicationViewModel.loading.observeAsState(false)
 
