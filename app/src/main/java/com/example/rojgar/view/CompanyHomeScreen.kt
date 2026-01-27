@@ -51,7 +51,7 @@ fun CompanyHomeScreenBody(){
 
     val reviewViewModel = remember { ReviewViewModel(ReviewRepoImpl()) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
-    val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl()) }
+    val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl(context)) }
 
     val companyId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
     val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }

@@ -139,7 +139,7 @@ fun JobSeekerHomeScreenBody() {
     val skillViewModel = remember { SkillViewModel(SkillRepoImpl()) }
     val trainingViewModel = remember { TrainingViewModel(TrainingRepoImpl()) }
     val languageViewModel = remember { LanguageViewModel(LanguageRepoImpl()) }
-    val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl()) }
+    val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl(context)) }
 
     // Observe LiveData from ViewModels
     val recommendedJobs by jobViewModel.recommendedJobs.observeAsState(emptyList())

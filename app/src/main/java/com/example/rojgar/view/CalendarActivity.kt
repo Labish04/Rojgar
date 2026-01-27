@@ -79,7 +79,7 @@ class CalendarActivity : ComponentActivity() {
 @Composable
 fun CalendarBody() {
     val context = LocalContext.current
-    val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl()) }
+    val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl(context)) }
     val events by calendarViewModel.events.observeAsState(emptyList())
     val loading by calendarViewModel.loading.observeAsState(false)
     val message by calendarViewModel.message.observeAsState("")

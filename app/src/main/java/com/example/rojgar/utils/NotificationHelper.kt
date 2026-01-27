@@ -28,6 +28,8 @@ object NotificationHelper {
     const val CHANNEL_FOLLOW_ID = "follow_channel"
     const val CHANNEL_JOB_ID = "job_channel"
     const val CHANNEL_MESSAGE_ID = "message_channel"
+    const val CHANNEL_EVENTS_ID = "events_channel"
+
     const val CHANNEL_GENERAL_ID = "general_channel"
     const val CHANNEL_VERIFICATION_ID = "verification_channel"
 
@@ -38,6 +40,7 @@ object NotificationHelper {
     const val TYPE_GROUP_MESSAGE = "MESSAGE"
     const val TYPE_JOB_APPLICATION = "JOB_APPLICATION"
     const val TYPE_APPLICATION_STATUS = "APPLICATION_STATUS"
+    const val TYPE_EVENTS = "EVENTS"
     const val TYPE_GENERAL = "GENERAL"
     const val TYPE_VERIFICATION = "SYSTEM"
 
@@ -83,6 +86,16 @@ object NotificationHelper {
                 setShowBadge(true)
             }
 
+            val eventChannel = NotificationChannel(
+                CHANNEL_EVENTS_ID,
+                "Event Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for calendar events"
+                enableVibration(true)
+                enableLights(true)
+            }
+
             // General Channel
             val generalChannel = NotificationChannel(
                 CHANNEL_GENERAL_ID,
@@ -106,6 +119,7 @@ object NotificationHelper {
             notificationManager.createNotificationChannel(followChannel)
             notificationManager.createNotificationChannel(jobChannel)
             notificationManager.createNotificationChannel(messageChannel)
+            notificationManager.createNotificationChannel(eventChannel)
             notificationManager.createNotificationChannel(generalChannel)
             notificationManager.createNotificationChannel(verificationChannel)
         }
@@ -129,6 +143,7 @@ object NotificationHelper {
             TYPE_JOB -> showJobNotification(context, title, message, data)
             TYPE_MESSAGE, TYPE_GROUP_MESSAGE -> showMessageNotification(context, title, message, data)
             TYPE_JOB_APPLICATION -> showJobApplicationNotification(context, title, message, data)
+            TYPE_EVENTS -> showEventReminderNotification(context, title, message, data)
             TYPE_APPLICATION_STATUS -> showApplicationStatusNotification(context, title, message, data)
             else -> showGeneralNotification(context, title, message)
         }
@@ -200,6 +215,146 @@ object NotificationHelper {
                 Log.e(TAG, "Error sending job application notification: ${e.message}")
             }
         }
+    }
+
+    fun sendEventReminderNotification(
+        context: Context,
+        userId: String,
+        eventId: String,
+        eventTitle: String,
+        eventDescription: String,
+        eventLocation: String,
+        eventStartTime: Long,
+        eventEndTime: Long,
+        reminderMessage: String
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val title = "📅 $reminderMessage"
+                val message = buildString {
+                    append(eventTitle)
+                    if (eventLocation.isNotEmpty()) {
+                        append(" • ")
+                        append(eventLocation)
+                    }
+                }
+
+                // Show local notification
+                showNotification(
+                    context,
+                    title,
+                    message,
+                    TYPE_EVENTS,
+                    mapOf(
+                        "userId" to userId,
+                        "eventId" to eventId,
+                        "eventTitle" to eventTitle,
+                        "eventDescription" to eventDescription,
+                        "eventLocation" to eventLocation,
+                        "eventStartTime" to eventStartTime.toString(),
+                        "eventEndTime" to eventEndTime.toString()
+                    )
+                )
+
+                // Save notification to database
+                saveNotificationToDatabase(
+                    userId = userId,
+                    title = title,
+                    message = message,
+                    type = TYPE_EVENTS,
+                    userType = getUserType(userId),
+                    mapOf(
+                        "eventId" to eventId,
+                        "eventTitle" to eventTitle,
+                        "eventDescription" to eventDescription,
+                        "eventLocation" to eventLocation,
+                        "eventStartTime" to eventStartTime.toString(),
+                        "eventEndTime" to eventEndTime.toString(),
+                        "reminderMessage" to reminderMessage
+                    )
+                )
+
+                // Send FCM push notification
+                val token = getUserFcmToken(userId)
+                if (token != null && token.isNotBlank()) {
+                    val fcmData = mapOf(
+                        "title" to title,
+                        "message" to message,
+                        "type" to TYPE_EVENTS,
+                        "eventId" to eventId,
+                        "eventTitle" to eventTitle,
+                        "eventDescription" to eventDescription,
+                        "eventLocation" to eventLocation,
+                        "eventStartTime" to eventStartTime.toString(),
+                        "eventEndTime" to eventEndTime.toString(),
+                        "click_action" to "FLUTTER_NOTIFICATION_CLICK"
+                    )
+                    sendFcmPushNotification(token, title, message, fcmData)
+                }
+
+                Log.d(TAG, "Event reminder notification sent to user: $userId for event: $eventId")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending event reminder notification: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Show event reminder notification in system tray
+     */
+    private fun showEventReminderNotification(
+        context: Context,
+        title: String?,
+        message: String?,
+        data: Map<String, String>
+    ) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("notification_type", TYPE_EVENTS)
+            putExtra("event_id", data["eventId"])
+            putExtra("event_title", data["eventTitle"])
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            System.currentTimeMillis().toInt(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notificationBuilder = NotificationCompat.Builder(context, CHANNEL_GENERAL_ID)
+            .setSmallIcon(R.drawable.calendaricon) // Make sure you have this icon
+            .setContentTitle(title)
+            .setContentText(message)
+            .setAutoCancel(true)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_EVENT)
+
+        // Add event details in expanded view
+        val eventLocation = data["eventLocation"] ?: ""
+        val eventDescription = data["eventDescription"] ?: ""
+
+        if (eventLocation.isNotEmpty() || eventDescription.isNotEmpty()) {
+            val bigTextStyle = NotificationCompat.BigTextStyle()
+            val expandedText = buildString {
+                if (eventDescription.isNotEmpty()) {
+                    append(eventDescription)
+                }
+                if (eventLocation.isNotEmpty()) {
+                    if (isNotEmpty()) append("\n")
+                    append("📍 ")
+                    append(eventLocation)
+                }
+            }
+            bigTextStyle.bigText(expandedText)
+            notificationBuilder.setStyle(bigTextStyle)
+        }
+
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(System.currentTimeMillis().toInt(), notificationBuilder.build())
     }
 
     /**
