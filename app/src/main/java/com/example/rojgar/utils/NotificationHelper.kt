@@ -27,12 +27,16 @@ object NotificationHelper {
     // Notification Channels
     const val CHANNEL_FOLLOW_ID = "follow_channel"
     const val CHANNEL_JOB_ID = "job_channel"
+
+    const val CHANNEL_MESSAGE_ID = "message_channel"
     const val CHANNEL_GENERAL_ID = "general_channel"
     const val CHANNEL_VERIFICATION_ID = "verification_channel"
 
     // Notification Types
     const val TYPE_FOLLOW = "follow"
     const val TYPE_JOB = "job"
+    const val TYPE_MESSAGE = "message"
+    const val TYPE_GROUP_MESSAGE = "group_message"
     const val TYPE_GENERAL = "general"
     const val TYPE_VERIFICATION = "verification"
 
@@ -66,6 +70,18 @@ object NotificationHelper {
                 enableLights(true)
             }
 
+            // Message Channel
+            val messageChannel = NotificationChannel(
+                CHANNEL_MESSAGE_ID,
+                "Message Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for new messages"
+                enableVibration(true)
+                enableLights(true)
+                setShowBadge(true)
+            }
+
             // General Channel
             val generalChannel = NotificationChannel(
                 CHANNEL_GENERAL_ID,
@@ -88,6 +104,7 @@ object NotificationHelper {
 
             notificationManager.createNotificationChannel(followChannel)
             notificationManager.createNotificationChannel(jobChannel)
+            notificationManager.createNotificationChannel(messageChannel)
             notificationManager.createNotificationChannel(generalChannel)
             notificationManager.createNotificationChannel(verificationChannel)
         }
@@ -109,6 +126,7 @@ object NotificationHelper {
             TYPE_FOLLOW -> showFollowNotification(context, title, message, data)
             TYPE_VERIFICATION -> showVerificationNotification(context, title, message, data)
             TYPE_JOB -> showJobNotification(context, title, message, data)
+            TYPE_MESSAGE, TYPE_GROUP_MESSAGE -> showMessageNotification(context, title, message, data)
             else -> showGeneralNotification(context, title, message)
         }
     }
@@ -178,6 +196,267 @@ object NotificationHelper {
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(followerId.hashCode(), notificationBuilder.build())
     }
+
+    private fun showMessageNotification(
+        context: Context,
+        title: String?,
+        message: String?,
+        data: Map<String, String>
+    ) {
+        val senderId = data["senderId"] ?: ""
+        val messageId = data["messageId"] ?: System.currentTimeMillis().toString()
+        val chatType = data["chatType"] ?: "direct"
+        val groupId = data["groupId"] ?: ""
+
+        // Intent for opening chat
+        val intent = Intent(context, MainActivity::class.java).apply {
+            putExtra("openMessages", true)
+            if (chatType == "group") {
+                putExtra("groupId", groupId)
+                putExtra("openGroupChat", true)
+            } else {
+                putExtra("senderId", senderId)
+                putExtra("openDirectChat", true)
+            }
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            messageId.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Build notification based on chat type
+        val channelId = if (chatType == "group") CHANNEL_MESSAGE_ID else CHANNEL_MESSAGE_ID
+        val notificationBuilder = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.chat_filled) // Add message icon to your drawable resources
+            .setContentTitle(title ?: if (chatType == "group") "New Group Message" else "New Message")
+            .setContentText(message ?: "You have a new message")
+            .setAutoCancel(true)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setContentIntent(pendingIntent)
+            .setGroup("messages") // Group all message notifications together
+            .setGroupSummary(false)
+
+        // Add reply action (for direct messages)
+        if (chatType == "direct") {
+            val replyIntent = Intent(context, MessageBroadcastReceiver::class.java).apply {
+                action = "REPLY_ACTION"
+                putExtra("senderId", senderId)
+                putExtra("messageId", messageId)
+            }
+
+            val replyPendingIntent = PendingIntent.getBroadcast(
+                context,
+                messageId.hashCode() + 1,
+                replyIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            )
+
+            // Add reply action (Android 7.0+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                val remoteInput = androidx.core.app.RemoteInput.Builder("reply_text")
+                    .setLabel("Reply")
+                    .build()
+
+                val action = NotificationCompat.Action.Builder(
+                    R.drawable.shareicon,
+                    "Reply",
+                    replyPendingIntent
+                ).addRemoteInput(remoteInput).build()
+
+                notificationBuilder.addAction(action)
+            } else {
+                // For older versions, simple action
+                notificationBuilder.addAction(
+                    R.drawable.shareicon,
+                    "Reply",
+                    replyPendingIntent
+                )
+            }
+        }
+
+        // Mark as read action
+        val markAsReadIntent = Intent(context, MessageBroadcastReceiver::class.java).apply {
+            action = "MARK_AS_READ_ACTION"
+            putExtra("messageId", messageId)
+            putExtra("senderId", senderId)
+            if (chatType == "group") {
+                putExtra("groupId", groupId)
+            }
+        }
+
+        val markAsReadPendingIntent = PendingIntent.getBroadcast(
+            context,
+            messageId.hashCode() + 2,
+            markAsReadIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+
+        notificationBuilder.addAction(
+            R.drawable.visibility,
+            "Mark as Read",
+            markAsReadPendingIntent
+        )
+
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        // Use different IDs for different chats to group notifications properly
+        val notificationId = if (chatType == "group") {
+            groupId.hashCode()
+        } else {
+            senderId.hashCode()
+        }
+
+        notificationManager.notify(notificationId, notificationBuilder.build())
+    }
+
+    fun sendMessageNotification(
+        context: Context,
+        receiverId: String,
+        senderId: String,
+        senderName: String,
+        messageText: String,
+        chatType: String = "direct",
+        groupId: String = "",
+        groupName: String = ""
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Check if receiver has notifications enabled
+                val notificationEnabled = isNotificationEnabled(receiverId)
+                if (!notificationEnabled) {
+                    return@launch
+                }
+
+                // Check if receiver is in DND mode or has blocked sender
+                if (isUserInDNDMode(receiverId) || isSenderBlocked(receiverId, senderId)) {
+                    return@launch
+                }
+
+                val title = when (chatType) {
+                    "group" -> "$groupName"
+                    else -> senderName
+                }
+
+                val body = when {
+                    messageText.length > 100 -> "${messageText.substring(0, 100)}..."
+                    else -> messageText
+                }
+
+                // Save notification to database
+                saveNotificationToDatabase(
+                    receiverId,
+                    senderName,
+                    messageText,
+                    TYPE_MESSAGE,
+                    mapOf(
+                        "senderId" to senderId,
+                        "senderName" to senderName,
+                        "messageText" to groupId,
+                        "groupName" to groupName
+                    )
+                )
+
+                // Show local notification
+                val notificationData = mutableMapOf(
+                    "senderId" to senderId,
+                    "senderName" to senderName,
+                    "messageText" to messageText,
+                    "chatType" to chatType,
+                    "messageId" to System.currentTimeMillis().toString()
+                )
+
+                if (chatType == "group") {
+                    notificationData["groupId"] = groupId
+                    notificationData["groupName"] = groupName
+                }
+
+                showNotification(
+                    context,
+                    title,
+                    body,
+                    if (chatType == "group") TYPE_GROUP_MESSAGE else TYPE_MESSAGE,
+                    notificationData
+                )
+
+                // Send FCM push notification
+                val token = getUserFcmToken(receiverId)
+                if (token != null && token.isNotBlank()) {
+                    val fcmData = mutableMapOf(
+                        "title" to title,
+                        "message" to body,
+                        "type" to if (chatType == "group") TYPE_GROUP_MESSAGE else TYPE_MESSAGE,
+                        "senderId" to senderId,
+                        "senderName" to senderName,
+                        "receiverId" to receiverId,
+                        "messageText" to messageText,
+                        "chatType" to chatType,
+                        "click_action" to "FLUTTER_NOTIFICATION_CLICK"
+                    )
+
+                    if (chatType == "group") {
+                        fcmData["groupId"] = groupId
+                        fcmData["groupName"] = groupName
+                    }
+
+                    sendFcmPushNotification(token, title, body, fcmData)
+                }
+
+                Log.d(TAG, "Message notification sent to $receiverId")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending message notification: ${e.message}")
+            }
+        }
+    }
+
+    private suspend fun saveMessageNotificationToDatabase(
+        receiverId: String,
+        senderId: String,
+        senderName: String,
+        messageText: String,
+        chatType: String,
+        groupId: String = "",
+        groupName: String = ""
+    ) {
+        try {
+            val notificationId = UUID.randomUUID().toString()
+            val notificationData = hashMapOf<String, Any>(
+                "id" to notificationId,
+                "receiverId" to receiverId,
+                "senderId" to senderId,
+                "senderName" to senderName,
+                "message" to messageText,
+                "type" to if (chatType == "group") TYPE_GROUP_MESSAGE else TYPE_MESSAGE,
+                "chatType" to chatType,
+                "timestamp" to System.currentTimeMillis(),
+                "isRead" to false,
+                "isArchived" to false
+            )
+
+            if (chatType == "group") {
+                notificationData["groupId"] = groupId
+                notificationData["groupName"] = groupName
+            }
+
+            FirebaseDatabase.getInstance()
+                .getReference("MessageNotifications")
+                .child(receiverId)
+                .child(notificationId)
+                .setValue(notificationData)
+                .await()
+
+            Log.d(TAG, "Message notification saved for user: $receiverId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving message notification: ${e.message}")
+        }
+    }
+
 
     /**
      * Show verification notification
@@ -683,6 +962,77 @@ object NotificationHelper {
                 Log.e(TAG, "Error clearing notifications: ${e.message}")
                 callback(false, "Error: ${e.message}")
             }
+        }
+    }
+
+    private suspend fun isNotificationEnabled(userId: String): Boolean {
+        return try {
+            val snapshot = FirebaseDatabase.getInstance()
+                .getReference("NotificationSettings")
+                .child(userId)
+                .child("messageNotifications")
+                .get()
+                .await()
+
+            snapshot.getValue(Boolean::class.java) ?: true // Default to true if not set
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking notification settings: ${e.message}")
+            true
+        }
+    }
+
+    private suspend fun isUserInDNDMode(userId: String): Boolean {
+        return try {
+            val snapshot = FirebaseDatabase.getInstance()
+                .getReference("NotificationSettings")
+                .child(userId)
+                .child("dndMode")
+                .get()
+                .await()
+
+            val isDND = snapshot.getValue(Boolean::class.java) ?: false
+
+            if (isDND) {
+                // Check DND schedule
+                val dndStart = FirebaseDatabase.getInstance()
+                    .getReference("NotificationSettings")
+                    .child(userId)
+                    .child("dndStartTime")
+                    .get()
+                    .await()
+                    .getValue(String::class.java)
+
+                val dndEnd = FirebaseDatabase.getInstance()
+                    .getReference("NotificationSettings")
+                    .child(userId)
+                    .child("dndEndTime")
+                    .get()
+                    .await()
+                    .getValue(String::class.java)
+
+                // Implement time check logic here
+                // For now, return true if DND is enabled
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private suspend fun isSenderBlocked(receiverId: String, senderId: String): Boolean {
+        return try {
+            val snapshot = FirebaseDatabase.getInstance()
+                .getReference("BlockedUsers")
+                .child(receiverId)
+                .child(senderId)
+                .get()
+                .await()
+
+            snapshot.exists()
+        } catch (e: Exception) {
+            false
         }
     }
 }

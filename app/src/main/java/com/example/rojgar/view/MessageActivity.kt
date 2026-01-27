@@ -89,7 +89,7 @@ class MessageActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun MessageBody(
-    chatViewModel: ChatViewModel = viewModel(factory = ChatViewModelFactory(ChatRepositoryImpl(),
+    chatViewModel: ChatViewModel = viewModel(factory = ChatViewModelFactory(ChatRepositoryImpl(context = LocalContext.current),
         groupChatRepository = GroupChatRepositoryImpl()))
 ) {
     val context = LocalContext.current

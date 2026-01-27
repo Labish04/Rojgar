@@ -80,7 +80,7 @@ import com.example.rojgar.utils.diagnoseAudio
 
 class ChatActivity : ComponentActivity() {
     private val chatViewModel: ChatViewModel by viewModels {
-        ChatViewModelFactory(ChatRepositoryImpl(),
+        ChatViewModelFactory(ChatRepositoryImpl(context = applicationContext),
             groupChatRepository = GroupChatRepositoryImpl())
     }
 
