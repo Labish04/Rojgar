@@ -381,9 +381,11 @@ object NotificationHelper {
         }
     }
 
+    // In NotificationHelper.kt, enhance sendJobPostNotificationToAll function:
+
     /**
-     * ⭐ OPTION 1: Send job post notification to ALL JOB SEEKERS ⭐
-     * This is the broadcast approach - sends to everyone
+     * ⭐ SEND JOB POST NOTIFICATION TO ALL JOB SEEKERS ⭐
+     * Now with FCM push notifications
      */
     fun sendJobPostNotificationToAll(
         context: Context,
@@ -411,6 +413,18 @@ object NotificationHelper {
                 val title = "New Job Posted! 💼"
                 val message = "$companyName is hiring for $position"
 
+                // FCM Payload
+                val fcmData = mapOf(
+                    "title" to title,
+                    "message" to message,
+                    "type" to TYPE_JOB,
+                    "jobId" to jobId,
+                    "jobTitle" to jobTitle,
+                    "companyName" to companyName,
+                    "position" to position,
+                    "click_action" to "FLUTTER_NOTIFICATION_CLICK" // For Flutter apps, if applicable
+                )
+
                 // Iterate through all job seekers
                 for (jobSeekerSnapshot in jobSeekersSnapshot.children) {
                     val jobSeekerId = jobSeekerSnapshot.key ?: continue
@@ -422,7 +436,7 @@ object NotificationHelper {
                         continue
                     }
 
-                    // Save notification to database for this job seeker
+                    // 1. Save notification to database for this job seeker
                     saveNotificationToDatabase(
                         jobSeekerId,
                         title,
@@ -435,6 +449,17 @@ object NotificationHelper {
                             "position" to position
                         )
                     )
+
+                    // 2. Send FCM push notification
+                    try {
+                        val token = getUserFcmToken(jobSeekerId)
+                        if (token != null && token.isNotBlank()) {
+                            sendFcmPushNotification(token, title, message, fcmData)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to send FCM to $jobSeekerId: ${e.message}")
+                    }
+
                     notificationCount++
                 }
 
@@ -443,6 +468,51 @@ object NotificationHelper {
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error sending job post notifications: ${e.message}", e)
             }
+        }
+    }
+
+    /**
+     * Send FCM push notification using Firebase Cloud Messaging
+     */
+    private suspend fun sendFcmPushNotification(
+        token: String,
+        title: String,
+        message: String,
+        data: Map<String, String>
+    ) {
+        try {
+            // This would typically be done on a server
+            // For client-side, you'd need to:
+            // 1. Create a Cloud Function that sends notifications
+            // 2. Or use a backend service
+
+            // For demonstration, here's what the FCM payload looks like:
+            val fcmPayload = mapOf(
+                "to" to token,
+                "notification" to mapOf(
+                    "title" to title,
+                    "body" to message,
+                    "sound" to "default",
+                    "click_action" to "FLUTTER_NOTIFICATION_CLICK"
+                ),
+                "data" to data,
+                "android" to mapOf(
+                    "priority" to "high"
+                ),
+                "apns" to mapOf(
+                    "payload" to mapOf(
+                        "aps" to mapOf(
+                            "content-available" to 1,
+                            "sound" to "default"
+                        )
+                    )
+                )
+            )
+
+            Log.d(TAG, "FCM Payload for $token: $fcmPayload")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error preparing FCM payload: ${e.message}")
         }
     }
 

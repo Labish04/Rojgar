@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -244,13 +245,14 @@ fun JobApplicationDetailScreen(
     onWithdrawClick: () -> Unit,
     onJobLoaded: (JobModel) -> Unit
 ) {
-    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    val context = LocalContext.current
+    val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
     var jobPost by remember { mutableStateOf<JobModel?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(application.postId) {
         isLoading = true
-        JobRepoImpl().getJobPostById(application.postId) { success, _, job ->
+        JobRepoImpl(context).getJobPostById(application.postId) { success, _, job ->
             if (success && job != null) {
                 jobPost = job
                 onJobLoaded(job)
@@ -590,8 +592,10 @@ fun AppliedJobCard(
     application: ApplicationModel,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+
     val companyRepo = remember { CompanyRepoImpl() }
-    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
 
     var companyName by remember { mutableStateOf("") }
     var companyLogo by remember { mutableStateOf("") }
@@ -608,7 +612,7 @@ fun AppliedJobCard(
             }
         }
 
-        JobRepoImpl().getJobPostById(application.postId) { success, _, job ->
+        JobRepoImpl(context).getJobPostById(application.postId) { success, _, job ->
             if (success && job != null) {
                 jobPost = job
             }

@@ -157,7 +157,7 @@ fun CompanyProfileBody(
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showConfirmPasswordDialog by remember { mutableStateOf(false) }
     var showEditProfileDialog by remember { mutableStateOf(false) }
-    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
     val actualCompanyId = if (isOwnProfile) company.value?.companyId ?: "" else companyId
     val jobPosts by jobViewModel.company.observeAsState(emptyList())
 

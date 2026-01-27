@@ -127,7 +127,7 @@ fun JobSeekerHomeScreenBody() {
     val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
 
     // Initialize all ViewModels
-    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
     val jobSeekerRepo = JobSeekerRepoImpl()
     val jobSeekerViewModel = remember { JobSeekerViewModel(jobSeekerRepo) }
     val objectiveViewModel = remember { ObjectiveViewModel(ObjectiveRepoImpl()) }
