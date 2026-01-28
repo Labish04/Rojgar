@@ -98,4 +98,13 @@ interface ChatRepository {
         onFailure: (String) -> Unit
     )
 
+    fun initiateCall(
+        callerId: String,
+        callerName: String,
+        receiverId: String,
+        isVideoCall: Boolean,
+        onSuccess: (String) -> Unit, // Returns callId
+        onFailure: (String) -> Unit
+    )
+
 }

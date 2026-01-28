@@ -55,7 +55,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
+import com.example.rojgar.utils.CallInvitationManager
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.example.rojgar.R
@@ -288,6 +290,29 @@ fun ChatBody(
         }
     }
 
+    val initiateCall: (Boolean) -> Unit = { isVideoCall ->
+        chatViewModel.initiateCall(
+            callerId = currentUserId,
+            callerName = currentUserName,
+            receiverId = receiverId,
+            isVideoCall = isVideoCall,
+            onSuccess = { callId ->
+                // Start ZegoCallActivity for outgoing call
+                val intent = android.content.Intent(context, ZegoCallActivity::class.java).apply {
+                    putExtra("isIncoming", false)
+                    putExtra("callId", callId)
+                    putExtra("callerId", currentUserId)
+                    putExtra("callerName", currentUserName)
+                    putExtra("isVideoCall", isVideoCall)
+                }
+                context.startActivity(intent)
+            },
+            onFailure = { error ->
+                Toast.makeText(context, "Failed to initiate call: $error", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             ChatTopAppBar(
@@ -295,8 +320,12 @@ fun ChatBody(
                 receiverImage = receiverImage,
                 isReceiverTyping = isReceiverTyping,
                 onBackClick = { activity?.finish() },
-                onCallClick = { /* TODO */ },
-                onVideoCallClick = { /* TODO */ },
+                onCallClick = {
+                    initiateCall(false)
+                },
+                onVideoCallClick = {
+                    initiateCall(true)
+                },
                 onInfoClick = { /* TODO */ }
             )
         },
@@ -513,6 +542,9 @@ fun ChatBody(
             }
         }
     }
+
+    // Incoming call overlay - shown on top of the entire activity
+    IncomingCallOverlay()
 }
 
 @Composable

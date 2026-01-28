@@ -33,8 +33,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rojgar.R
+import com.example.rojgar.utils.CallInvitationManager
 import com.example.rojgar.model.ChatRoom
 import com.example.rojgar.utils.MutualFollowHelper
 import com.example.rojgar.viewmodel.ChatViewModel
@@ -1155,6 +1157,9 @@ fun EmptyStateView(showMutualFollows: Boolean) {
             }
         }
     }
+
+    // Incoming call overlay - shown on top of the entire activity
+    IncomingCallOverlay()
 }
 
 fun formatRelativeTime(timestamp: Long): String {

@@ -19,6 +19,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // ZEGO Cloud Build Config
+        buildConfigField("long", "ZEGO_APP_ID", "457594797L")
+        buildConfigField("String", "ZEGO_APP_SIGN", "\"56c581f3a94101b784ec4ce901c976ee8fa75c914ca462a1886cb58f46fb8375\"")
     }
 
     buildTypes {
@@ -39,6 +43,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -93,4 +98,8 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.google.firebase:firebase-messaging-ktx:23.4.0")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // ZEGO Cloud Call SDK
+    implementation("com.github.ZEGOCLOUD:zego_uikit_prebuilt_call_android:+")
+    implementation("androidx.fragment:fragment-ktx:1.8.5")
 }

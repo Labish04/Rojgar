@@ -820,6 +820,35 @@ class ChatRepositoryImpl(private val context: Context) : ChatRepository { // Add
         return uri.lastPathSegment ?: "file_${System.currentTimeMillis()}"
     }
 
+    override fun initiateCall(
+        callerId: String,
+        callerName: String,
+        receiverId: String,
+        isVideoCall: Boolean,
+        onSuccess: (String) -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        // Generate a unique call ID
+        val callId = "call_${System.currentTimeMillis()}_${callerId}_${receiverId}"
+
+        // Send call invitation using CallInvitationManager
+        com.example.rojgar.utils.CallInvitationManager.sendCallInvitation(
+            callId = callId,
+            callerId = callerId,
+            callerName = callerName,
+            receiverId = receiverId,
+            isVideoCall = isVideoCall,
+            onSuccess = {
+                Log.d("ChatRepository", "Call initiated successfully: $callId")
+                onSuccess(callId)
+            },
+            onFailure = { error ->
+                Log.e("ChatRepository", "Failed to initiate call: $error")
+                onFailure(error)
+            }
+        )
+    }
+
     // New function to get notification settings for a user
     fun getNotificationSettings(
         userId: String,
