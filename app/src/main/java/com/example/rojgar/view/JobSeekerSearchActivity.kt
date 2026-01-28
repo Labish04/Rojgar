@@ -108,10 +108,11 @@ fun JobSeekerSearchScreen(
     initialFilterState: JobFilterState,
     onBackClick: () -> Unit
 ) {
-    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    val context = LocalContext.current
+
+    val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
     val searchViewModel = remember { SearchViewModel(SearchRepoImpl()) }
-    val context = LocalContext.current
     val currentUser = FirebaseAuth.getInstance().currentUser
 
     var selectedTabIndex by remember { mutableStateOf(0) }

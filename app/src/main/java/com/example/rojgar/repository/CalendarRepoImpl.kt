@@ -1,17 +1,24 @@
 package com.example.rojgar.repository
 
-import androidx.compose.runtime.mutableStateListOf
+import android.content.Context
+import android.util.Log
 import com.example.rojgar.model.CalendarEventModel
+import com.example.rojgar.utils.EventNotificationScheduler
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 
-class CalendarRepoImpl : CalendarRepo {
+class CalendarRepoImpl(private val context: Context) : CalendarRepo {
 
     private val database: FirebaseDatabase = FirebaseDatabase.getInstance()
     private val ref: DatabaseReference = database.getReference("CalendarEvents")
+
+    init {
+        // Schedule event notifications when repository is initialized
+        EventNotificationScheduler.scheduleEventNotifications(context)
+    }
 
     override fun observeAllEventsForUser(
         userId: String,
@@ -125,6 +132,8 @@ class CalendarRepoImpl : CalendarRepo {
             )
             ref.child(eventId).setValue(eventWithId)
                 .addOnSuccessListener {
+                    // Schedule notification for this event
+                    scheduleEventNotification(eventWithId)
                     callback(true, "Event added successfully", eventId)
                 }
                 .addOnFailureListener { exception ->
@@ -142,6 +151,9 @@ class CalendarRepoImpl : CalendarRepo {
         val updatedEvent = event.copy(updatedAtMillis = System.currentTimeMillis())
         ref.child(event.eventId).setValue(updatedEvent)
             .addOnSuccessListener {
+                // Clear old notification flags and reschedule
+                clearEventNotificationFlags(event.eventId)
+                scheduleEventNotification(updatedEvent)
                 callback(true, "Event updated successfully")
             }
             .addOnFailureListener { exception ->
@@ -155,10 +167,45 @@ class CalendarRepoImpl : CalendarRepo {
     ) {
         ref.child(eventId).removeValue()
             .addOnSuccessListener {
+                // Clear notification flags when event is deleted
+                clearEventNotificationFlags(eventId)
                 callback(true, "Event deleted successfully")
             }
             .addOnFailureListener { exception ->
                 callback(false, exception.message ?: "Failed to delete event")
             }
+    }
+
+    /**
+     * Schedule notification for the event
+     * The WorkManager will handle checking and sending notifications
+     */
+    private fun scheduleEventNotification(event: CalendarEventModel) {
+        try {
+            // Ensure the event notification worker is scheduled
+            EventNotificationScheduler.scheduleEventNotifications(context)
+            Log.d("CalendarRepo", "Event notification scheduled for: ${event.title}")
+        } catch (e: Exception) {
+            Log.e("CalendarRepo", "Error scheduling event notification: ${e.message}")
+        }
+    }
+
+    /**
+     * Clear notification sent flags when event is updated or deleted
+     */
+    private fun clearEventNotificationFlags(eventId: String) {
+        try {
+            database.getReference("EventNotificationsSent")
+                .child(eventId)
+                .removeValue()
+                .addOnSuccessListener {
+                    Log.d("CalendarRepo", "Notification flags cleared for event: $eventId")
+                }
+                .addOnFailureListener { e ->
+                    Log.e("CalendarRepo", "Error clearing notification flags: ${e.message}")
+                }
+        } catch (e: Exception) {
+            Log.e("CalendarRepo", "Error in clearEventNotificationFlags: ${e.message}")
+        }
     }
 }

@@ -108,7 +108,7 @@ class NotificationActivity : ComponentActivity() {
                 // Navigate to events/calendar
 //                navigateToEvents()
             }
-            NotificationType.APPLICATION_UPDATE -> {
+            NotificationType.APPLICATION_STATUS -> {
                 // Navigate to applications
                 navigateToJobs()
             }
@@ -1057,10 +1057,11 @@ fun getModernNotificationIconAndColor(type: NotificationType): Pair<ImageVector,
         NotificationType.MESSAGE -> Pair(Icons.Outlined.Send, Color(0xFF42A5F5))
         NotificationType.SYSTEM -> Pair(Icons.Outlined.Settings, Color(0xFFFFA726))
         NotificationType.GENERAL -> Pair(Icons.Outlined.Notifications, Color(0xFFAB47BC))
-        NotificationType.APPLICATION_UPDATE -> Pair(Icons.Outlined.Create, Color(0xFF26C6DA))
+        NotificationType.APPLICATION_STATUS -> Pair(Icons.Outlined.Create, Color(0xFF26C6DA))
         NotificationType.CANDIDATE_ALERT -> Pair(Icons.Outlined.Person, Color(0xFFEC407A))
         NotificationType.EVENTS -> Pair(Icons.Outlined.DateRange, Color(0xFF7E57C2))
         NotificationType.PROFILE_UPDATE -> Pair(Icons.Outlined.AccountCircle, Color(0xFF8D6E63))
+        NotificationType.JOB_APPLICATION -> Pair(Icons.Outlined.AccountCircle, Color(0xFFFF5722))
     }
 }
 
@@ -1070,10 +1071,11 @@ fun getNotificationColor(type: NotificationType): Color {
         NotificationType.MESSAGE -> Color(0xFF42A5F5)
         NotificationType.SYSTEM -> Color(0xFFFFA726)
         NotificationType.GENERAL -> Color(0xFFAB47BC)
-        NotificationType.APPLICATION_UPDATE -> Color(0xFF26C6DA)
+        NotificationType.APPLICATION_STATUS -> Color(0xFF26C6DA)
         NotificationType.CANDIDATE_ALERT -> Color(0xFFEC407A)
         NotificationType.EVENTS -> Color(0xFF7E57C2)
         NotificationType.PROFILE_UPDATE -> Color(0xFF8D6E63)
+        NotificationType.JOB_APPLICATION -> Color(0xFFFF5722)
     }
 }
 

@@ -15,6 +15,7 @@ import com.example.rojgar.model.SkillModel
 import com.example.rojgar.model.ExperienceModel
 import com.example.rojgar.model.EducationModel
 import com.example.rojgar.recommendation.EnhancedJobRecommendationEngine
+import com.example.rojgar.utils.NotificationHelper
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -25,7 +26,7 @@ import java.io.InputStream
 import java.util.UUID
 import java.util.concurrent.Executors
 
-class JobRepoImpl : JobRepo {
+class JobRepoImpl(private val context: Context) : JobRepo {
     val auth: FirebaseAuth = FirebaseAuth.getInstance()
     val database: FirebaseDatabase = FirebaseDatabase.getInstance()
     val ref: DatabaseReference = database.getReference("Job")
@@ -50,8 +51,22 @@ class JobRepoImpl : JobRepo {
 
         ref.child(postId).setValue(postWithId).addOnCompleteListener {
             if (it.isSuccessful) {
+                database.getReference("Companys").child(jobPost.companyId).child("companyName")
+                    .get().addOnSuccessListener { snapshot ->
+                        val companyName = snapshot.getValue(String::class.java) ?: "A Company"
+
+                        // ✅ Send notification to ALL job seekers
+                        NotificationHelper.sendJobPostNotificationToAll(
+                            context, // You need to add context to your repository
+                            postId,
+                            jobPost.title,
+                            companyName,
+                            jobPost.position
+                        )
+                    }
                 callback(true, "Job post created successfully")
-            } else {
+            }
+            else {
                 callback(false, "${it.exception?.message}")
             }
         }

@@ -57,7 +57,7 @@ class ActiveJob : ComponentActivity() {
 @Composable
 fun ActiveJobScreen() {
     val context = LocalContext.current
-    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
 
     val currentUser = companyViewModel.getCurrentCompany()

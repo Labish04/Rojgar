@@ -89,15 +89,16 @@ class JobApplyActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobApplyBody(postId: String, companyId: String) {
-    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    val context = LocalContext.current
+
+    val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
-    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl()) }
+    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl(context)) }
 
     val reviewViewModel: ReviewViewModel = viewModel(
         factory = ReviewViewModelFactory(ReviewRepoImpl())
     )
 
-    val context = LocalContext.current
 
     var selectedTab by remember { mutableStateOf("Job Description") }
     var jobPost by remember { mutableStateOf<JobModel?>(null) }

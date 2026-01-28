@@ -92,4 +92,5 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.google.firebase:firebase-messaging-ktx:23.4.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 }

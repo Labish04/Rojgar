@@ -234,7 +234,7 @@ class NotificationRepoImpl : NotificationRepo {
             "follow" -> NotificationType.PROFILE_UPDATE // Using PROFILE_UPDATE for follow notifications
             "verification" -> NotificationType.SYSTEM
             "message" -> NotificationType.MESSAGE
-            "application_update" -> NotificationType.APPLICATION_UPDATE
+            "application_update" -> NotificationType.APPLICATION_STATUS
             "candidate_alert" -> NotificationType.CANDIDATE_ALERT
             "events", "event" -> NotificationType.EVENTS
             "system" -> NotificationType.SYSTEM
