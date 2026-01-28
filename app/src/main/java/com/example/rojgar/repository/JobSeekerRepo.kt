@@ -133,4 +133,5 @@ interface JobSeekerRepo {
         jobSeekerId: String,
         callback: (Boolean, String) -> Unit
     )
+
 }
