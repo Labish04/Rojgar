@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateListOf
 import com.cloudinary.Cloudinary
 import com.cloudinary.utils.ObjectUtils
 import com.example.rojgar.model.JobSeekerModel
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -701,4 +702,6 @@ class JobSeekerRepoImpl : JobSeekerRepo {
         database.getReference("JobSeekers").child(userId).child("fcmToken").removeValue()
         database.getReference("fcmTokens").child(userId).removeValue()
     }
+
+
 }

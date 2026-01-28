@@ -50,6 +50,7 @@ import com.example.rojgar.repository.*
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.zIndex
 import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
@@ -58,11 +59,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import coil.compose.AsyncImage
 import com.example.rojgar.viewmodel.JobSeekerViewModel
+import com.google.firebase.auth.EmailAuthProvider
+import kotlinx.coroutines.delay
 
 class JobSeekerProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -118,6 +123,10 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
     var followingCount by remember { mutableStateOf(0) }
     var isLoadingFollow by remember { mutableStateOf(false) }
     var hasCountedView by remember { mutableStateOf(false) }
+
+    var isBlocked by remember { mutableStateOf(false) }
+    var hasBlockedYou by remember { mutableStateOf(false) }
+    var showBlockConfirmDialog by remember { mutableStateOf(false) }
 
 
     val videoPickerLauncher = rememberLauncherForActivityResult(
@@ -238,6 +247,25 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
             }
         }
     }
+    LaunchedEffect(finalTargetJobSeekerId, currentUserId) {
+        if (!isOwnProfile && currentUserId.isNotEmpty() && finalTargetJobSeekerId.isNotEmpty()) {
+            // Check if current user has blocked this profile
+            followRepository.isUserBlocked(currentUserId, finalTargetJobSeekerId) { blocked ->
+                isBlocked = blocked
+            }
+
+            // Check if this profile has blocked current user
+            followRepository.hasBlockedYou(finalTargetJobSeekerId, currentUserId) { blocked ->
+                hasBlockedYou = blocked
+            }
+        }
+    }
+
+
+
+
+    // ==================== SHOW BLOCKED PROFILE ====================
+
 
     // Handle follow action
     fun handleFollow() {
@@ -288,6 +316,65 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
             }
         }
     }
+    fun handleBlock() {
+        if (currentUserId.isEmpty() || finalTargetJobSeekerId.isEmpty()) {
+            Toast.makeText(context, "Unable to block user", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        followRepository.blockUser(
+            blockerId = currentUserId,
+            blockedId = finalTargetJobSeekerId,
+            blockerType = currentUserType,
+            blockedType = "JobSeeker"
+        ) { success, message ->
+            if (success) {
+                isBlocked = true
+                // Also unfollow if following
+                if (isFollowing) {
+                    handleUnfollow()
+                }
+                Toast.makeText(context, "User blocked successfully", Toast.LENGTH_SHORT).show()
+                showMoreDialog = false
+            } else {
+                Toast.makeText(context, "Failed to block: $message", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun handleUnblock() {
+        if (currentUserId.isEmpty() || finalTargetJobSeekerId.isEmpty()) {
+            Toast.makeText(context, "Unable to unblock user", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        followRepository.unblockUser(
+            blockerId = currentUserId,
+            blockedId = finalTargetJobSeekerId
+        ) { success, message ->
+            if (success) {
+                isBlocked = false
+                Toast.makeText(context, "User unblocked successfully", Toast.LENGTH_SHORT).show()
+                showMoreDialog = false
+            } else {
+                Toast.makeText(context, "Failed to unblock: $message", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    if ((hasBlockedYou || isBlocked) && !isOwnProfile) {
+        BlockedProfileView(
+            isBlocked = isBlocked,
+            hasBlockedYou = hasBlockedYou,
+            onUnblock = {
+                if (isBlocked) {
+                    handleUnblock()
+                }
+            },
+            onBack = { activity.finish() }
+        )
+        return
+    }
 
     Scaffold { padding ->
         Box(modifier = Modifier.fillMaxSize().padding()) {
@@ -296,7 +383,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                     .fillMaxSize()
                     .padding(padding)
                     .background(
-                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        brush = Brush.verticalGradient(
                             colors = listOf(
                                 Color(0xFFE3F2FD),
                                 Color(0xFFBBDEFB),
@@ -306,68 +393,31 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                     )
             ) {
                 Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White.copy(alpha = 0.5f))
-                    .padding(20.dp), // Padding moved to Box for consistent spacing
-                contentAlignment = Alignment.Center // This centers all direct children of the Box
-            ) {
-                // 1. Absolute Centered Text
-                Text(
-                    text = "Profile",
-                    style = TextStyle(
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1565C0),
-                        textAlign = TextAlign.Center
-                    )
-                )
-
-                // 2. Navigation and Actions Layer
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White.copy(alpha = 0.5f))
+                        .padding(20.dp), // Padding moved to Box for consistent spacing
+                    contentAlignment = Alignment.Center // This centers all direct children of the Box
                 ) {
-                    // Left Side: Back Button
-                    if (!isOwnProfile) {
-                        Surface(
-                            modifier = Modifier.size(48.dp),
-                            shape = CircleShape,
-                            color = Color.White,
-                            shadowElevation = 4.dp
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                                contentDescription = "Back",
-                                tint = Color(0xFF1976D2),
-                                modifier = Modifier
-                                    .clickable { activity.finish() }
-                                    .padding(14.dp)
-                            )
-                        }
-                    } else {
-                        // Keep empty space so the Row knows there is a left side
-                        Spacer(modifier = Modifier.size(48.dp))
-                    }
+                    // 1. Absolute Centered Text
+                    Text(
+                        text = "Profile",
+                        style = TextStyle(
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1565C0),
+                            textAlign = TextAlign.Center
+                        )
+                    )
 
-                    // Right Side: Action Buttons
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        IconButton(
-                            onClick = { /* share logic */ },
-                            modifier = Modifier
-                                .shadow(4.dp, CircleShape)
-                                .background(Color.White.copy(alpha = 0.95f), CircleShape)
-                                .size(48.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "Share",
-                                tint = Color(0xFF1976D2)
-                            )
-                        }
-
-                        if (isOwnProfile) {
+                    // 2. Navigation and Actions Layer
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Left Side: Back Button
+                        if (!isOwnProfile) {
                             Surface(
                                 modifier = Modifier.size(48.dp),
                                 shape = CircleShape,
@@ -375,20 +425,57 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                 shadowElevation = 4.dp
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.outline_more_vert_24),
-                                    contentDescription = "Menu",
+                                    painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                                    contentDescription = "Back",
                                     tint = Color(0xFF1976D2),
                                     modifier = Modifier
-                                        .clickable { isDrawerOpen = true }
-                                        .padding(16.dp)
+                                        .clickable { activity.finish() }
+                                        .padding(14.dp)
                                 )
                             }
                         } else {
+                            // Keep empty space so the Row knows there is a left side
                             Spacer(modifier = Modifier.size(48.dp))
+                        }
+
+                        // Right Side: Action Buttons
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            IconButton(
+                                onClick = { /* share logic */ },
+                                modifier = Modifier
+                                    .shadow(4.dp, CircleShape)
+                                    .background(Color.White.copy(alpha = 0.95f), CircleShape)
+                                    .size(48.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = "Share",
+                                    tint = Color(0xFF1976D2)
+                                )
+                            }
+
+                            if (isOwnProfile) {
+                                Surface(
+                                    modifier = Modifier.size(48.dp),
+                                    shape = CircleShape,
+                                    color = Color.White,
+                                    shadowElevation = 4.dp
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.outline_more_vert_24),
+                                        contentDescription = "Menu",
+                                        tint = Color(0xFF1976D2),
+                                        modifier = Modifier
+                                            .clickable { isDrawerOpen = true }
+                                            .padding(16.dp)
+                                    )
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.size(48.dp))
+                            }
                         }
                     }
                 }
-            }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -402,7 +489,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                         modifier = Modifier
                             .fillMaxSize()
                             .background(
-                                brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                brush = Brush.radialGradient(
                                     colors = listOf(
                                         Color(0xFF42A5F5).copy(alpha = 0.3f),
                                         Color.Transparent
@@ -556,7 +643,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                 // ACTION BUTTONS - Show follow options only when viewing others' profiles
                 if (!isOwnProfile) {
                     if (!isFollowing) {
-                        // Single Follow Button (for other users you're not following)
+                        // Single Follow Button
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -600,7 +687,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                         )
                                         Spacer(modifier = Modifier.width(10.dp))
                                         Text(
-                                            text = "Follow",
+                                            text = if (isBlocked) "Blocked" else "Follow",
                                             fontSize = 18.sp,
                                             fontWeight = FontWeight.Bold
                                         )
@@ -654,6 +741,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                 onClick = {
                                     showMoreDialog = !showMoreDialog
                                 },
+                                enabled = !isBlocked,
                                 shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier
                                     .weight(1f)
@@ -678,7 +766,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Following",
+                                        text = if (isBlocked) "Blocked" else "Following",
                                         fontSize = 17.sp,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -687,6 +775,18 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                         }
                     }
                 }
+
+                if (showBlockConfirmDialog && !isOwnProfile) {
+                    BlockConfirmationDialog(
+                        showDialog = showBlockConfirmDialog,
+                        onDismiss = { showBlockConfirmDialog = false },
+                        onConfirm = { handleBlock() },
+                        userName = jobSeekerState?.fullName ?: "this user",
+                        context = context
+                    )
+                }
+
+
 
                 // MORE OPTIONS DIALOG - Only show when viewing others' profile and following (to unfollow/block)
                 if (showMoreDialog && !isOwnProfile) {
@@ -704,43 +804,58 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                             modifier = Modifier.align(Alignment.TopEnd)
                         ) {
                             Column(modifier = Modifier.width(180.dp)) {
-                                Text(
-                                    text = "Unfollow",
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.Red,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            handleUnfollow()
-                                            showMoreDialog = false
-                                        }
-                                        .padding(18.dp)
-                                )
+                                if (isFollowing) {
+                                    Text(
+                                        text = "Unfollow",
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.Red,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                handleUnfollow()
+                                                showMoreDialog = false
+                                            }
+                                            .padding(18.dp)
+                                    )
+                                    HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
+                                }
 
-                                HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
+                                if (isBlocked) {
+                                    Text(
+                                        text = "Unblock",
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF4CAF50),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                handleUnblock()
+                                                showMoreDialog = false
+                                            }
+                                            .padding(18.dp)
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Block",
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.Red,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                showBlockConfirmDialog = true
+                                                showMoreDialog = false
+                                            }
+                                            .padding(18.dp)
+                                    )
+                                }
 
-                                Text(
-                                    text = "Block",
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF263238),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            Toast.makeText(
-                                                context,
-                                                "Block clicked",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                            showMoreDialog = false
-                                        }
-                                        .padding(18.dp)
-                                )
                             }
                         }
                     }
                 }
+
 
                 Spacer(modifier = Modifier.height(20.dp))
 
@@ -822,7 +937,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                             modifier = Modifier
                                                 .fillMaxSize()
                                                 .background(
-                                                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                                    brush = Brush.linearGradient(
                                                         colors = listOf(
                                                             Color(0xFF42A5F5),
                                                             Color(0xFF2196F3)
@@ -1030,7 +1145,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                 .align(Alignment.CenterEnd)
                                 .shadow(24.dp)
                                 .background(
-                                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    brush = Brush.verticalGradient(
                                         colors = listOf(
                                             Color(0xFFFAFAFA),
                                             Color.White
@@ -1044,7 +1159,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                         .fillMaxWidth()
                                         .height(140.dp)
                                         .background(
-                                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                            brush = Brush.horizontalGradient(
                                                 colors = listOf(
                                                     Color(0xFF1E88E5),
                                                     Color(0xFF42A5F5)
@@ -1356,7 +1471,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                         val currentUser = repository.getCurrentJobSeeker()
                         if (currentUser != null && currentUser.email != null) {
                             val credential =
-                                com.google.firebase.auth.EmailAuthProvider.getCredential(
+                                EmailAuthProvider.getCredential(
                                     currentUser.email!!,
                                     password
                                 )
@@ -1411,7 +1526,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                         val currentUser = repository.getCurrentJobSeeker()
                         if (currentUser != null && currentUser.email != null) {
                             val credential =
-                                com.google.firebase.auth.EmailAuthProvider.getCredential(
+                                EmailAuthProvider.getCredential(
                                     currentUser.email!!,
                                     password
                                 )
@@ -1736,6 +1851,18 @@ fun SettingsDialog(
                 HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
 
                 Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsOption(
+                    icon = R.drawable.block,
+                    title = "Blocked Users",
+                    subtitle = "Manage people you have blocked",
+                    iconColor = Color(0xFFEC4444),
+                    onClick = {
+                        val intent = Intent(context, BlockedUsersActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                )
+
 
                 SettingsOption(
                     icon = R.drawable.deactivateaccount,
@@ -2635,7 +2762,7 @@ fun DeleteAccountConfirmationDialog(
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFF44336),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        textAlign = TextAlign.Center
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -2799,7 +2926,362 @@ fun DeleteAccountConfirmationDialog(
                     }
                 }
             }
+
+
         }
     }
 }
 
+@Composable
+fun BlockedProfileView(
+    isBlocked: Boolean,
+    hasBlockedYou: Boolean,
+    onUnblock: () -> Unit,
+    onBack: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFE3F2FD),
+                        Color(0xFFBBDEFB),
+                        Color(0xFF90CAF9)
+                    )
+                )
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.block),
+                contentDescription = "Blocked",
+                tint = Color.Gray,
+                modifier = Modifier.size(80.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = if (isBlocked) "You have blocked this user"
+                else "This profile is not available",
+                style = TextStyle(
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF424242),
+                    textAlign = TextAlign.Center
+                )
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = if (isBlocked)
+                    "You will no longer see or interact with this user."
+                else
+                    "The user has blocked you. You cannot view their profile.",
+                style = TextStyle(
+                    fontSize = 16.sp,
+                    color = Color.Gray,
+                    lineHeight = 24.sp,
+                    textAlign = TextAlign.Center
+                )
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            if (isBlocked) {
+                Button(
+                    onClick = onUnblock,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50),
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .height(48.dp)
+                ) {
+                    Text("Unblock User", fontWeight = FontWeight.SemiBold)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            Button(
+                onClick = onBack,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF2196F3),
+                    contentColor = Color.White
+                ),
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+                    .height(48.dp)
+            ) {
+                Text("Go Back", fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+fun BlockConfirmationDialog(
+    showDialog: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    userName: String,
+    context: Context
+) {
+    // Animation states
+    var animationPlayed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (animationPlayed) 1f else 0.3f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+
+    val alpha by animateFloatAsState(
+        targetValue = if (animationPlayed) 1f else 0f,
+        animationSpec = tween(300),
+        label = "alpha"
+    )
+
+    val iconRotation by animateFloatAsState(
+        targetValue = if (animationPlayed) 0f else -180f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "rotation"
+    )
+
+    LaunchedEffect(showDialog) {
+        if (showDialog) {
+            animationPlayed = false
+            delay(50)
+            animationPlayed = true
+        }
+    }
+
+    if (showDialog) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(50f)
+        ) {
+            // Animated backdrop
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color(0xFF1565C0).copy(alpha = 0.3f * alpha),
+                                Color.Black.copy(alpha = 0.85f * alpha)
+                            ),
+                            center = Offset(0.5f, 0.3f),
+                            radius = 1500f
+                        )
+                    )
+                    .clickable { onDismiss() }
+            )
+
+            // Animated Card
+            Card(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(0.9f)
+                    .wrapContentHeight()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        this.alpha = alpha
+                    },
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(24.dp)
+            ) {
+                // Gradient Header
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFFE3F2FD),
+                                    Color(0xFFBBDEFB),
+                                    Color(0xFF90CAF9)
+                                )
+                            )
+                        )
+                ) {
+                    // Animated Icon
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(80.dp)
+                            .background(
+                                color = Color.White,
+                                shape = CircleShape
+                            )
+                            .border(
+                                width = 3.dp,
+                                color = Color(0xFFEF5350),
+                                shape = CircleShape
+                            )
+                            .shadow(12.dp, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.blockuser_filled),
+                            contentDescription = "Block",
+                            tint = Color(0xFFEF5350),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .graphicsLayer {
+                                    rotationZ = iconRotation
+                                }
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Title with gradient text effect
+                    Text(
+                        text = "Block $userName?",
+                        style = TextStyle(
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1565C0),
+                            letterSpacing = 0.5.sp
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Warning Box
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFF3E0)
+                        ),
+                        elevation = CardDefaults.cardElevation(0.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.round_info_outline_24),
+                                contentDescription = "Warning",
+                                tint = Color(0xFFFF6F00),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "You will no longer see or interact with each other. This action cannot be undone.",
+                                style = TextStyle(
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF5D4037),
+                                    lineHeight = 20.sp
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    // Action Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Cancel Button with border
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(2.dp, Color(0xFF90CAF9)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color.White,
+                                contentColor = Color(0xFF1565C0)
+                            )
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.outline_close_24),
+                                contentDescription = "Cancel",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Cancel",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
+
+                        // Block Button with gradient
+                        Button(
+                            onClick = {
+                                onConfirm()
+                                onDismiss()
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp)
+                                .shadow(8.dp, RoundedCornerShape(16.dp)),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFEF5350),
+                                contentColor = Color.White
+                            ),
+                            elevation = ButtonDefaults.buttonElevation(
+                                defaultElevation = 0.dp,
+                                pressedElevation = 8.dp
+                            )
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.block),
+                                contentDescription = "Block",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Block",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

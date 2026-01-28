@@ -204,4 +204,6 @@ class JobSeekerViewModel(val repo: JobSeekerRepo) {
     ) {
         repo.incrementProfileView(jobSeekerId, callback)
     }
+
+
 }
