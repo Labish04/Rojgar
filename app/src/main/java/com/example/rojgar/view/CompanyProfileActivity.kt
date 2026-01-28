@@ -31,7 +31,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -52,15 +51,15 @@ import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.FollowViewModel
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rojgar.repository.UserRepo
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.draw.scale
+import com.example.rojgar.repository.JobRepoImpl
+import com.example.rojgar.viewmodel.JobViewModel
 import kotlinx.coroutines.launch
 
 class CompanyProfileActivity : ComponentActivity() {
@@ -137,7 +136,7 @@ fun CompanyProfileBody(
     val authRepo = remember { UserRepo() }
 
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
-    val followViewModel = remember { FollowViewModel(FollowRepoImpl()) }
+    val followViewModel = remember { FollowViewModel(FollowRepoImpl(context)) }
 
     var currentUserRole by remember { mutableStateOf<String?>(null) }
     val currentUserId = remember { authRepo.getCurrentUserId() }
@@ -146,8 +145,6 @@ fun CompanyProfileBody(
     val isFollowingState by followViewModel.isFollowing.observeAsState(initial = false)
     val followersCountState by followViewModel.followersCount.observeAsState(initial = 0)
     val followingCountState by followViewModel.followingCount.observeAsState(initial = 0)
-
-    val actualCompanyId = if (isOwnProfile) company.value?.companyId ?: "" else companyId
 
     var isUploadingCover by remember { mutableStateOf(false) }
     var isUploadingProfile by remember { mutableStateOf(false) }
@@ -160,6 +157,9 @@ fun CompanyProfileBody(
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showConfirmPasswordDialog by remember { mutableStateOf(false) }
     var showEditProfileDialog by remember { mutableStateOf(false) }
+    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    val actualCompanyId = if (isOwnProfile) company.value?.companyId ?: "" else companyId
+    val jobPosts by jobViewModel.company.observeAsState(emptyList())
 
     fun shareCompanyProfile(context: Context, company: CompanyModel?) {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -177,6 +177,16 @@ fun CompanyProfileBody(
             putExtra(Intent.EXTRA_TEXT, shareText)
         }
         context.startActivity(Intent.createChooser(shareIntent, "Share Company Profile via"))
+    }
+
+    LaunchedEffect(companyId) {
+        if (companyId.isNotEmpty()) {
+            jobViewModel.getJobPostsByCompanyId(companyId)
+        }
+    }
+
+    val activeJobCount = remember(jobPosts) {
+        jobPosts.count { isJobActive(it.deadline) }
     }
 
     LaunchedEffect(Unit) {
@@ -254,6 +264,16 @@ fun CompanyProfileBody(
                 followViewModel.getFollowers(profileIdToLoad)
             }
         }
+    }
+
+    fun refreshFollowStatus() {
+        if (!isOwnProfile && currentUserId.isNotEmpty() && currentUserRole != null && actualCompanyId.isNotEmpty()) {
+            followViewModel.checkFollowStatus(currentUserId, actualCompanyId)  // Use actualCompanyId
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        refreshFollowStatus()
     }
 
     Scaffold(
@@ -416,14 +436,17 @@ fun CompanyProfileBody(
                     ) {
                         EnhancedStatCard(
                             label = "Active Jobs",
-                            value = "42",
-                            icon = Icons.Default.Email,
-                            modifier = Modifier.weight(1f)
+                            value = activeJobCount.toString(),
+                            icon = R.drawable.jobtype,
+                            modifier = Modifier.weight(1f).clickable {
+                                val intent = Intent(context, ActiveJob::class.java)
+                                context.startActivity(intent)
+                            }
                         )
                         EnhancedStatCard(
                             label = "Followers",
                             value = formatNumber(followersCountState),
-                            icon = Icons.Default.Face,
+                            icon = R.drawable.followers,
                             modifier = Modifier.weight(1f).clickable {
                                 val intent = Intent(context, FollowersListActivity::class.java)
                                 intent.putExtra(
@@ -438,7 +461,7 @@ fun CompanyProfileBody(
                         EnhancedStatCard(
                             label = "Following",
                             value = formatNumber(followingCountState),
-                            icon = Icons.Default.Person,
+                            icon = R.drawable.followers,
                             modifier = Modifier.weight(1f).clickable {
                                 val intent = Intent(context, FollowingListActivity::class.java)
                                 intent.putExtra(
@@ -466,55 +489,63 @@ fun CompanyProfileBody(
                                             followViewModel.unfollow(
                                                 currentUserId,
                                                 currentUserRole!!,
-                                                companyId,
+                                                actualCompanyId,  // FIXED: Use actualCompanyId instead of companyId
                                                 "Company"
                                             ) { success, message ->
                                                 if (success) {
                                                     followViewModel.getFollowersCount(companyId)
+                                                    followViewModel.getFollowingCount(currentUserId)
                                                     Toast.makeText(
                                                         context,
                                                         "Unfollowed!",
                                                         Toast.LENGTH_SHORT
                                                     ).show()
-                                                } else Toast.makeText(
-                                                    context,
-                                                    "Failed: $message",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
+                                                    // REMOVED redundant count refreshes - ViewModel handles this automatically
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Failed: $message",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
                                             }
                                         } else {
                                             followViewModel.follow(
                                                 currentUserId,
                                                 currentUserRole!!,
-                                                companyId,
+                                                actualCompanyId,  // FIXED: Use actualCompanyId instead of companyId
                                                 "Company"
                                             ) { success, message ->
                                                 if (success) {
                                                     followViewModel.getFollowersCount(companyId)
+                                                    followViewModel.getFollowingCount(currentUserId)
                                                     Toast.makeText(
                                                         context,
                                                         "Followed!",
                                                         Toast.LENGTH_SHORT
                                                     ).show()
-                                                } else Toast.makeText(
-                                                    context,
-                                                    "Failed: $message",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
+                                                    // REMOVED redundant count refreshes - ViewModel handles this automatically
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Failed: $message",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
                                             }
                                         }
-                                    } else Toast.makeText(
-                                        context,
-                                        "Please login to follow",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Please login to follow",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 },
                                 modifier = Modifier.weight(1f).height(52.dp)
                                     .shadow(8.dp, RoundedCornerShape(16.dp)),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isFollowingState) Color(
-                                        0xFF10B981
-                                    ) else Color(0xFF6366F1)
+                                    containerColor = if (isFollowingState) Color(0xFF10B981) else Color(0xFF6366F1)
                                 ),
                                 shape = RoundedCornerShape(16.dp)
                             ) {
@@ -605,37 +636,37 @@ fun CompanyProfileBody(
                     EnhancedInfoSection(title = "Company Information") {
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             EnhancedDetailRow(
-                                icon = Icons.Default.Email,
+                                icon = R.drawable.office,
                                 label = "Industry",
                                 value = company.value?.companyIndustry ?: "",
                                 gradient = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
                             )
                             EnhancedDetailRow(
-                                icon = Icons.Default.LocationOn,
+                                icon = R.drawable.map_filled,
                                 label = "Headquarter",
                                 value = company.value?.companyLocation ?: "",
                                 gradient = listOf(Color(0xFFEC4899), Color(0xFFF43F5E))
                             )
                             EnhancedDetailRow(
-                                icon = Icons.Default.Phone,
+                                icon = R.drawable.call,
                                 label = "Phone",
                                 value = company.value?.companyContactNumber ?: "",
                                 gradient = listOf(Color(0xFF10B981), Color(0xFF059669))
                             )
                             EnhancedDetailRow(
-                                icon = Icons.Default.Email,
+                                icon = R.drawable.emailicon,
                                 label = "Email",
                                 value = company.value?.companyEmail ?: "",
                                 gradient = listOf(Color(0xFFF59E0B), Color(0xFFEAB308))
                             )
                             EnhancedDetailRow(
-                                icon = Icons.Default.PlayArrow,
+                                icon = R.drawable.founded,
                                 label = "Founded",
                                 value = company.value?.companyEstablishedDate?.take(4) ?: "2015",
                                 gradient = listOf(Color(0xFF05C2B2), Color(0xFF25E4EB))
                             )
                             EnhancedDetailRow(
-                                icon = Icons.Default.PlayArrow,
+                                icon = R.drawable.web,
                                 label = "Website",
                                 value = company.value?.companyWebsite ?: "",
                                 gradient = listOf(Color(0xFF3B82F6), Color(0xFF2563EB))
@@ -1056,7 +1087,7 @@ fun CompanyProfileBody(
 fun EnhancedStatCard(
     label: String,
     value: String,
-    icon: ImageVector,
+    icon: Int,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -1088,7 +1119,7 @@ fun EnhancedStatCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(id = icon),
                     contentDescription = null,
                     tint = Color(0xFF6366F1),
                     modifier = Modifier.size(22.dp)
@@ -1164,7 +1195,7 @@ fun EnhancedInfoSection(
 
 @Composable
 fun EnhancedDetailRow(
-    icon: ImageVector,
+    icon: Int,
     label: String,
     value: String,
     gradient: List<Color>
@@ -1182,7 +1213,7 @@ fun EnhancedDetailRow(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = icon,
+                painter = painterResource(id = icon),
                 contentDescription = label,
                 tint = Color.White,
                 modifier = Modifier.size(24.dp)
@@ -1666,7 +1697,7 @@ fun EditCompanyProfileDialog(
                         label = "Company Name",
                         value = companyName,
                         onValueChange = { companyName = it },
-                        icon = Icons.Default.Face
+                        icon = R.drawable.office
                     )
 
                     // Tagline
@@ -1674,7 +1705,7 @@ fun EditCompanyProfileDialog(
                         label = "Tagline",
                         value = tagline,
                         onValueChange = { tagline = it },
-                        icon = Icons.Default.Edit
+                        icon = R.drawable.baseline_password_24
                     )
 
                     // About Company
@@ -1682,7 +1713,7 @@ fun EditCompanyProfileDialog(
                         label = "About Company",
                         value = aboutCompany,
                         onValueChange = { aboutCompany = it },
-                        icon = Icons.Default.Info
+                        icon = R.drawable.editmessage
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -1699,7 +1730,7 @@ fun EditCompanyProfileDialog(
                         label = "Industry",
                         value = industry,
                         onValueChange = { industry = it },
-                        icon = Icons.Default.Email
+                        icon = R.drawable.company
                     )
 
                     // Location
@@ -1707,7 +1738,7 @@ fun EditCompanyProfileDialog(
                         label = "Location",
                         value = location,
                         onValueChange = { location = it },
-                        icon = Icons.Default.LocationOn
+                        icon = R.drawable.map_filled
                     )
 
                     // Phone
@@ -1715,7 +1746,7 @@ fun EditCompanyProfileDialog(
                         label = "Phone",
                         value = phone,
                         onValueChange = { phone = it },
-                        icon = Icons.Default.Phone
+                        icon = R.drawable.call
                     )
 
                     // Email
@@ -1723,7 +1754,7 @@ fun EditCompanyProfileDialog(
                         label = "Email",
                         value = email,
                         onValueChange = { email = it },
-                        icon = Icons.Default.Email,
+                        icon = R.drawable.emailicon,
                         enabled = true
                     )
 
@@ -1732,7 +1763,7 @@ fun EditCompanyProfileDialog(
                         label = "Founded",
                         value = founded,
                         onValueChange = { founded = it },
-                        icon = Icons.Default.Done,
+                        icon = R.drawable.founded,
                         enabled = true
                     )
 
@@ -1741,7 +1772,7 @@ fun EditCompanyProfileDialog(
                         label = "Website",
                         value = website,
                         onValueChange = { website = it },
-                        icon = Icons.Default.PlayArrow
+                        icon = R.drawable.web
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -1908,7 +1939,7 @@ fun EditTextField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    icon: ImageVector,
+    icon: Int,
     enabled: Boolean = true
 ) {
     Column {
@@ -1926,9 +1957,10 @@ fun EditTextField(
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(id = icon),
                     contentDescription = label,
-                    tint = Color(0xFF667EEA)
+                    tint = Color(0xFF667EEA),
+                    modifier = Modifier.size(22.dp)
                 )
             },
             colors = OutlinedTextFieldDefaults.colors(
@@ -1949,7 +1981,7 @@ fun EditTextFieldMultiline(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    icon: ImageVector
+    icon: Int
 ) {
     Column {
         Text(
@@ -1968,10 +2000,10 @@ fun EditTextFieldMultiline(
                 .height(120.dp),
             leadingIcon = {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(id = icon),
                     contentDescription = label,
                     tint = Color(0xFF667EEA),
-                    modifier = Modifier.padding(bottom = 80.dp)
+                    modifier = Modifier.padding(bottom = 80.dp).size(22.dp)
                 )
             },
             colors = OutlinedTextFieldDefaults.colors(

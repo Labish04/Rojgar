@@ -127,7 +127,7 @@ fun SignUpCompanyBody() {
                 modifier = Modifier
                     .padding(horizontal = 30.dp)
             ){
-                LoginTextField(
+                EnhancedTextField(
                     value = companyName,
                     onValueChange = { companyName = it },
                     label = "Company Name",
@@ -142,7 +142,7 @@ fun SignUpCompanyBody() {
                 modifier = Modifier
                     .padding(horizontal = 30.dp)
             ){
-                LoginTextField(
+                EnhancedTextField(
                     value = phoneNumber,
                     onValueChange = { phoneNumber = it },
                     label = "Contact Number",
@@ -159,7 +159,7 @@ fun SignUpCompanyBody() {
                 modifier = Modifier
                     .padding(horizontal = 30.dp)
             ){
-                LoginTextField(
+                EnhancedTextField(
                     value = email,
                     onValueChange = { email = it },
                     label = "Email",
@@ -174,7 +174,7 @@ fun SignUpCompanyBody() {
                 modifier = Modifier
                     .padding(horizontal = 30.dp)
             ){
-                LoginTextField(
+                EnhancedTextField(
                     value = password,
                     onValueChange = { password = it },
                     label = "Password",
@@ -189,7 +189,7 @@ fun SignUpCompanyBody() {
                 modifier = Modifier
                     .padding(horizontal = 30.dp)
             ){
-                LoginTextField(
+                EnhancedTextField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
                     label = "Confirm Password",

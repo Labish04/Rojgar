@@ -91,5 +91,5 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("com.google.code.gson:gson:2.10.1")
-
+    implementation("com.google.firebase:firebase-messaging-ktx:23.4.0")
 }

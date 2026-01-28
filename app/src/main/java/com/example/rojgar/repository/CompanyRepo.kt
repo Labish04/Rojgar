@@ -30,6 +30,19 @@ interface CompanyRepo {
         callback: (Boolean, String) -> Unit
     )
 
+    fun signInWithGoogle(
+        idToken: String,
+        fullName: String,
+        email: String,
+        photoUrl: String,
+        callback: (Boolean, String, String?) -> Unit // success, message, companyId
+    )
+
+    fun getCompanyByEmail(
+        email: String,
+        callback: (Boolean, String, CompanyModel?) -> Unit
+    )
+
     fun getCurrentCompany(): FirebaseUser?
 
     fun getCompanyById(
