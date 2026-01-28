@@ -214,31 +214,6 @@ class ChatViewModel(private val chatRepository: ChatRepository,
         typingListenerActive = false
     }
 
-    fun initiateCall(
-        callerId: String,
-        callerName: String,
-        receiverId: String,
-        isVideoCall: Boolean,
-        onSuccess: (String) -> Unit,
-        onFailure: (String) -> Unit
-    ) {
-        viewModelScope.launch {
-            try {
-                chatRepository.initiateCall(
-                    callerId = callerId,
-                    callerName = callerName,
-                    receiverId = receiverId,
-                    isVideoCall = isVideoCall,
-                    onSuccess = onSuccess,
-                    onFailure = onFailure
-                )
-            } catch (e: Exception) {
-                Log.e("ChatViewModel", "Error initiating call", e)
-                onFailure("Failed to initiate call: ${e.message}")
-            }
-        }
-    }
-
     fun refreshMessages() {
         currentChatId?.let { loadMessages(it) }
     }

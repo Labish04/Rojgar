@@ -149,7 +149,7 @@ class LoginActivity : ComponentActivity() {
                 companyViewModel = companyViewModel,
                 onGoogleSignInClick = { userType -> startGoogleSignIn(userType) },
                 onLoginSuccess = { userId, userType ->
-                    requestNotificationPermissionAndRegisterToken(userId, userType)
+                    rCcijrCfZBuqDzBWp3qSrBEZCqBUfQVz4CWGHWF91iaEw(userId, userType)
                     logFCMToken(userId)
                 }
             )
@@ -165,7 +165,7 @@ class LoginActivity : ComponentActivity() {
         if (selectedUserType == "JOBSEEKER") {
             jobSeekerViewModel.signInWithGoogle(idToken, fullName, email, photoUrl) { success, message, userId ->
                 if (success && userId != null) {
-                    requestNotificationPermissionAndRegisterToken(userId, "JOBSEEKER")
+                    rCcijrCfZBuqDzBWp3qSrBEZCqBUfQVz4CWGHWF91iaEw(userId, "JOBSEEKER")
                     logFCMToken(userId)
                     Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this, JobSeekerDashboardActivity::class.java))
@@ -177,7 +177,7 @@ class LoginActivity : ComponentActivity() {
         } else {
             companyViewModel.signInWithGoogle(idToken, fullName, email, photoUrl) { success, message, userId ->
                 if (success && userId != null) {
-                    requestNotificationPermissionAndRegisterToken(userId, "COMPANY")
+                    rCcijrCfZBuqDzBWp3qSrBEZCqBUfQVz4CWGHWF91iaEw(userId, "COMPANY")
                     logFCMToken(userId)
                     Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this, CompanyDashboardActivity::class.java))
@@ -204,7 +204,7 @@ class LoginActivity : ComponentActivity() {
         }
     }
 
-    private fun requestNotificationPermissionAndRegisterToken(userId: String, userType: String) {
+    private fun rCcijrCfZBuqDzBWp3qSrBEZCqBUfQVz4CWGHWF91iaEw(userId: String, userType: String) {
         pendingUserId = userId
         pendingUserType = userType
 
