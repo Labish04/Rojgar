@@ -93,71 +93,74 @@ fun AppliedJobsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                if (selectedApplication == null) {
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF1E3A8A),
-                            Color(0xFF3B82F6),
-                            Color(0xFFDEEBFF)
-                        )
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFE3F2FD),
+                        Color(0xFFBBDEFB),
+                        Color(0xFF90CAF9)
                     )
-                } else {
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0xFFF8F9FA), Color(0xFFF8F9FA))
-                    )
-                }
+                )
             )
     ) {
         if (selectedApplication == null) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Color.Transparent
+                // Custom Top Bar with gradient - Same as SavedJobsActivity
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF1976D2),
+                                    Color(0xFF2196F3),
+                                    Color(0xFF42A5F5)
+                                )
+                            )
+                        )
+                        .padding(top = 40.dp)
                 ) {
-                    Column {
-                        Spacer(modifier = Modifier.height(40.dp))
-                        Row(
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = onBackClick,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .size(40.dp)
+                                .background(
+                                    color = Color.White.copy(alpha = 0.2f),
+                                    shape = CircleShape
+                                )
                         ) {
-                            IconButton(
-                                onClick = onBackClick,
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(
-                                        Color.White.copy(alpha = 0.2f),
-                                        shape = CircleShape
-                                    )
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = Color.White
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
 
-                            Spacer(modifier = Modifier.width(16.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
 
-                            Column {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Applied Jobs",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+
+                            AnimatedVisibility(visible = !isLoading) {
                                 Text(
-                                    text = "Applied Jobs",
-                                    fontSize = 28.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Text(
-                                    text = "${applications.size} ${if (applications.size == 1) "Application" else "Applications"}",
+                                    text = "${applications.size} ${if (applications.size == 1) "application" else "applications"}",
                                     fontSize = 14.sp,
-                                    color = Color.White.copy(alpha = 0.8f)
+                                    color = Color.White.copy(alpha = 0.9f)
                                 )
                             }
                         }
-
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
 
@@ -236,6 +239,7 @@ fun AppliedJobsScreen(
         }
     }
 }
+
 
 @Composable
 fun JobApplicationDetailScreen(

@@ -106,7 +106,7 @@ fun BlockedUsersScreen() {
                                     isLoading = false
                                 }
                             }
-                            .addOnFailureListener {
+                            .addOnFailureListener { it ->
                                 fetchCount++
                                 if (fetchCount == blockedIds.size) {
                                     blockedUsersList = fetchedUsers
@@ -122,48 +122,79 @@ fun BlockedUsersScreen() {
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Blocked Users",
-                        style = TextStyle(
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFE3F2FD),
+                        Color(0xFFBBDEFB),
+                        Color(0xFF90CAF9)
+                    )
+                )
+            )
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Custom Top Bar with gradient - Same as FeedbackActivity
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF1976D2),
+                                Color(0xFF2196F3),
+                                Color(0xFF42A5F5)
+                            )
                         )
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { activity.finish() }) {
+                    .padding(top = 40.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { activity.finish() },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                color = Color.White.copy(alpha = 0.2f),
+                                shape = CircleShape
+                            )
+                    ) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
                             tint = Color.White
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF2196F3)
-                )
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFFE3F2FD),
-                            Color(0xFFBBDEFB),
-                            Color(0xFF90CAF9)
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Blocked Users",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
-                    )
-                )
-        ) {
+
+                        AnimatedVisibility(visible = !isLoading && blockedUsersList.isNotEmpty()) {
+                            Text(
+                                text = "${blockedUsersList.size} ${if (blockedUsersList.size == 1) "user" else "users"} blocked",
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.9f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Content
             when {
                 isLoading -> {
                     // Loading State
@@ -176,7 +207,7 @@ fun BlockedUsersScreen() {
                             verticalArrangement = Arrangement.Center
                         ) {
                             CircularProgressIndicator(
-                                color = Color(0xFF2196F3),
+                                color = Color(0xFF1976D2),
                                 strokeWidth = 4.dp,
                                 modifier = Modifier.size(50.dp)
                             )

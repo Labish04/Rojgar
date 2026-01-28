@@ -41,6 +41,7 @@ import coil.compose.AsyncImage
 import com.example.rojgar.R
 import com.example.rojgar.model.JobSeekerModel
 import com.example.rojgar.repository.JobSeekerRepoImpl
+import com.example.rojgar.ui.theme.Black
 import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.DarkBlue2
 import com.example.rojgar.ui.theme.Gray
@@ -307,7 +308,7 @@ fun JobSeekerPersonalInformationBody(
                             text = "Profile Details",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = DarkBlue2,
+                            color = Color(0xFF2196F3),
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
 
@@ -353,6 +354,7 @@ fun JobSeekerPersonalInformationBody(
                             readOnly = true,
                             onClick = { datePickerDialog.show() },
                             trailingIcon = R.drawable.calendaricon
+
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -436,9 +438,9 @@ fun JobSeekerPersonalInformationBody(
                             onValueChange = { bio = it },
                             leadingIcon = {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.bioicon),
+                                    painter = painterResource(id = R.drawable.identity),
                                     contentDescription = null,
-                                    tint = DarkBlue2,
+                                    tint = Color(0xFF2196F3),
                                     modifier = Modifier.size(22.dp)
                                 )
                             },
@@ -590,7 +592,7 @@ fun ModernTextField(
             Icon(
                 painter = painterResource(id = icon),
                 contentDescription = null,
-                tint = DarkBlue2,
+                tint = Color(0xFF2196F3),
                 modifier = Modifier.size(22.dp)
             )
         },
@@ -599,7 +601,7 @@ fun ModernTextField(
                 Icon(
                     painter = painterResource(id = it),
                     contentDescription = null,
-                    tint = Purple,
+                    tint = Color(0xFF2196F3),
                     modifier = Modifier
                         .size(22.dp)
                         .clickable { onClick?.invoke() }
@@ -624,6 +626,7 @@ fun ModernTextField(
         shape = RoundedCornerShape(16.dp),
         singleLine = true,
         readOnly = readOnly,
+        enabled = false,
         colors = TextFieldDefaults.colors(
             focusedContainerColor = Color(0xFFF5F9FF),
             unfocusedContainerColor = Color(0xFFF5F9FF),
@@ -657,7 +660,7 @@ fun ModernDropdown(
                 Icon(
                     painter = painterResource(id = icon),
                     contentDescription = null,
-                    tint = DarkBlue2,
+                    tint = Color(0xFF2196F3),
                     modifier = Modifier.size(22.dp)
                 )
             },
@@ -677,7 +680,7 @@ fun ModernDropdown(
                 Icon(
                     painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
                     contentDescription = null,
-                    tint = Purple,
+                    tint = Color(0xFF2196F3),
                     modifier = Modifier
                         .size(24.dp)
                         .clickable { onExpandedChange(true) }
@@ -703,7 +706,7 @@ fun ModernDropdown(
                     text = {
                         Text(
                             option,
-                            color = DarkBlue2,
+                            color = Black,
                             fontWeight = if (value == option) FontWeight.Bold else FontWeight.Normal
                         )
                     },
