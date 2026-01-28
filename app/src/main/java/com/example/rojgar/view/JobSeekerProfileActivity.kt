@@ -1853,6 +1853,18 @@ fun SettingsDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 SettingsOption(
+                    icon = R.drawable.block,
+                    title = "Blocked Users",
+                    subtitle = "Manage people you have blocked",
+                    iconColor = Color(0xFFEC4444),
+                    onClick = {
+                        val intent = Intent(context, BlockedUsersActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                )
+
+
+                SettingsOption(
                     icon = R.drawable.deactivateaccount,
                     title = "Deactivate Account",
                     subtitle = "Temporarily disable your account",
