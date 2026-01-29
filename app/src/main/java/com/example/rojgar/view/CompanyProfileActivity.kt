@@ -456,6 +456,12 @@ fun CompanyProfileBody(
                             icon = R.drawable.jobtype,
                             modifier = Modifier.weight(1f).clickable {
                                 val intent = Intent(context, ActiveJob::class.java)
+                                intent.putExtra(
+                                    "USER_ID",
+                                    if (isOwnProfile) company.value?.companyId ?: "" else companyId
+                                )
+                                intent.putExtra("USER_TYPE", "Company")
+                                intent.putExtra("IS_OWN_PROFILE", isOwnProfile)
                                 context.startActivity(intent)
                             }
                         )

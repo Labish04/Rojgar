@@ -60,8 +60,11 @@ fun ActiveJobScreen() {
     val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
 
-    val currentUser = companyViewModel.getCurrentCompany()
-    val companyId = currentUser?.uid ?: ""
+    val activity = context as? ComponentActivity
+    // Get company ID from intent - FIX: This is the key change
+    val companyId = activity?.intent?.getStringExtra("USER_ID") ?: ""
+    val isOwnProfile = activity?.intent?.getBooleanExtra("IS_OWN_PROFILE", false) ?: false
+    val userType = activity?.intent?.getStringExtra("USER_TYPE") ?: ""
 
     val jobPosts by jobViewModel.company.observeAsState(emptyList())
     val isLoading by jobViewModel.loading.observeAsState(false)
@@ -73,9 +76,17 @@ fun ActiveJobScreen() {
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(companyId) {
         if (companyId.isNotEmpty()) {
+            // FIX: Always use the company ID from intent, whether it's own profile or viewing another company
             jobViewModel.getJobPostsByCompanyId(companyId)
+        } else {
+            // Fallback: If no company ID in intent, try to get current company
+            val currentUser = companyViewModel.getCurrentCompany()
+            val fallbackCompanyId = currentUser?.uid ?: ""
+            if (fallbackCompanyId.isNotEmpty()) {
+                jobViewModel.getJobPostsByCompanyId(fallbackCompanyId)
+            }
         }
     }
 
@@ -208,7 +219,25 @@ fun ActiveJobScreen() {
                                 ) {
                                     ActiveJobCard(
                                         jobPost = job,
-                                        daysRemaining = getDaysRemaining(job.deadline)
+                                        daysRemaining = getDaysRemaining(job.deadline),
+                                        onClick = {
+                                            if (isOwnProfile && userType == "Company") {
+                                                // If it's the company's own profile, go to applications
+                                                val intent = Intent(context, ApplicationActivity::class.java).apply {
+                                                    putExtra("JOB_POST_ID", job.postId)
+                                                    putExtra("JOB_TITLE", job.title)
+                                                    putExtra("COMPANY_ID", job.companyId)
+                                                }
+                                                context.startActivity(intent)
+                                            } else {
+                                                // If it's a job seeker viewing, go to job apply
+                                                val intent = Intent(context, JobApplyActivity::class.java).apply {
+                                                    putExtra("POST_ID", job.postId)
+                                                    putExtra("COMPANY_ID", job.companyId)
+                                                }
+                                                context.startActivity(intent)
+                                            }
+                                        }
                                     )
                                 }
                             }
@@ -222,6 +251,7 @@ fun ActiveJobScreen() {
     }
 }
 
+// Rest of the code remains the same...
 @Composable
 fun ActiveJobsHeader(activeJobCount: Int) {
     Card(
@@ -290,7 +320,8 @@ fun ActiveJobsHeader(activeJobCount: Int) {
 @Composable
 fun ActiveJobCard(
     jobPost: JobModel,
-    daysRemaining: Int
+    daysRemaining: Int,
+    onClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val displayImageUrl = jobPost.hiringBanner.ifEmpty { jobPost.imageUrl }
@@ -298,14 +329,7 @@ fun ActiveJobCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                val intent = Intent(context, ApplicationActivity::class.java).apply {
-                    putExtra("JOB_POST_ID", jobPost.postId)
-                    putExtra("JOB_TITLE", jobPost.title)
-                    putExtra("COMPANY_ID", jobPost.companyId)
-                }
-                context.startActivity(intent)
-            },
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
