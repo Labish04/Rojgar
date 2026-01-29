@@ -514,7 +514,7 @@ fun CalendarBody() {
                             timeInMillis = event.startTimeMillis
                         }
                         eventCalendar.get(Calendar.YEAR) == currentYear &&
-                        eventCalendar.get(Calendar.MONTH) == currentMonth
+                                eventCalendar.get(Calendar.MONTH) == currentMonth
                     }
 
                     if (loading) {
@@ -682,8 +682,8 @@ fun filterEventsByQuery(events: List<CalendarEventModel>, query: String): List<C
     val lowerQuery = query.lowercase()
     return events.filter { event ->
         event.title.lowercase().contains(lowerQuery) ||
-        event.description.lowercase().contains(lowerQuery) ||
-        event.location.lowercase().contains(lowerQuery)
+                event.description.lowercase().contains(lowerQuery) ||
+                event.location.lowercase().contains(lowerQuery)
     }
 }
 
@@ -811,7 +811,7 @@ fun AllEventsBottomSheet(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = if (searchQuery.isNotEmpty()) "No events match your search"
-                                   else "No events yet",
+                            else "No events yet",
                             color = Color(0xFF64748B),
                             fontSize = 16.sp,
                             textAlign = TextAlign.Center
