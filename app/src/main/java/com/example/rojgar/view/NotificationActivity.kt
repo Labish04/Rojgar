@@ -409,7 +409,6 @@ fun NotificationScreen(
             )
         }
     }
-
 }
 
 @Composable

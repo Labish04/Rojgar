@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +23,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -105,111 +107,177 @@ fun JobSeekerViewPostBody(savedJobViewModel: SavedJobViewModel) {
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Blue)
-            .padding(16.dp)
-    ) {
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Text(
-            text = "Available Jobs",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        Text(
-            text = "${jobs.size} jobs available",
-            fontSize = 14.sp,
-            color = Color.Gray,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        if (isLoading || loading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (jobs.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "No jobs found",
-                        fontSize = 18.sp,
-                        color = Color.Gray
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFE3F2FD),
+                        Color(0xFFBBDEFB),
+                        Color(0xFF90CAF9)
                     )
-                }
-            }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                )
+            )
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF1976D2),
+                                Color(0xFF2196F3),
+                                Color(0xFF42A5F5)
+                            )
+                        )
+                    )
+                    .padding(top = 40.dp)
             ) {
-                items(
-                    items = jobs,
-                    key = { job -> job.postId }
-                ) { job ->
-                    val company = companies[job.companyId]
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Available Jobs",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
 
-                    JobSeekerPostCard(
-                        job = job,
-                        companyName = company?.companyName ?: "Unknown Company",
-                        companyProfile = company?.companyProfileImage ?: "",
-                        isLoadingCompany = company == null && job.companyId.isNotEmpty(),
-                        onClick = {
-                            if (job.postId.isNotEmpty()) {
-                                val intent = Intent(context, JobApplyActivity::class.java).apply {
-                                    putExtra("POST_ID", job.postId)
-                                    putExtra("COMPANY_ID", job.companyId)
-                                }
-                                context.startActivity(intent)
-                            } else {
-                                Toast.makeText(context, "Job ID is empty", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        isSaved = savedJobIds.contains(job.postId),
-                        onSaveClick = { postId ->
-                            if (postId.isNotEmpty()) {
-                                // Use ViewModel to toggle save/unsave
-                                savedJobViewModel.toggleSaveJob(postId) { success, message, isSaved ->
-                                    if (success) {
-                                        val action = if (isSaved) "Saved" else "Unsaved"
-                                        Toast.makeText(context, "$action successfully", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        Toast.makeText(context, "Failed: $message", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                        },
-                        onShareClick = { jobToShare ->
-                            val shareIntent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                putExtra(
-                                    Intent.EXTRA_TEXT,
-                                    "Check out this job: ${jobToShare.title}\n" +
-                                            "Company: ${company?.companyName ?: ""}\n" +
-                                            "Position: ${jobToShare.position}\n" +
-                                            "Type: ${jobToShare.jobType}\n" +
-                                            "Deadline: ${jobToShare.deadline}"
-                                )
-                                type = "text/plain"
-                            }
-                            context.startActivity(
-                                Intent.createChooser(shareIntent, "Share Job")
+                        AnimatedVisibility (visible = !isLoading) {
+                            Text(
+                                text = "${jobs.size} ${if (jobs.size == 1) "job" else "jobs"} available",
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.9f)
                             )
                         }
+                    }
+                }
+            }
+
+            // Content
+            if (isLoading || loading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = Color(0xFF1976D2),
+                        strokeWidth = 3.dp
                     )
                 }
-                item {
-                    Spacer(modifier = Modifier.height(20.dp))
+            } else if (jobs.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.jobpost_filled),
+                                contentDescription = "No Jobs",
+                                modifier = Modifier.size(60.dp),
+                                tint = Color.White
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        Text(
+                            text = "No Jobs Available",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Check back later for new job opportunities",
+                            fontSize = 15.sp,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                ) {
+                    items(
+                        items = jobs,
+                        key = { job -> job.postId }
+                    ) { job ->
+                        val company = companies[job.companyId]
+
+                        JobSeekerPostCard(
+                            job = job,
+                            companyName = company?.companyName ?: "Unknown Company",
+                            companyProfile = company?.companyProfileImage ?: "",
+                            isLoadingCompany = company == null && job.companyId.isNotEmpty(),
+                            onClick = {
+                                if (job.postId.isNotEmpty()) {
+                                    val intent = Intent(context, JobApplyActivity::class.java).apply {
+                                        putExtra("POST_ID", job.postId)
+                                        putExtra("COMPANY_ID", job.companyId)
+                                    }
+                                    context.startActivity(intent)
+                                } else {
+                                    Toast.makeText(context, "Job ID is empty", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            isSaved = savedJobIds.contains(job.postId),
+                            onSaveClick = { postId ->
+                                if (postId.isNotEmpty()) {
+                                    // Use ViewModel to toggle save/unsave
+                                    savedJobViewModel.toggleSaveJob(postId) { success, message, isSaved ->
+                                        if (success) {
+                                            val action = if (isSaved) "Saved" else "Unsaved"
+                                            Toast.makeText(context, "$action successfully", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "Failed: $message", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            },
+                            onShareClick = { jobToShare ->
+                                val shareIntent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    putExtra(
+                                        Intent.EXTRA_TEXT,
+                                        "Check out this job: ${jobToShare.title}\n" +
+                                                "Company: ${company?.companyName ?: ""}\n" +
+                                                "Position: ${jobToShare.position}\n" +
+                                                "Type: ${jobToShare.jobType}\n" +
+                                                "Deadline: ${jobToShare.deadline}"
+                                    )
+                                    type = "text/plain"
+                                }
+                                context.startActivity(
+                                    Intent.createChooser(shareIntent, "Share Job")
+                                )
+                            }
+                        )
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(20.dp))
+                    }
                 }
             }
         }
