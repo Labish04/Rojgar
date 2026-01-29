@@ -1,6 +1,7 @@
 package com.example.rojgar.view
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -57,6 +58,7 @@ import com.example.rojgar.R
 import com.example.rojgar.model.GroupChat
 import com.example.rojgar.model.GroupMessage
 import com.example.rojgar.repository.GroupChatRepositoryImpl
+import com.example.rojgar.ui.theme.SkyBlue
 import com.example.rojgar.viewmodel.GroupChatRoomViewModel
 import com.example.rojgar.viewmodel.LeaveGroupResult
 import kotlinx.coroutines.delay
@@ -197,19 +199,8 @@ fun GroupChatScreen(
     }
 
     Scaffold(
-        topBar = {
-            ModernGroupChatTopBar(
-                groupName = groupName,
-                groupImage = groupInfo?.groupImage ?: "",
-                memberCount = groupInfo?.members?.size ?: 0,
-                onBackPressed = onBackPressed,
-                onGroupInfoClick = { showGroupInfoDialog = true },
-                onMembersClick = { showMembersDialog = true },
-                onSettingsClick = { showSettingsMenu = true },
-                isCurrentUserCreator = groupInfo?.createdBy == currentUserId
-            )
-        },
         bottomBar = {
+            // Updated: Changed bottom bar to match ChatActivity style
             ModernChatInputBar(
                 text = textState,
                 onTextChange = { textState = it },
@@ -230,100 +221,113 @@ fun GroupChatScreen(
                 uploadProgress = uploadProgress
             )
         }
-    ) { padding ->
+    ) { paddingValues ->
+        // Apply Scaffold padding to the main container
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(paddingValues) // This applies the padding from Scaffold
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFFE3F2FD),
-                            Color(0xFFBBDEFB)
+                            Color(0xFFE8F4F8),
+                            Color(0xFFF0F8FF)
                         )
                     )
                 )
         ) {
-            if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(
-                            color = Color(0xFF1976D2),
-                            strokeWidth = 3.dp
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Loading messages...",
-                            color = Color(0xFF1976D2),
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-            } else if (messages.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(32.dp)
+            Column (
+                modifier = Modifier
+                    .fillMaxSize()
+            ){
+                // UPDATED: Changed to card-based top bar like ChatActivity
+                GroupChatTopBar(
+                    groupName = groupName,
+                    groupImage = groupInfo?.groupImage ?: "",
+                    memberCount = groupInfo?.members?.size ?: 0,
+                    onBackClick = onBackPressed,
+                    onMembersClick = { showMembersDialog = true },
+                    onSettingsClick = { showSettingsMenu = true },
+                    isCurrentUserCreator = groupInfo?.createdBy == currentUserId
+                )
+
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Email,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = Color(0xFF90CAF9)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "No messages yet",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF1976D2)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Start the conversation!",
-                            fontSize = 14.sp,
-                            color = Color(0xFF64B5F6)
-                        )
-                    }
-                }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 12.dp),
-                    contentPadding = PaddingValues(vertical = 12.dp)
-                ) {
-                    items(
-                        items = messages,
-                        key = { it.messageId }
-                    ) { message ->
-                        AnimatedVisibility(
-                            visible = true,
-                            enter = fadeIn() + slideInVertically(initialOffsetY = { 30 }),
-                            modifier = Modifier.animateItem(
-                                placementSpec = spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessLow
-                                )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                color = SkyBlue,
+                                strokeWidth = 3.dp
                             )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Loading messages...",
+                                color = Color(0xFF1976D2),
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                } else if (messages.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(32.dp)
                         ) {
-                            Column {
-                                ModernGroupMessageItem(
-                                    message = message,
-                                    isMe = message.senderId == currentUserId,
-                                    groupInfo = groupInfo,
-                                    onMessageLongPress = {
-                                        viewModel.deleteMessage(groupId, message.messageId)
-                                    }
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = Color(0xFF90CAF9)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "No messages yet",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF1976D2)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Start the conversation!",
+                                fontSize = 14.sp,
+                                color = Color(0xFF64B5F6)
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        contentPadding = PaddingValues(bottom = 8.dp),
+                        reverseLayout = false,
+                        verticalArrangement = Arrangement.Top
+                    ) {
+                        items(
+                            items = messages,
+                            key = { it.messageId }
+                        ) { message ->
+                            AnimatedVisibility(
+                                visible = true,
+                                enter = fadeIn() + slideInVertically(initialOffsetY = { 30 }),
+                            ) {
+                                Column {
+                                    ModernGroupMessageItem(
+                                        message = message,
+                                        isMe = message.senderId == currentUserId,
+                                        groupInfo = groupInfo,
+                                        onMessageLongPress = {
+                                            viewModel.deleteMessage(groupId, message.messageId)
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                }
                             }
                         }
                     }
@@ -417,24 +421,23 @@ fun GroupChatScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModernGroupChatTopBar(
+fun GroupChatTopBar(
     groupName: String,
     groupImage: String,
     memberCount: Int,
-    onBackPressed: () -> Unit,
-    onGroupInfoClick: () -> Unit,
+    onBackClick: () -> Unit,
     onMembersClick: () -> Unit,
     onSettingsClick: () -> Unit,
     isCurrentUserCreator: Boolean
 ) {
+    // NEW: Card-based top bar similar to ChatActivity
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(90.dp)
-            .shadow(6.dp),
-        shape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp),
+            .shadow(4.dp),
+        shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         )
@@ -443,100 +446,92 @@ fun ModernGroupChatTopBar(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Back button
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(Color(0xFFE3F2FD), CircleShape)
-                    .clickable { onBackPressed() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color(0xFF1976D2),
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Group Image
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .shadow(4.dp, CircleShape)
-                    .clip(CircleShape)
-                    .background(Color(0xFF1976D2))
-                    .clickable { onGroupInfoClick() }
-            ) {
-                if (groupImage.isNotEmpty()) {
-                    AsyncImage(
-                        model = groupImage,
-                        contentDescription = "Group Image",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = groupName.firstOrNull()?.uppercase() ?: "G",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Group Info
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onGroupInfoClick() }
-            ) {
-                Text(
-                    text = groupName,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = Color(0xFF212121)
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0xFFF5F5F5), CircleShape)
+                        .clickable { onBackClick() },
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = Color(0xFF64B5F6)
+                        painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                        contentDescription = "Back",
+                        modifier = Modifier.size(20.dp),
+                        tint = Color(0xFF1976D2)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "$memberCount members",
-                        fontSize = 13.sp,
-                        color = Color(0xFF757575)
-                    )
-                    if (isCurrentUserCreator) {
-                        Spacer(modifier = Modifier.width(8.dp))
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .shadow(4.dp, CircleShape)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                ) {
+                    if (groupImage.isNotEmpty()) {
+                        AsyncImage(
+                            model = groupImage,
+                            contentDescription = "Group Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
                         Box(
-                            modifier = Modifier
-                                .background(Color(0xFFFFA726), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Admin",
-                                fontSize = 10.sp,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
+                                text = groupName.firstOrNull()?.uppercase() ?: "G",
+                                color = Color(0xFF1976D2),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp
                             )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = groupName,
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF212121)
+                        )
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color(0xFF1976D2)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "$memberCount members",
+                            style = TextStyle(
+                                fontSize = 13.sp,
+                                color = Color(0xFF1976D2)
+                            )
+                        )
+                        if (isCurrentUserCreator) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .background(Color(0xFFFFA726), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "Admin",
+                                    fontSize = 10.sp,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -614,7 +609,7 @@ fun GroupSettingsMenu(
                         SettingsMenuItem(
                             icon = Icons.Default.Edit,
                             text = "Edit Members",
-                            iconColor = Color(0xFF1976D2),
+                            iconColor = SkyBlue,
                             onClick = onEditMembers
                         )
                         Divider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -774,7 +769,7 @@ fun EditMembersDialog(
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Add Member",
-                            tint = Color(0xFF1976D2),
+                            tint = SkyBlue,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -824,7 +819,7 @@ fun EditMembersDialog(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1976D2)
+                        containerColor = SkyBlue
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -881,7 +876,7 @@ fun EditableMemberItem(
                 .size(48.dp)
                 .shadow(2.dp, CircleShape)
                 .clip(CircleShape)
-                .background(Color(0xFF1976D2))
+                .background(SkyBlue)
         ) {
             if (memberPhoto.isNotEmpty()) {
                 AsyncImage(
@@ -925,7 +920,7 @@ fun EditableMemberItem(
                         Text(
                             text = "You",
                             fontSize = 10.sp,
-                            color = Color(0xFF1976D2),
+                            color = SkyBlue,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -968,12 +963,6 @@ fun EditableMemberItem(
     }
 }
 
-// The rest of the composables remain the same as before:
-// ModernGroupMessageItem, ModernChatInputBar, ModernGroupInfoDialog,
-// ModernGroupMembersDialog, ModernAttachmentPopup, ModernAttachmentOption, formatMessageTimes
-
-// Keep all the existing composables from the original file that are not modified
-
 @Composable
 fun ModernGroupMessageItem(
     message: GroupMessage,
@@ -981,164 +970,126 @@ fun ModernGroupMessageItem(
     groupInfo: GroupChat?,
     onMessageLongPress: () -> Unit
 ) {
-    val alignment = if (isMe) Alignment.End else Alignment.Start
+    val alignment = if (isMe) Alignment.CenterEnd else Alignment.CenterStart
+    val bubbleColor = if (isMe) {
+        Brush.linearGradient(
+            colors = listOf(Color(0xFF42A5F5), SkyBlue)
+        )
+    } else {
+        Brush.linearGradient(
+            colors = listOf(Color.White, Color.White)
+        )
+    }
 
     val senderIndex = groupInfo?.members?.indexOf(message.senderId) ?: -1
     val senderName = if (senderIndex >= 0) {
         groupInfo?.memberNames?.getOrNull(senderIndex) ?: message.senderName
     } else message.senderName
 
-    val senderPhoto = if (senderIndex >= 0) {
-        groupInfo?.memberPhotos?.getOrNull(senderIndex) ?: ""
-    } else ""
-
-    Column(
+    Box(
         modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = alignment
+        contentAlignment = alignment
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(0.85f),
-            horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start,
-            verticalAlignment = Alignment.Top
+        Card(
+            modifier = Modifier
+                .widthIn(max = 280.dp)
+                .shadow(2.dp, RoundedCornerShape(16.dp))
+                .pointerInput(Unit) {
+                    detectTapGestures(onLongPress = { onMessageLongPress() })
+                },
+            shape = RoundedCornerShape(
+                topStart = 18.dp,
+                topEnd = 18.dp,
+                bottomStart = if (isMe) 18.dp else 4.dp,
+                bottomEnd = if (isMe) 4.dp else 18.dp
+            ),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent)
         ) {
-            if (!isMe) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .shadow(2.dp, CircleShape)
-                        .clip(CircleShape)
-                        .background(Color(0xFF1976D2))
-                ) {
-                    if (senderPhoto.isNotEmpty()) {
-                        AsyncImage(
-                            model = senderPhoto,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = senderName.firstOrNull()?.uppercase() ?: "?",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
+            Box(
+                modifier = Modifier.background(bubbleColor)
             ) {
-                if (!isMe) {
-                    Text(
-                        text = message.senderName,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF1976D2),
-                        modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)
-                    )
-                }
+                Column(modifier = Modifier.padding(14.dp)) {
+                    if (!isMe) {
+                        Text(
+                            text = senderName,
+                            color = Color(0xFF1976D2),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
 
-                Card(
-                    modifier = Modifier
-                        .shadow(3.dp, RoundedCornerShape(18.dp))
-                        .pointerInput(Unit) {
-                            detectTapGestures(onLongPress = { onMessageLongPress() })
-                        },
-                    shape = RoundedCornerShape(
-                        topStart = 18.dp,
-                        topEnd = 18.dp,
-                        bottomStart = if (isMe) 18.dp else 4.dp,
-                        bottomEnd = if (isMe) 4.dp else 18.dp
-                    ),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isMe) Color(0xFF42A5F5) else Color.White
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        when (message.messageType) {
-                            "text" -> {
-                                Text(
-                                    text = message.messageText,
-                                    color = if (isMe) Color.White else Color(0xFF212121),
-                                    fontSize = 15.sp,
-                                    lineHeight = 20.sp
-                                )
-                            }
-                            "image" -> {
-                                AsyncImage(
-                                    model = message.messageText,
-                                    contentDescription = "Image",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(max = 200.dp)
-                                        .clip(RoundedCornerShape(12.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                            "voice" -> {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = "Voice",
-                                        tint = if (isMe) Color.White else Color(0xFF1976D2),
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "Voice message",
-                                        fontSize = 14.sp,
-                                        color = if (isMe) Color.White else Color(0xFF212121)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Row(
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
+                    when (message.messageType) {
+                        "text" -> {
                             Text(
-                                text = formatMessageTimes(message.timestamp),
-                                fontSize = 10.sp,
-                                color = if (isMe) Color.White.copy(0.8f) else Color.Gray
+                                text = message.messageText,
+                                color = if (isMe) Color.White else Color(0xFF212121),
+                                fontSize = 15.sp,
+                                lineHeight = 20.sp
                             )
-
-                            if (isMe) {
-                                Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        "image" -> {
+                            AsyncImage(
+                                model = message.messageText,
+                                contentDescription = "Image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 200.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        "voice" -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            ) {
                                 Icon(
-                                    imageVector = Icons.Default.Done,
-                                    contentDescription = if (message.isRead) "Read" else "Sent",
-                                    tint = if (message.isRead) Color(0xFF00E676) else Color.White.copy(0.7f),
-                                    modifier = Modifier.size(14.dp)
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Voice",
+                                    tint = if (isMe) Color.White else Color(0xFF1976D2),
+                                    modifier = Modifier.size(28.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Voice message",
+                                    fontSize = 14.sp,
+                                    color = if (isMe) Color.White else Color(0xFF212121)
                                 )
                             }
                         }
                     }
-                }
-            }
 
-            if (isMe) {
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = formatMessageTimes(message.timestamp),
+                            color = if (isMe) Color.White.copy(alpha = 0.8f) else Color.Gray,
+                            fontSize = 11.sp
+                        )
+
+                        if (isMe) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.Done,
+                                contentDescription = if (message.isRead) "Read" else "Sent",
+                                tint = if (message.isRead) Color(0xFF00E676) else Color.White.copy(0.7f),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModernChatInputBar(
     text: String,
@@ -1148,135 +1099,130 @@ fun ModernChatInputBar(
     isUploading: Boolean = false,
     uploadProgress: Double = 0.0
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .height(85.dp)
             .shadow(8.dp),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp)
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (isUploading) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val progressValue = (uploadProgress.toFloat() / 100f).coerceIn(0f, 1f)
-                    LinearProgressIndicator(
-                        progress = { progressValue },
-                        modifier = Modifier.size(24.dp),
-                        color = Color(0xFF1976D2),
-                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(SkyBlue, Color(0xFF42A5F5))
+                        ),
+                        shape = CircleShape
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Uploading ${uploadProgress.toInt()}%",
-                        fontSize = 14.sp,
-                        color = Color(0xFF1976D2)
-                    )
-                }
+                    .clickable(enabled = !isUploading) { onAttachmentClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.addicon),
+                    contentDescription = "Attachment",
+                    modifier = Modifier.size(24.dp),
+                    tint = Color.White
+                )
             }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+                shape = RoundedCornerShape(26.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Box(
+                Row(
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(Color(0xFF42A5F5), Color(0xFF1976D2))
-                            ),
-                            shape = CircleShape
-                        )
-                        .clickable(enabled = !isUploading) { onAttachmentClick() },
-                    contentAlignment = Alignment.Center
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Attach",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                Card(
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
-                ) {
-                    TextField(
-                        value = text,
-                        onValueChange = onTextChange,
-                        placeholder = {
-                            Text(
-                                text = "Type a message...",
-                                fontSize = 15.sp,
-                                color = Color.Gray
+                    if (isUploading) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            LinearProgressIndicator(
+                                progress = uploadProgress.toFloat() / 100f,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp)),
+                                color = SkyBlue,
+                                trackColor = Color(0xFFE0E0E0)
                             )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent
-                        ),
-                        textStyle = TextStyle(fontSize = 15.sp),
-                        maxLines = 4,
-                        enabled = !isUploading
-                    )
-                }
-
-                AnimatedContent(
-                    targetState = text.isNotBlank(),
-                    transitionSpec = {
-                        fadeIn() + scaleIn() togetherWith fadeOut() + scaleOut()
-                    },
-                    label = "sendButton"
-                ) { hasText ->
-                    if (hasText) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .background(
-                                    brush = Brush.linearGradient(
-                                        colors = listOf(Color(0xFF42A5F5), Color(0xFF1976D2))
-                                    ),
-                                    shape = CircleShape
-                                )
-                                .clickable { onSend() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "Send",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Uploading ${uploadProgress.toInt()}%",
+                                style = TextStyle(fontSize = 12.sp, color = Color.Gray)
                             )
                         }
                     } else {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .background(Color(0xFFE0E0E0), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Send,
-                                contentDescription = "Send",
-                                tint = Color.Gray,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                        TextField(
+                            value = text,
+                            onValueChange = onTextChange,
+                            placeholder = {
+                                Text(
+                                    text = "Type a message...",
+                                    style = TextStyle(fontSize = 15.sp, color = Color.Gray)
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            textStyle = TextStyle(fontSize = 15.sp, color = Color.Black),
+                            singleLine = false,
+                            maxLines = 3
+                        )
                     }
+                }
+            }
+
+            AnimatedContent(
+                targetState = text.isNotBlank(),
+                transitionSpec = {
+                    fadeIn() + scaleIn() togetherWith fadeOut() + scaleOut()
+                },
+                label = "iconTransition"
+            ) { hasText ->
+                if (hasText) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                brush = Brush.linearGradient(
+                                    colors = listOf(SkyBlue, Color(0xFF42A5F5))
+                                ),
+                                shape = CircleShape
+                            )
+                            .clickable {
+                                onSend()
+                                keyboardController?.hide()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                } else {
                 }
             }
         }
@@ -1302,7 +1248,7 @@ fun ModernGroupInfoDialog(groupInfo: GroupChat, onDismiss: () -> Unit) {
                         .size(100.dp)
                         .shadow(4.dp, CircleShape)
                         .clip(CircleShape)
-                        .background(Color(0xFF1976D2))
+                        .background(SkyBlue)
                 ) {
                     if (groupInfo.groupImage.isNotEmpty()) {
                         AsyncImage(
@@ -1344,7 +1290,7 @@ fun ModernGroupInfoDialog(groupInfo: GroupChat, onDismiss: () -> Unit) {
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = null,
-                        tint = Color(0xFF1976D2),
+                        tint = SkyBlue,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -1369,7 +1315,7 @@ fun ModernGroupInfoDialog(groupInfo: GroupChat, onDismiss: () -> Unit) {
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1976D2)
+                        containerColor = SkyBlue
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -1434,7 +1380,7 @@ fun ModernGroupMembersDialog(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1976D2)
+                        containerColor = SkyBlue
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -1463,7 +1409,7 @@ fun ModernMemberItem(
                 .size(48.dp)
                 .shadow(2.dp, CircleShape)
                 .clip(CircleShape)
-                .background(Color(0xFF1976D2))
+                .background(SkyBlue)
         ) {
             if (memberPhoto.isNotEmpty()) {
                 AsyncImage(
@@ -1507,7 +1453,7 @@ fun ModernMemberItem(
                         Text(
                             text = "You",
                             fontSize = 10.sp,
-                            color = Color(0xFF1976D2),
+                            color = SkyBlue,
                             fontWeight = FontWeight.Bold
                         )
                     }

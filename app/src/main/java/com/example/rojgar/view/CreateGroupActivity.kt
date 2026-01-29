@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -46,6 +46,7 @@ import coil.request.ImageRequest
 import com.example.rojgar.R
 import com.example.rojgar.model.MutualContact
 import com.example.rojgar.repository.*
+import com.example.rojgar.ui.theme.SkyBlue
 import com.example.rojgar.viewmodel.CreateGroupViewModel
 import com.example.rojgar.viewmodel.CreateGroupViewModelFactory
 import com.example.rojgar.viewmodel.CreateGroupUiState
@@ -124,13 +125,6 @@ fun CreateGroupScreen(
     }
 
     Scaffold(
-        topBar = {
-            CreateGroupTopBar(
-                onBackClick = onBackClick,
-                selectedCount = selectedContacts.size,
-                loading = uiState is CreateGroupUiState.Loading
-            )
-        },
         bottomBar = {
             CreateGroupBottomBar(
                 enabled = selectedContacts.isNotEmpty() && groupName.isNotBlank(),
@@ -138,181 +132,214 @@ fun CreateGroupScreen(
                 onCreateClick = { viewModel.createGroup() }
             )
         }
-    ) { padding ->
+    ) { paddingValues ->
+        // Apply Scaffold padding to the main container
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(paddingValues) // This applies the padding from Scaffold
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFFE3F2FD).copy(alpha = 0.3f),
-                            Color.White
+                            Color(0xFFE8F4F8),
+                            Color(0xFFF0F8FF)
                         )
                     )
                 )
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item {
-                    GroupInfoCard(
-                        groupName = groupName,
-                        groupImage = groupImage,
-                        onGroupNameChange = { viewModel.updateGroupName(it) },
-                        onGroupImageClick = { imagePickerLauncher.launch("image/*") },
-                        uploadProgress = uploadProgress,
-                        isUploading = uiState is CreateGroupUiState.Uploading
-                    )
-                }
+            Column (
+                modifier = Modifier
+                    .fillMaxSize()
+            ){
+                // Updated: Use Card-based top bar like ChatActivity
+                GroupCreationTopBar(
+                    selectedCount = selectedContacts.size,
+                    loading = uiState is CreateGroupUiState.Loading,
+                    onBackClick = onBackClick
+                )
 
-                item {
-                    SelectedContactsPreview(
-                        selectedContacts = mutualContacts.filter { it.isSelected },
-                        onContactClick = { viewModel.toggleContactSelection(it.userId) }
-                    )
-                }
-
-                item {
-                    MutualContactsHeader(
-                        contactCount = mutualContacts.size,
-                        loading = uiState is CreateGroupUiState.Loading
-                    )
-                }
-
-                if (mutualContacts.isEmpty() && uiState !is CreateGroupUiState.Loading) {
-                    item {
-                        EmptyContactsState()
-                    }
-                } else {
-                    items(mutualContacts) { contact ->
-                        MutualContactItem(
-                            contact = contact,
-                            isSelected = selectedContacts.contains(contact.userId),
-                            onToggle = { viewModel.toggleContactSelection(contact.userId) }
-                        )
-                    }
-                }
-
-                item {
-                    Spacer(modifier = Modifier.height(80.dp))
-                }
-            }
-
-            if (uiState is CreateGroupUiState.Loading && mutualContacts.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.5f)),
-                    contentAlignment = Alignment.Center
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        CircularProgressIndicator(
-                            color = Color(0xFF1976D2)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "Loading mutual contacts...",
-                            color = Color.White
+                    item {
+                        GroupInfoCard(
+                            groupName = groupName,
+                            groupImage = groupImage,
+                            onGroupNameChange = { viewModel.updateGroupName(it) },
+                            onGroupImageClick = { imagePickerLauncher.launch("image/*") },
+                            uploadProgress = uploadProgress,
+                            isUploading = uiState is CreateGroupUiState.Uploading
                         )
                     }
-                }
-            }
 
-            if (uiState is CreateGroupUiState.Error) {
-                AlertDialog(
-                    onDismissRequest = { viewModel.clearError() },
-                    title = { Text("Error") },
-                    text = {
-                        Text(
-                            (uiState as CreateGroupUiState.Error).message,
-                            textAlign = TextAlign.Center
+                    item {
+                        SelectedContactsPreview(
+                            selectedContacts = mutualContacts.filter { it.isSelected },
+                            onContactClick = { viewModel.toggleContactSelection(it.userId) }
                         )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { viewModel.clearError() }) {
-                            Text("OK")
+                    }
+
+                    item {
+                        MutualContactsHeader(
+                            contactCount = mutualContacts.size,
+                            loading = uiState is CreateGroupUiState.Loading
+                        )
+                    }
+
+                    if (mutualContacts.isEmpty() && uiState !is CreateGroupUiState.Loading) {
+                        item {
+                            EmptyContactsState()
+                        }
+                    } else {
+                        items(mutualContacts) { contact ->
+                            MutualContactItem(
+                                contact = contact,
+                                isSelected = selectedContacts.contains(contact.userId),
+                                onToggle = { viewModel.toggleContactSelection(contact.userId) }
+                            )
                         }
                     }
-                )
+
+                    item {
+                        Spacer(modifier = Modifier.height(80.dp))
+                    }
+                }
+
+                if (uiState is CreateGroupUiState.Loading && mutualContacts.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.5f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator(
+                                color = SkyBlue
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "Loading mutual contacts...",
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+
+                if (uiState is CreateGroupUiState.Error) {
+                    AlertDialog(
+                        onDismissRequest = { viewModel.clearError() },
+                        title = { Text("Error") },
+                        text = {
+                            Text(
+                                (uiState as CreateGroupUiState.Error).message,
+                                textAlign = TextAlign.Center
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { viewModel.clearError() }) {
+                                Text("OK")
+                            }
+                        }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun CreateGroupTopBar(
-    onBackClick: () -> Unit,
+fun GroupCreationTopBar(
     selectedCount: Int,
-    loading: Boolean = false
+    loading: Boolean = false,
+    onBackClick: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 8.dp
+    // NEW: Card-based top bar similar to ChatActivity
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(90.dp)
+            .shadow(4.dp),
+        shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            Color(0xFF42A5F5),
-                            Color(0xFF1E88E5)
-                        )
-                    )
-                )
-                .padding(vertical = 12.dp)
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onBackClick,
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f))
+                        .background(Color(0xFFF5F5F5), CircleShape)
+                        .clickable { onBackClick() },
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        "Back",
+                        painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                        contentDescription = "Back",
+                        modifier = Modifier.size(20.dp),
+                        tint = Color(0xFF1976D2)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .shadow(4.dp, CircleShape)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(SkyBlue, Color(0xFF42A5F5))
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.addicon),
+                        contentDescription = "Create Group",
+                        modifier = Modifier.size(24.dp),
                         tint = Color.White
                     )
                 }
-
                 Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
+                Column {
                     Text(
-                        "Create Group",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp,
-                        color = Color.White
+                        text = "Create Group",
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF212121)
+                        )
                     )
                     Text(
-                        if (loading) "Loading..."
-                        else if (selectedCount > 0)
+                        text = if (selectedCount > 0) {
                             "$selectedCount member${if (selectedCount > 1) "s" else ""} selected"
-                        else "Select mutual contacts",
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.9f)
+                        } else {
+                            "Select members"
+                        },
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            color = Color(0xFF1976D2)
+                        )
                     )
                 }
+            }
 
-                if (loading) {
-                    CircularProgressIndicator(
-                        color = Color.White,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+            if (loading) {
+                CircularProgressIndicator(
+                    color = SkyBlue,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
@@ -324,15 +351,19 @@ fun CreateGroupBottomBar(
     loading: Boolean,
     onCreateClick: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 16.dp,
-        color = Color.White
+    // Updated: Card-based bottom bar like ChatActivity
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(85.dp)
+            .shadow(8.dp),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -341,11 +372,7 @@ fun CreateGroupBottomBar(
                 enabled = enabled && !loading,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
-                    .shadow(
-                        elevation = if (enabled) 8.dp else 0.dp,
-                        shape = RoundedCornerShape(16.dp)
-                    ),
+                    .height(52.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (enabled) {
                         Color(0xFF1976D2)
@@ -356,7 +383,7 @@ fun CreateGroupBottomBar(
                     disabledContainerColor = Color.Gray.copy(alpha = 0.3f),
                     disabledContentColor = Color.White.copy(alpha = 0.5f)
                 ),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(26.dp),
                 elevation = ButtonDefaults.buttonElevation(
                     defaultElevation = 0.dp,
                     pressedElevation = 0.dp,
@@ -372,7 +399,7 @@ fun CreateGroupBottomBar(
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         "Creating...",
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
                 } else {
@@ -384,7 +411,7 @@ fun CreateGroupBottomBar(
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         "Create Group",
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -428,11 +455,11 @@ fun GroupInfoCard(
                         progress = (uploadProgress / 100).toFloat(),
                         modifier = Modifier.size(80.dp),
                         strokeWidth = 4.dp,
-                        color = Color(0xFF42A5F5)
+                        color = SkyBlue
                     )
                     Text(
                         "${uploadProgress.toInt()}%",
-                        color = Color(0xFF42A5F5),
+                        color = SkyBlue,
                         fontWeight = FontWeight.Bold
                     )
                 } else if (!groupImage.isNullOrEmpty()) {
@@ -453,13 +480,13 @@ fun GroupInfoCard(
                             Icons.Default.AccountCircle,
                             contentDescription = "Add Group Photo",
                             modifier = Modifier.size(36.dp),
-                            tint = Color(0xFF42A5F5)
+                            tint = SkyBlue
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             "Add Photo",
                             fontSize = 11.sp,
-                            color = Color(0xFF42A5F5),
+                            color = SkyBlue,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -481,9 +508,9 @@ fun GroupInfoCard(
                 placeholder = { Text("Enter group name...") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF42A5F5),
-                    focusedLabelColor = Color(0xFF42A5F5),
-                    cursorColor = Color(0xFF42A5F5),
+                    focusedBorderColor = SkyBlue,
+                    focusedLabelColor = SkyBlue,
+                    cursorColor = SkyBlue,
                     unfocusedBorderColor = Color.LightGray
                 ),
                 shape = RoundedCornerShape(16.dp),
@@ -494,7 +521,7 @@ fun GroupInfoCard(
                         Icons.Default.Person,
                         contentDescription = null,
                         tint = if (groupName.isNotEmpty())
-                            Color(0xFF42A5F5)
+                            SkyBlue
                         else Color.Gray
                     )
                 }
@@ -531,14 +558,14 @@ fun SelectedContactsPreview(
                 Icon(
                     Icons.Default.Person,
                     contentDescription = null,
-                    tint = Color(0xFF1976D2),
+                    tint = SkyBlue,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     "Selected Members",
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1976D2),
+                    color = SkyBlue,
                     fontSize = 16.sp
                 )
                 Spacer(modifier = Modifier.weight(1f))
@@ -587,7 +614,7 @@ fun SelectedContactChip(
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                Color(0xFF42A5F5),
+                                SkyBlue,
                                 Color(0xFF1976D2)
                             )
                         )
@@ -671,7 +698,7 @@ fun MutualContactsHeader(
             Icon(
                 Icons.Default.Info,
                 contentDescription = null,
-                tint = Color(0xFF1976D2),
+                tint = SkyBlue,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -680,31 +707,31 @@ fun MutualContactsHeader(
                     "Mutual Contacts",
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
-                    color = Color(0xFF1976D2)
+                    color = SkyBlue
                 )
                 Text(
                     "People who follow you back",
                     fontSize = 12.sp,
-                    color = Color(0xFF1976D2).copy(alpha = 0.7f)
+                    color = SkyBlue.copy(alpha = 0.7f)
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
             if (loading) {
                 CircularProgressIndicator(
-                    color = Color(0xFF1976D2),
+                    color = SkyBlue,
                     strokeWidth = 2.dp,
                     modifier = Modifier.size(20.dp)
                 )
             } else {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = Color(0xFF1976D2).copy(alpha = 0.1f)
+                    color = SkyBlue.copy(alpha = 0.1f)
                 ) {
                     Text(
                         "$contactCount contacts",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         fontSize = 12.sp,
-                        color = Color(0xFF1976D2),
+                        color = SkyBlue,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -742,7 +769,7 @@ fun MutualContactItem(
         elevation = CardDefaults.cardElevation(if (isSelected) 6.dp else 2.dp),
         shape = RoundedCornerShape(20.dp),
         border = if (isSelected)
-            BorderStroke(2.dp, Color(0xFF42A5F5))
+            BorderStroke(2.dp, SkyBlue)
         else null
     ) {
         Row(
@@ -762,7 +789,7 @@ fun MutualContactItem(
                             Brush.linearGradient(
                                 colors = if (isSelected)
                                     listOf(
-                                        Color(0xFF42A5F5),
+                                        SkyBlue,
                                         Color(0xFF1976D2)
                                     )
                                 else
@@ -826,7 +853,7 @@ fun MutualContactItem(
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     color = if (isSelected)
-                        Color(0xFF1976D2)
+                        SkyBlue
                     else Color.Black
                 )
                 Spacer(modifier = Modifier.height(2.dp))
@@ -834,7 +861,7 @@ fun MutualContactItem(
                     contact.userType,
                     fontSize = 13.sp,
                     color = if (isSelected)
-                        Color(0xFF42A5F5)
+                        SkyBlue
                     else Color.Gray,
                     fontWeight = FontWeight.Normal
                 )
@@ -845,12 +872,12 @@ fun MutualContactItem(
                     .size(28.dp)
                     .clip(CircleShape)
                     .background(
-                        if (isSelected) Color(0xFF42A5F5)
+                        if (isSelected) SkyBlue
                         else Color.Transparent
                     )
                     .border(
                         2.dp,
-                        if (isSelected) Color(0xFF42A5F5)
+                        if (isSelected) SkyBlue
                         else Color.Gray,
                         CircleShape
                     ),

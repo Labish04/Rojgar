@@ -3,7 +3,6 @@ package com.example.rojgar.view
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
@@ -31,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,11 +38,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.rojgar.R
 import com.example.rojgar.model.NotificationModel
 import com.example.rojgar.model.NotificationType
 import com.example.rojgar.model.UserType
 import com.example.rojgar.viewmodel.NotificationViewModel
-import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
@@ -60,31 +60,13 @@ class NotificationActivity : ComponentActivity() {
         }
 
         setContent {
-            ModernNotificationTheme {
-                NotificationBody(
-                    userType = userType,
-                    onNotificationClick = { notification ->
-                        handleNotificationClick(notification, userType)
-                    }
-                )
-            }
+            NotificationScreen(
+                userType = userType,
+                onNotificationClick = { notification ->
+                    handleNotificationClick(notification, userType)
+                }
+            )
         }
-    }
-
-    /**
-     * Navigate back to appropriate dashboard based on user type
-     */
-    private fun navigateBack(userType: UserType) {
-        val intent = when (userType) {
-            UserType.COMPANY -> Intent(this, CompanyDashboardActivity::class.java)
-            UserType.JOBSEEKER -> Intent(this, JobSeekerDashboardActivity::class.java)
-            else -> Intent(this, JobSeekerDashboardActivity::class.java)
-        }
-
-        // Clear all activities on top and bring dashboard to front
-        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        startActivity(intent)
-        finish()
     }
 
     /**
@@ -106,7 +88,7 @@ class NotificationActivity : ComponentActivity() {
             }
             NotificationType.EVENTS -> {
                 // Navigate to events/calendar
-//                navigateToEvents()
+                navigateToEvents()
             }
             NotificationType.APPLICATION_STATUS -> {
                 // Navigate to applications
@@ -125,6 +107,22 @@ class NotificationActivity : ComponentActivity() {
                 navigateBack(userType)
             }
         }
+        finish()
+    }
+
+    /**
+     * Navigate back to appropriate dashboard based on user type
+     */
+    private fun navigateBack(userType: UserType) {
+        val intent = when (userType) {
+            UserType.COMPANY -> Intent(this, CompanyDashboardActivity::class.java)
+            UserType.JOBSEEKER -> Intent(this, JobSeekerDashboardActivity::class.java)
+            else -> Intent(this, JobSeekerDashboardActivity::class.java)
+        }
+
+        // Clear all activities on top and bring dashboard to front
+        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        startActivity(intent)
         finish()
     }
 
@@ -169,42 +167,7 @@ class NotificationActivity : ComponentActivity() {
 }
 
 @Composable
-fun ModernNotificationTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = lightColorScheme(
-            primary = Color(0xFF4FC3F7),
-            primaryContainer = Color(0xFFE1F5FE),
-            secondary = Color(0xFF29B6F6),
-            secondaryContainer = Color(0xFFB3E5FC),
-            tertiary = Color(0xFF81D4FA),
-            background = Color(0xFFF0F9FF),
-            surface = Color.White,
-            surfaceVariant = Color(0xFFF5FBFF),
-            onPrimary = Color.White,
-            onSecondary = Color.White,
-            onBackground = Color(0xFF0D47A1),
-            onSurface = Color(0xFF1E3A5F),
-            outline = Color(0xFFB3E5FC),
-        ),
-        typography = Typography(
-            headlineSmall = MaterialTheme.typography.headlineSmall.copy(
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.sp
-            ),
-            titleMedium = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.SemiBold
-            ),
-            bodyMedium = MaterialTheme.typography.bodyMedium.copy(
-                lineHeight = 20.sp
-            )
-        ),
-        content = content
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NotificationBody(
+fun NotificationScreen(
     userType: UserType = UserType.JOBSEEKER,
     onNotificationClick: (NotificationModel) -> Unit = {},
     viewModel: NotificationViewModel = viewModel(
@@ -235,11 +198,11 @@ fun NotificationBody(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(
+                brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFFE1F5FE),
-                        Color(0xFFF0F9FF),
-                        Color.White
+                        Color(0xFFE3F2FD),
+                        Color(0xFFBBDEFB),
+                        Color(0xFF90CAF9)
                     )
                 )
             )
@@ -247,33 +210,156 @@ fun NotificationBody(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Modern App Bar
-            ModernTopAppBar(
-                unreadCount = unreadCount,
-                userType = userType,
-                hasNotifications = notifications.isNotEmpty(),
-                onBackClick = { (context as? ComponentActivity)?.finish() },
-                onMenuClick = { showMenu = true },
-                showMenu = showMenu,
-                onDismissMenu = { showMenu = false },
-                onMarkAllRead = {
-                    viewModel.markAllAsRead()
-                    showMenu = false
-                },
-                onClearAll = {
-                    showDeleteDialog = true
-                    showMenu = false
+            // Top Bar - Same as AppliedJobsActivity
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF1976D2),
+                                Color(0xFF2196F3),
+                                Color(0xFF42A5F5)
+                            )
+                        )
+                    )
+                    .padding(top = 40.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { (context as? ComponentActivity)?.finish() },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                color = Color.White.copy(alpha = 0.2f),
+                                shape = CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Notifications",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+
+                        AnimatedVisibility(visible = !isLoading) {
+                            Text(
+                                text = if (notifications.isNotEmpty()) {
+                                    "$unreadCount new • ${notifications.size} total"
+                                } else {
+                                    "No notifications"
+                                },
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.9f)
+                            )
+                        }
+                    }
+
+                    // Menu Button
+                    Box {
+                        IconButton(
+                            onClick = { showMenu = true },
+                            enabled = notifications.isNotEmpty(),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    color = Color.White.copy(alpha = 0.2f),
+                                    shape = CircleShape
+                                )
+                        ) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = "More",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            modifier = Modifier
+                                .background(Color.White, RoundedCornerShape(12.dp))
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.markasread),
+                                            contentDescription = null,
+                                            tint = Color(0xFF4CAF50),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Text(
+                                            "Mark all as read",
+                                            color = Color(0xFF1E3A5F),
+                                            fontSize = 14.sp
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    viewModel.markAllAsRead()
+                                    showMenu = false
+                                }
+                            )
+                            Divider(color = Color(0xFFE1F5FE))
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = null,
+                                            tint = Color(0xFFEF5350),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Text(
+                                            "Clear all",
+                                            color = Color(0xFFEF5350),
+                                            fontSize = 14.sp
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    showDeleteDialog = true
+                                    showMenu = false
+                                }
+                            )
+                        }
+                    }
                 }
-            )
+            }
 
             // Content
             when {
                 isLoading -> {
                     LoadingState(alpha = loadingAlpha)
                 }
+
                 notifications.isEmpty() -> {
                     EmptyNotificationState(userType)
                 }
+
                 else -> {
                     LazyColumn(
                         modifier = Modifier
@@ -321,180 +407,6 @@ fun NotificationBody(
                     showDeleteDialog = false
                 }
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ModernTopAppBar(
-    unreadCount: Int,
-    userType: UserType,
-    hasNotifications: Boolean,
-    onBackClick: () -> Unit,
-    onMenuClick: () -> Unit,
-    showMenu: Boolean,
-    onDismissMenu: () -> Unit,
-    onMarkAllRead: () -> Unit,
-    onClearAll: () -> Unit
-) {
-    // Badge animation
-    val badgeScale by animateFloatAsState(
-        targetValue = if (unreadCount > 0) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "badge_scale"
-    )
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.White,
-        shadowElevation = 4.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Back Button
-                IconButton(
-                    onClick = onBackClick,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFE1F5FE))
-                ) {
-                    Icon(
-                        Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color(0xFF0277BD),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                // Title
-                Text(
-                    text = "Notifications",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0D47A1)
-                )
-
-                // Menu Button
-                Box {
-                    IconButton(
-                        onClick = onMenuClick,
-                        enabled = hasNotifications,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(if (hasNotifications) Color(0xFFE1F5FE) else Color.Transparent)
-                    ) {
-                        Icon(
-                            Icons.Outlined.MoreVert,
-                            contentDescription = "More",
-                            tint = if (hasNotifications) Color(0xFF0277BD) else Color.Gray,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = onDismissMenu,
-                        modifier = Modifier
-                            .background(Color.White, RoundedCornerShape(12.dp))
-                    ) {
-                        DropdownMenuItem(
-                            text = {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Done,
-                                        contentDescription = null,
-                                        tint = Color(0xFF4FC3F7)
-                                    )
-                                    Text(
-                                        "Mark all as read",
-                                        color = Color(0xFF1E3A5F)
-                                    )
-                                }
-                            },
-                            onClick = onMarkAllRead
-                        )
-                        Divider(color = Color(0xFFE1F5FE))
-                        DropdownMenuItem(
-                            text = {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Delete,
-                                        contentDescription = null,
-                                        tint = Color(0xFFEF5350)
-                                    )
-                                    Text(
-                                        "Clear all",
-                                        color = Color(0xFFEF5350)
-                                    )
-                                }
-                            },
-                            onClick = onClearAll
-                        )
-                    }
-                }
-            }
-
-            // Unread Badge
-            AnimatedVisibility(
-                visible = unreadCount > 0,
-                enter = slideInVertically() + fadeIn(),
-                exit = slideOutVertically() + fadeOut()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        modifier = Modifier.scale(badgeScale),
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFF4FC3F7),
-                        shadowElevation = 4.dp
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Info,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(8.dp)
-                            )
-                            Text(
-                                text = "$unreadCount New",
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -591,7 +503,6 @@ fun AnimatedNotificationItem(
                         ) {
                             Text(
                                 text = notification.title,
-                                style = MaterialTheme.typography.titleMedium,
                                 fontSize = 16.sp,
                                 fontWeight = if (notification.isRead)
                                     FontWeight.Medium
@@ -611,7 +522,6 @@ fun AnimatedNotificationItem(
                         // Message
                         Text(
                             text = notification.message,
-                            style = MaterialTheme.typography.bodyMedium,
                             fontSize = 14.sp,
                             color = Color(0xFF546E7A),
                             maxLines = 2,
@@ -630,14 +540,13 @@ fun AnimatedNotificationItem(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    Icons.Outlined.DateRange,
+                                    painter = painterResource(id = R.drawable.datetimeicon),
                                     contentDescription = null,
                                     tint = Color(0xFF90CAF9),
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Text(
                                     text = formatTimestamp(notification.timestamp),
-                                    style = MaterialTheme.typography.bodySmall,
                                     fontSize = 12.sp,
                                     color = Color(0xFF90CAF9),
                                     fontWeight = FontWeight.Medium
@@ -655,7 +564,6 @@ fun AnimatedNotificationItem(
                                         .split(" ")
                                         .joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } },
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                    style = MaterialTheme.typography.bodySmall,
                                     fontSize = 11.sp,
                                     color = getNotificationColor(notification.type),
                                     fontWeight = FontWeight.SemiBold
@@ -670,7 +578,7 @@ fun AnimatedNotificationItem(
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            Icons.Outlined.MoreVert,
+                            Icons.Default.MoreVert,
                             contentDescription = "Options",
                             tint = Color(0xFF90CAF9),
                             modifier = Modifier.size(20.dp)
@@ -692,9 +600,9 @@ fun AnimatedNotificationItem(
                             ) {
                                 Icon(
                                     if (notification.isRead)
-                                        Icons.Outlined.Clear
+                                        Icons.Default.Clear
                                     else
-                                        Icons.Outlined.Check,
+                                        Icons.Default.Check,
                                     contentDescription = null,
                                     tint = Color(0xFF4FC3F7),
                                     modifier = Modifier.size(20.dp)
@@ -723,7 +631,7 @@ fun AnimatedNotificationItem(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    Icons.Outlined.Delete,
+                                    Icons.Default.Delete,
                                     contentDescription = null,
                                     tint = Color(0xFFEF5350),
                                     modifier = Modifier.size(20.dp)
@@ -942,7 +850,6 @@ fun EmptyNotificationState(userType: UserType) {
 
         Text(
             text = "No notifications yet",
-            style = MaterialTheme.typography.headlineSmall,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF0D47A1),
@@ -959,7 +866,6 @@ fun EmptyNotificationState(userType: UserType) {
 
         Text(
             text = emptyMessage,
-            style = MaterialTheme.typography.bodyLarge,
             fontSize = 15.sp,
             color = Color(0xFF546E7A),
             textAlign = TextAlign.Center,
@@ -986,7 +892,7 @@ fun ModernDeletionDialog(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Outlined.Delete,
+                    Icons.Default.Delete,
                     contentDescription = null,
                     tint = Color(0xFFEF5350),
                     modifier = Modifier.size(32.dp)
@@ -1053,15 +959,15 @@ fun ModernDeletionDialog(
 // Helper Functions
 fun getModernNotificationIconAndColor(type: NotificationType): Pair<ImageVector, Color> {
     return when (type) {
-        NotificationType.JOB_ALERT -> Pair(Icons.Outlined.MailOutline, Color(0xFF66BB6A))
-        NotificationType.MESSAGE -> Pair(Icons.Outlined.Send, Color(0xFF42A5F5))
-        NotificationType.SYSTEM -> Pair(Icons.Outlined.Settings, Color(0xFFFFA726))
-        NotificationType.GENERAL -> Pair(Icons.Outlined.Notifications, Color(0xFFAB47BC))
-        NotificationType.APPLICATION_STATUS -> Pair(Icons.Outlined.Create, Color(0xFF26C6DA))
-        NotificationType.CANDIDATE_ALERT -> Pair(Icons.Outlined.Person, Color(0xFFEC407A))
-        NotificationType.EVENTS -> Pair(Icons.Outlined.DateRange, Color(0xFF7E57C2))
-        NotificationType.PROFILE_UPDATE -> Pair(Icons.Outlined.AccountCircle, Color(0xFF8D6E63))
-        NotificationType.JOB_APPLICATION -> Pair(Icons.Outlined.AccountCircle, Color(0xFFFF5722))
+        NotificationType.JOB_ALERT -> Pair(Icons.Default.MailOutline, Color(0xFF66BB6A))
+        NotificationType.MESSAGE -> Pair(Icons.Default.Send, Color(0xFF42A5F5))
+        NotificationType.SYSTEM -> Pair(Icons.Default.Settings, Color(0xFFFFA726))
+        NotificationType.GENERAL -> Pair(Icons.Default.Notifications, Color(0xFFAB47BC))
+        NotificationType.APPLICATION_STATUS -> Pair(Icons.Default.Create, Color(0xFF26C6DA))
+        NotificationType.CANDIDATE_ALERT -> Pair(Icons.Default.Person, Color(0xFFEC407A))
+        NotificationType.EVENTS -> Pair(Icons.Default.DateRange, Color(0xFF7E57C2))
+        NotificationType.PROFILE_UPDATE -> Pair(Icons.Default.AccountCircle, Color(0xFF8D6E63))
+        NotificationType.JOB_APPLICATION -> Pair(Icons.Default.AccountCircle, Color(0xFFFF5722))
     }
 }
 
