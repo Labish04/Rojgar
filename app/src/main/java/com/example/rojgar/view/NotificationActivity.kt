@@ -194,45 +194,87 @@ fun NotificationScreen(
         label = "loading_alpha"
     )
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFFE3F2FD),
-                            Color(0xFFBBDEFB),
-                            Color(0xFF90CAF9)
-                        )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFE3F2FD),
+                        Color(0xFFBBDEFB),
+                        Color(0xFF90CAF9)
                     )
                 )
+            )
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // Top Bar - Same as AppliedJobsActivity
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color(0xFF1976D2),
-                                    Color(0xFF2196F3),
-                                    Color(0xFF42A5F5)
-                                )
+            // Top Bar - Same as AppliedJobsActivity
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF1976D2),
+                                Color(0xFF2196F3),
+                                Color(0xFF42A5F5)
                             )
                         )
-                        .padding(top = 40.dp)
+                    )
+                    .padding(top = 40.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
+                    IconButton(
+                        onClick = { (context as? ComponentActivity)?.finish() },
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .size(40.dp)
+                            .background(
+                                color = Color.White.copy(alpha = 0.2f),
+                                shape = CircleShape
+                            )
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Notifications",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+
+                        AnimatedVisibility(visible = !isLoading) {
+                            Text(
+                                text = if (notifications.isNotEmpty()) {
+                                    "$unreadCount new • ${notifications.size} total"
+                                } else {
+                                    "No notifications"
+                                },
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.9f)
+                            )
+                        }
+                    }
+
+                    // Menu Button
+                    Box {
                         IconButton(
-                            onClick = { (context as? ComponentActivity)?.finish() },
+                            onClick = { showMenu = true },
+                            enabled = notifications.isNotEmpty(),
                             modifier = Modifier
                                 .size(40.dp)
                                 .background(
@@ -241,175 +283,134 @@ fun NotificationScreen(
                                 )
                         ) {
                             Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Color.White
+                                Icons.Default.MoreVert,
+                                contentDescription = "More",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
                             )
                         }
 
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Notifications",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-
-                            AnimatedVisibility(visible = !isLoading) {
-                                Text(
-                                    text = if (notifications.isNotEmpty()) {
-                                        "$unreadCount new • ${notifications.size} total"
-                                    } else {
-                                        "No notifications"
-                                    },
-                                    fontSize = 14.sp,
-                                    color = Color.White.copy(alpha = 0.9f)
-                                )
-                            }
-                        }
-
-                        // Menu Button
-                        Box {
-                            IconButton(
-                                onClick = { showMenu = true },
-                                enabled = notifications.isNotEmpty(),
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(
-                                        color = Color.White.copy(alpha = 0.2f),
-                                        shape = CircleShape
-                                    )
-                            ) {
-                                Icon(
-                                    Icons.Default.MoreVert,
-                                    contentDescription = "More",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-
-                            DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false },
-                                modifier = Modifier
-                                    .background(Color.White, RoundedCornerShape(12.dp))
-                            ) {
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(id = R.drawable.markasread),
-                                                contentDescription = null,
-                                                tint = Color(0xFF4CAF50),
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                            Text(
-                                                "Mark all as read",
-                                                color = Color(0xFF1E3A5F),
-                                                fontSize = 14.sp
-                                            )
-                                        }
-                                    },
-                                    onClick = {
-                                        viewModel.markAllAsRead()
-                                        showMenu = false
-                                    }
-                                )
-                                Divider(color = Color(0xFFE1F5FE))
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Delete,
-                                                contentDescription = null,
-                                                tint = Color(0xFFEF5350),
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                            Text(
-                                                "Clear all",
-                                                color = Color(0xFFEF5350),
-                                                fontSize = 14.sp
-                                            )
-                                        }
-                                    },
-                                    onClick = {
-                                        showDeleteDialog = true
-                                        showMenu = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Content
-                when {
-                    isLoading -> {
-                        LoadingState(alpha = loadingAlpha)
-                    }
-
-                    notifications.isEmpty() -> {
-                        EmptyNotificationState(userType)
-                    }
-
-                    else -> {
-                        LazyColumn(
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp),
-                            contentPadding = PaddingValues(vertical = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                .background(Color.White, RoundedCornerShape(12.dp))
                         ) {
-                            itemsIndexed(
-                                items = notifications,
-                                key = { _, item -> item.id }
-                            ) { index, notification ->
-                                AnimatedNotificationItem(
-                                    notification = notification,
-                                    index = index,
-                                    onClick = {
-                                        // Mark as read when clicked
-                                        if (!notification.isRead) {
-                                            viewModel.markAsRead(notification.id)
-                                        }
-                                        // Navigate to appropriate screen
-                                        onNotificationClick(notification)
-                                    },
-                                    onMarkAsRead = { viewModel.markAsRead(it) },
-                                    onMarkAsUnread = { viewModel.markAsUnread(it) },
-                                    onDelete = { viewModel.deleteNotification(it) }
-                                )
-                            }
-
-                            // Bottom spacing
-                            item {
-                                Spacer(modifier = Modifier.height(16.dp))
-                            }
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.markasread),
+                                            contentDescription = null,
+                                            tint = Color(0xFF4CAF50),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Text(
+                                            "Mark all as read",
+                                            color = Color(0xFF1E3A5F),
+                                            fontSize = 14.sp
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    viewModel.markAllAsRead()
+                                    showMenu = false
+                                }
+                            )
+                            Divider(color = Color(0xFFE1F5FE))
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = null,
+                                            tint = Color(0xFFEF5350),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Text(
+                                            "Clear all",
+                                            color = Color(0xFFEF5350),
+                                            fontSize = 14.sp
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    showDeleteDialog = true
+                                    showMenu = false
+                                }
+                            )
                         }
                     }
                 }
             }
 
-            // Delete Dialog
-            if (showDeleteDialog) {
-                ModernDeletionDialog(
-                    onDismiss = { showDeleteDialog = false },
-                    onConfirm = {
-                        viewModel.clearAllNotifications()
-                        showDeleteDialog = false
+            // Content
+            when {
+                isLoading -> {
+                    LoadingState(alpha = loadingAlpha)
+                }
+
+                notifications.isEmpty() -> {
+                    EmptyNotificationState(userType)
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        contentPadding = PaddingValues(vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        itemsIndexed(
+                            items = notifications,
+                            key = { _, item -> item.id }
+                        ) { index, notification ->
+                            AnimatedNotificationItem(
+                                notification = notification,
+                                index = index,
+                                onClick = {
+                                    // Mark as read when clicked
+                                    if (!notification.isRead) {
+                                        viewModel.markAsRead(notification.id)
+                                    }
+                                    // Navigate to appropriate screen
+                                    onNotificationClick(notification)
+                                },
+                                onMarkAsRead = { viewModel.markAsRead(it) },
+                                onMarkAsUnread = { viewModel.markAsUnread(it) },
+                                onDelete = { viewModel.deleteNotification(it) }
+                            )
+                        }
+
+                        // Bottom spacing
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
                     }
-                )
+                }
             }
         }
+
+        // Delete Dialog
+        if (showDeleteDialog) {
+            ModernDeletionDialog(
+                onDismiss = { showDeleteDialog = false },
+                onConfirm = {
+                    viewModel.clearAllNotifications()
+                    showDeleteDialog = false
+                }
+            )
+        }
     }
+
+}
 
 @Composable
 fun AnimatedNotificationItem(
