@@ -366,6 +366,8 @@ fun JobSeekerSignUpScreen() {
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                         indication = null
                     ) {
+                        val intent = Intent(context, LoginActivity::class.java)
+                        context.startActivity(intent)
                         activity.finish()
                     }
                 )
