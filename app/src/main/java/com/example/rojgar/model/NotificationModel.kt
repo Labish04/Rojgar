@@ -8,7 +8,8 @@ enum class NotificationType {
     MESSAGE,                // New message received
     SYSTEM,                 // System notifications (verification, etc.)
     GENERAL,                // General notifications
-    APPLICATION_UPDATE,     // Application status changed
+    JOB_APPLICATION,
+    APPLICATION_STATUS,     // Application status changed
     CANDIDATE_ALERT,        // New candidate applied (for companies)
     EVENTS,                 // Events and activities
     PROFILE_UPDATE          // Profile related (follows, etc.)

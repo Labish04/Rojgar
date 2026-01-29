@@ -23,7 +23,7 @@ class AnalyticsViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val repo: AnalyticsRepoImpl = AnalyticsRepoImpl()
     private val followRepo: FollowRepoImpl = FollowRepoImpl(getApplication())
-    private val applicationRepo: ApplicationRepoImpl = ApplicationRepoImpl()
+    private val applicationRepo: ApplicationRepoImpl = ApplicationRepoImpl(context = getApplication())
     private var currentCompanyId: String = ""
     private val viewModelJob = Job()
     private val viewModelScope = CoroutineScope(Dispatchers.Main + viewModelJob)

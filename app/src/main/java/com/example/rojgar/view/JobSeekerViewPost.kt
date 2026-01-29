@@ -64,9 +64,10 @@ class JobSeekerViewPost : ComponentActivity() {
 
 @Composable
 fun JobSeekerViewPostBody(savedJobViewModel: SavedJobViewModel) {
-    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
-    val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
     val context = LocalContext.current
+
+    val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
+    val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
 
     var isLoading by remember { mutableStateOf(true) }
     var jobs by remember { mutableStateOf<List<JobModel>>(emptyList()) }

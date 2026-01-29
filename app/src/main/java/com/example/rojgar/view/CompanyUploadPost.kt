@@ -90,10 +90,11 @@ fun CompanyUploadPostScreen(
     selectedProfileUri: Uri?,
     onPickProfileImage: () -> Unit
 ) {
-    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    val context = LocalContext.current
+
+    val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
 
-    val context = LocalContext.current
     val currentUser = companyViewModel.getCurrentCompany()
     val companyId = currentUser?.uid ?: ""
 

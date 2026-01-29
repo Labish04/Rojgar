@@ -81,13 +81,14 @@ fun ApplicationBody(
     companyId: String,
     onBack: () -> Unit
 ) {
-    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl()) }
+    val context = LocalContext.current
+    
+    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl(context)) }
     val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
     val educationViewModel = remember { EducationViewModel(EducationRepoImpl()) }
     val experienceViewModel = remember { ExperienceViewModel(ExperienceRepoImpl()) }
     val skillViewModel = remember { SkillViewModel(SkillRepoImpl()) }
 
-    val context = LocalContext.current
     val applications by applicationViewModel.applications.observeAsState(emptyList())
     val isLoading by applicationViewModel.loading.observeAsState(false)
 
