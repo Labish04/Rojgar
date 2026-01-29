@@ -2,10 +2,16 @@
 <project version="4">
   <component name="deploymentTargetSelector">
     <selectionStates>
-      <SelectionState runConfigName="CompanyHelpAndSupportActivity (5)">
+      <SelectionState runConfigName="CompanyHelpAndSupportActivity (2)">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="CompanyHelpAndSupportActivity (2)">
+      <SelectionState runConfigName="CompanyHelpAndSupportActivity (4)">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
+      <SelectionState runConfigName="JobseekerSignUpActivity">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
+      <SelectionState runConfigName="JobSeekerProfileActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>

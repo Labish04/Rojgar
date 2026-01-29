@@ -16,8 +16,7 @@ data class HelpAndSupportModel(
 enum class SupportCategory(val displayName: String) {
     GENERAL("General Inquiry"),
     TECHNICAL("Technical Issue"),
-    BILLING("Billing & Payments"),
-    ACCOUNT("Account Management"),
+     ACCOUNT("Account Management"),
     PARTNERSHIP("Partnership Request"),
     FEEDBACK("Feedback & Suggestions"),
     OTHER("Other")
