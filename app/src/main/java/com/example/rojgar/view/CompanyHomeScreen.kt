@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -37,13 +38,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.rojgar.R
+import com.example.rojgar.model.CompanyModel
 import com.example.rojgar.model.ReviewModel
 import com.example.rojgar.model.ApplicationModel
 import com.example.rojgar.repository.CalendarRepoImpl
 import com.example.rojgar.repository.CompanyRepoImpl
 import com.example.rojgar.repository.ReviewRepoImpl
 import com.example.rojgar.repository.ApplicationRepoImpl
+import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.Gray
 import com.example.rojgar.ui.theme.White
 import com.example.rojgar.viewmodel.CalendarViewModel
@@ -58,7 +62,7 @@ import java.util.Locale
 import java.util.Date
 
 @Composable
-fun CompanyHomeScreenBody(){
+fun CompanyHomeScreenBody(company: CompanyModel? = null){
     val context = LocalContext.current
     var search by remember { mutableStateOf("") }
 
@@ -72,7 +76,7 @@ fun CompanyHomeScreenBody(){
 
     val reviews by reviewViewModel.reviews.observeAsState(emptyList())
     val averageRating by reviewViewModel.averageRating.observeAsState(0.0)
-    val company by companyViewModel.companyDetails.observeAsState(null)
+    val companyDetails by companyViewModel.companyDetails.observeAsState(company)
     val events by calendarViewModel.events.observeAsState(emptyList())
     val applications by applicationViewModel.applications.observeAsState(emptyList())
 
@@ -117,11 +121,18 @@ fun CompanyHomeScreenBody(){
             )
             .verticalScroll(rememberScrollState())
     ) {
+        // Enhanced Top Bar
+        EnhancedCompanyTopBar(
+            companyName = companyDetails?.companyName ?: "Company",
+            companyProfileImage = companyDetails?.companyProfileImage ?: "",
+            modifier = Modifier.fillMaxWidth()
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Welcome Header Section
-        AnimatedWelcomeHeader(
-            companyName = company?.companyName ?: "Company",
+        // Greeting Section
+        GreetingSection(
+            companyName = companyDetails?.companyName ?: "Company",
             modifier = Modifier.padding(horizontal = 20.dp)
         )
 
@@ -167,7 +178,7 @@ fun CompanyHomeScreenBody(){
             totalReviews = reviews.size,
             reviews = reviews,
             companyId = companyId,
-            companyName = company?.companyName ?: "Company",
+            companyName = companyDetails?.companyName ?: "Company",
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
@@ -187,6 +198,184 @@ fun CompanyHomeScreenBody(){
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun EnhancedCompanyTopBar(
+    companyName: String,
+    companyProfileImage: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    Surface(
+        modifier = modifier,
+        color = Blue,
+        shadowElevation = 4.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Profile and Name Section
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                // Profile Picture
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(Color.White),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (companyProfileImage.isNotEmpty()) {
+                        AsyncImage(
+                            model = companyProfileImage,
+                            contentDescription = "Company Profile",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = companyName.firstOrNull()?.uppercase() ?: "C",
+                            style = TextStyle(
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Blue
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Company Name and Subtitle
+                Column {
+                    Text(
+                        text = "Hi, $companyName!",
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Let's find top talent today",
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    )
+                }
+            }
+
+            // Action Icons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Chat Icon with Badge
+                Box {
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(context, MessageActivity::class.java)
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.chat),
+                            contentDescription = "Messages",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    // Badge
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFF5252))
+                            .align(Alignment.TopEnd)
+                    )
+                }
+
+                // Notification Icon with Badge
+                Box {
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(context, NotificationActivity::class.java).apply {
+                                putExtra("USER_TYPE", "COMPANY")
+                            }
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.notification),
+                            contentDescription = "Notifications",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    // Badge
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFF5252))
+                            .align(Alignment.TopEnd)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GreetingSection(
+    companyName: String,
+    modifier: Modifier = Modifier
+) {
+    val greeting = remember {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        when (hour) {
+            in 0..11 -> "Good Morning"
+            in 12..16 -> "Good Afternoon"
+            else -> "Good Evening"
+        }
+    }
+
+    Column(
+        modifier = modifier
+    ) {
+        Text(
+            text = greeting,
+            style = TextStyle(
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                color = ModernLoginTheme.TextSecondary
+            )
+        )
+        Text(
+            text = companyName,
+            style = TextStyle(
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = ModernLoginTheme.TextPrimary
+            )
+        )
     }
 }
 

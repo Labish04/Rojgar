@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,7 +28,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -172,98 +170,6 @@ fun CompanyDashboardBody(
 
 
     Scaffold(
-        topBar = {
-            val showTopBar = selectedIndex in listOf(0)
-
-            if (showTopBar) {
-                CenterAlignedTopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        titleContentColor = Black,
-                        actionIconContentColor = Black,
-                        containerColor = Blue,
-                        navigationIconContentColor = Black
-                    ),
-                    title = {
-                        Text("")
-                    },
-                    navigationIcon = {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-
-                            Box(
-                                modifier = Modifier
-                                    .size(60.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF4CAF50)), // change color if you want
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AsyncImage(
-                                    model = company.value?.companyProfileImage,
-                                    contentDescription = "Profile Photo",
-                                    modifier = Modifier
-                                        .size(100.dp)
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Column {
-                                Text(
-                                    text = "Hi! ${company.value?.companyName}",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = "Let's hire top talent.",
-                                    fontSize = 14.sp,
-                                    color = Color.Gray
-                                )
-                            }
-                        }
-                    },
-                    actions = {
-                        Row(
-                            modifier = Modifier
-                                .width(130.dp)
-                        ) {
-                            IconButton(onClick = {
-                                val intent = Intent(context, MessageActivity::class.java)
-                                context.startActivity(intent)
-                            }) {
-                                Icon(
-                                    painter = painterResource(R.drawable.chat),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(30.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(20.dp))
-                            IconButton(onClick = {
-                                val intent = Intent(context, NotificationActivity::class.java).apply {
-                                    putExtra("USER_TYPE", "JOBSEEKER") // or "COMPANY"
-                                }
-                                context.startActivity(intent)
-                            }) {
-                                Icon(
-                                    painter = painterResource(R.drawable.notification),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(30.dp)
-                                )
-                            }
-                        }
-                    }
-                )
-            }
-
-        },
-
         bottomBar = {
             Surface(
                 modifier = Modifier
@@ -301,7 +207,9 @@ fun CompanyDashboardBody(
                 .padding(padding)
         ) {
             when (selectedIndex) {
-                0 -> CompanyHomeScreenBody()
+                0 -> CompanyHomeScreenBody(
+                    company = company.value
+                )
                 1 -> AnalyticsScreen(viewModel = analyticsViewModel, companyId = companyId)
                 2 -> CompanyUploadPostScreen(
                     selectedProfileUri = selectedProfileUri,
