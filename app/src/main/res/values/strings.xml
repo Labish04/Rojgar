@@ -26,4 +26,5 @@
     <string name="title_activity_chatbot">ChatbotActivity</string>
     <string name="title_activity_group_chat">GroupChatActivity</string>
     <string name="title_activity_help_and_support">HelpAndSupportActivity</string>
+    <string name="title_activity_admin_help_and_support">AdminHelpAndSupportActivity</string>
 </resources>
