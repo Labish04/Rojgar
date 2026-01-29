@@ -7,7 +7,7 @@
       </SelectionState>
       <SelectionState runConfigName="LoginActivity">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-01-29T07:11:17.271201400Z">
+        <DropdownSelection timestamp="2026-01-29T11:00:14.470000700Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\ACER\.android\avd\Pixel_9_Pro_XL_2_2.avd" />

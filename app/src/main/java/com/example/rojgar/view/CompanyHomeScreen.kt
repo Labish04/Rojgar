@@ -20,12 +20,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.R
@@ -46,20 +47,22 @@ import kotlinx.coroutines.delay
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
+import android.graphics.Color
 
 // Modern Design Theme Colors
 object ModernCompanyTheme {
-    val PrimaryBlue = Color(0xFF4A90E2)
-    val AccentBlue = Color(0xFF00BCD4)
-    val DeepBlue = Color(0xFF2C5F8D)
-    val SurfaceLight = Color(0xFFF8FAFC)
-    val CardBackground = Color.White
-    val TextPrimary = Color(0xFF1E293B)
-    val TextSecondary = Color(0xFF64748B)
-    val BorderLight = Color(0xFFE2E8F0)
-    val GradientStart = Color(0xFFAFCEFC)
-    val GradientEnd = Color(0xFF5594FA)
-    val StarGold = Color(0xFFFFD700)
+    val PrimaryBlue = ComposeColor(0xFF4A90E2)
+    val AccentBlue = ComposeColor(0xFF00BCD4)
+    val DeepBlue = ComposeColor(0xFF2C5F8D)
+    val SurfaceLight = ComposeColor(0xFFF8FAFC)
+    val White = ComposeColor.White
+    val CardBackground = ComposeColor.White
+    val TextPrimary = ComposeColor(0xFF1E293B)
+    val TextSecondary = ComposeColor(0xFF64748B)
+    val BorderLight = ComposeColor(0xFFE2E8F0)
+    val GradientStart = ComposeColor(0xFFAFCEFC)
+    val GradientEnd = ComposeColor(0xFF5594FA)
+    val StarGold = ComposeColor(0xFFFFD700)
 }
 
 @Composable
@@ -117,81 +120,24 @@ fun CompanyHomeScreenBody(){
             )
         }
 
-        // Stats Cards Row (Reviews & Calendar)
+        // Calendar Card - Full Width
         item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Enhanced Reviews Card
-                EnhancedReviewsCard(
-                    averageRating = averageRating,
-                    totalReviews = reviews.size,
-                    reviews = reviews,
-                    companyId = companyId,
-                    companyName = company?.companyName ?: "Company",
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Enhanced Calendar Card
-                EnhancedCalendarCard(
-                    events = events,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            CalendarCardSection(
+                events = events,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+            )
         }
 
-        // Posted Jobs Section Header
+        // Reviews Card - Below Calendar
         item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Posted Jobs",
-                    style = TextStyle(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp,
-                        color = ModernCompanyTheme.TextPrimary
-                    )
-                )
-
-                TextButton(onClick = { /* Navigate to all jobs */ }) {
-                    Text(
-                        "See All",
-                        style = TextStyle(
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = ModernCompanyTheme.PrimaryBlue
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Default.ArrowForward,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = ModernCompanyTheme.PrimaryBlue
-                    )
-                }
-            }
-        }
-
-        // Jobs Placeholder - You can replace this with actual job list
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
-                    .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                EmptyStateJobsPlaceholder()
-            }
+            EnhancedReviewsCard(
+                averageRating = averageRating,
+                totalReviews = reviews.size,
+                reviews = reviews,
+                companyId = companyId,
+                companyName = company?.companyName ?: "Company",
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+            )
         }
     }
 }
@@ -347,7 +293,7 @@ fun EnhancedReviewsCard(
 
     Card(
         modifier = modifier
-            .height(280.dp)
+            .fillMaxWidth()
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -357,15 +303,13 @@ fun EnhancedReviewsCard(
                 intent.putExtra("COMPANY_ID", companyId)
                 intent.putExtra("COMPANY_NAME", companyName)
                 context.startActivity(intent)
-            }
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(20.dp),
-                spotColor = ModernCompanyTheme.PrimaryBlue.copy(alpha = 0.15f)
-            ),
+            },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = ModernCompanyTheme.CardBackground
+            containerColor = ModernCompanyTheme.White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
         )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -378,7 +322,7 @@ fun EnhancedReviewsCard(
                         Brush.verticalGradient(
                             colors = listOf(
                                 ModernCompanyTheme.GradientStart.copy(alpha = 0.1f),
-                                Color.Transparent
+                                ComposeColor.Transparent
                             )
                         )
                     )
@@ -459,147 +403,187 @@ fun EnhancedReviewsCard(
     }
 }
 
+
 @Composable
-fun EnhancedCalendarCard(
+fun CalendarCardSection(
     events: List<CalendarEventModel>,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-
-    var isVisible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        delay(300)
-        isVisible = true
+    val calendar = remember { Calendar.getInstance() }
+    val currentWeekDays = remember { getCurrentWeekDays(calendar) }
+    val currentWeekEvents = remember(events) {
+        getEventsForCurrentWeek(events, currentWeekDays)
     }
-
-    val scale by animateFloatAsState(
-        targetValue = if (isVisible) 1f else 0.9f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "calendar_scale"
-    )
-
-    val currentTime = System.currentTimeMillis()
-    val upcomingEvents = events
-        .filter { it.endTimeMillis > currentTime }
-        .sortedBy { it.startTimeMillis }
-        .take(3)
+    val dateFormat = remember { SimpleDateFormat("MMM yyyy", Locale.getDefault()) }
+    val currentMonth = remember { dateFormat.format(calendar.time) }
 
     Card(
         modifier = modifier
-            .height(280.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clickable {
-                context.startActivity(Intent(context, CalendarActivity::class.java))
-            }
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(20.dp),
-                spotColor = ModernCompanyTheme.AccentBlue.copy(alpha = 0.15f)
-            ),
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .clickable { context.startActivity(Intent(context, CalendarActivity::class.java)) },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = ModernCompanyTheme.CardBackground
+            containerColor = ModernCompanyTheme.White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
         )
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Gradient Background Decoration
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                ModernCompanyTheme.AccentBlue.copy(alpha = 0.08f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Calendar Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.DateRange,
+                        contentDescription = "Calendar",
+                        tint = ModernCompanyTheme.PrimaryBlue,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Upcoming Events",
+                        text = "Calendar",
                         style = TextStyle(
-                            fontSize = 16.sp,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = ModernCompanyTheme.TextPrimary
                         )
                     )
-
-                    Surface(
-                        shape = CircleShape,
-                        color = ModernCompanyTheme.AccentBlue.copy(alpha = 0.1f),
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.calendaricon),
-                                contentDescription = null,
-                                tint = ModernCompanyTheme.AccentBlue,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
                 }
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowRight,
+                    contentDescription = "Open",
+                    tint = ModernCompanyTheme.TextSecondary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
 
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Month/Year Display
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = currentMonth,
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ModernCompanyTheme.TextPrimary
+                    )
+                )
+                Text(
+                    text = "This Week",
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = ModernCompanyTheme.TextSecondary
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Week Days Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                val dayNames = listOf("Su", "Mo", "Tu", "We", "Th", "Fr", "Sa")
+                dayNames.forEach { dayName ->
+                    Text(
+                        text = dayName,
+                        style = TextStyle(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = ModernCompanyTheme.TextSecondary
+                        ),
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Current Week Days
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                val today = Calendar.getInstance()
+                currentWeekDays.forEach { dayCalendar ->
+                    val isToday = isSameDay(dayCalendar, today)
+                    val hasEvent = currentWeekEvents.any { event ->
+                        isSameDay(getCalendarFromMillis(event.startTimeMillis), dayCalendar)
+                    }
+
+                    DayCell(
+                        day = dayCalendar.get(Calendar.DAY_OF_MONTH),
+                        isToday = isToday,
+                        hasEvent = hasEvent,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            // Events for this week
+            if (currentWeekEvents.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
+                Divider(color = ModernCompanyTheme.SurfaceLight, thickness = 1.dp)
+                Spacer(modifier = Modifier.height(12.dp))
 
-                if (upcomingEvents.isEmpty()) {
-                    // Empty state with animation
-                    EmptyCalendarState()
-                } else {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        upcomingEvents.forEachIndexed { index, event ->
-                            EnhancedEventItem(
-                                event = event,
-                                index = index
-                            )
-                        }
+                Text(
+                    text = "${currentWeekEvents.size} ${if (currentWeekEvents.size == 1) "Event" else "Events"} This Week",
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ModernCompanyTheme.TextSecondary
+                    )
+                )
 
-                        if (events.size > 3) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "View all events",
-                                style = TextStyle(
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = ModernCompanyTheme.AccentBlue
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        context.startActivity(
-                                            Intent(context, CalendarActivity::class.java)
-                                        )
-                                    },
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Show up to 2 events
+                currentWeekEvents.take(2).forEach { event ->
+                    CompactEventItem(event = event)
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
+
+                if (currentWeekEvents.size > 2) {
+                    Text(
+                        text = "+${currentWeekEvents.size - 2} more",
+                        style = TextStyle(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = ModernCompanyTheme.AccentBlue
+                        ),
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "No events this week",
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = ModernCompanyTheme.TextSecondary
+                    ),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
@@ -683,7 +667,7 @@ fun EnhancedEventItem(
 
     val startTime = SimpleDateFormat("MMM dd, h:mm a", Locale.getDefault())
         .format(java.util.Date(event.startTimeMillis))
-    val eventColor = Color(android.graphics.Color.parseColor(event.colorHex))
+    val eventColor = ComposeColor(android.graphics.Color.parseColor(event.colorHex))
 
     Surface(
         modifier = Modifier
@@ -804,7 +788,7 @@ fun EnhancedStarRating(rating: Double) {
 @Composable
 fun AnimatedStar(
     fillPercentage: Float,
-    color: Color,
+    color: ComposeColor,
     index: Int
 ) {
     var isVisible by remember { mutableStateOf(false) }
@@ -990,25 +974,5 @@ fun EmptyStateJobsPlaceholder() {
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        Text(
-            text = "No jobs posted yet",
-            style = TextStyle(
-                fontSize = 18.sp,
-                color = ModernCompanyTheme.TextPrimary,
-                fontWeight = FontWeight.SemiBold
-            )
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Start posting jobs to find the best talent",
-            style = TextStyle(
-                fontSize = 14.sp,
-                color = ModernCompanyTheme.TextSecondary,
-                textAlign = TextAlign.Center
-            )
-        )
     }
 }
