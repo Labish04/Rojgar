@@ -51,7 +51,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".utils.CompanySearchActivity"
+            android:name=".view.BlockedUsersActivity"
             android:exported="true"
             android:label="@string/title_activity_company_search"
             android:theme="@style/Theme.Rojgar" >
