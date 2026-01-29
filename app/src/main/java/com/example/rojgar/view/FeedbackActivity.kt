@@ -104,54 +104,79 @@ fun FeedbackBody(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Application Feedback",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        AnimatedVisibility(visible = rejectedApplications.isNotEmpty()) {
-                            Text(
-                                text = "${rejectedApplications.size} ${if (rejectedApplications.size == 1) "Feedback" else "Feedbacks"}",
-                                fontSize = 13.sp,
-                                color = Color.White.copy(alpha = 0.9f)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFE3F2FD),
+                        Color(0xFFBBDEFB),
+                        Color(0xFF90CAF9)
+                    )
+                )
+            )
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Custom Top Bar with gradient - Same as SavedJobsActivity
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF1976D2),
+                                Color(0xFF2196F3),
+                                Color(0xFF42A5F5)
                             )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
+                        )
+                    )
+                    .padding(top = 40.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                color = Color.White.copy(alpha = 0.2f),
+                                shape = CircleShape
+                            )
+                    ) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
                             tint = Color.White
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBlue2
-                )
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Blue.copy(alpha = 0.3f),
-                            Color.White
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Application Feedback",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
-                    )
-                )
-                .padding(paddingValues)
-        ) {
+
+                        AnimatedVisibility(visible = !isLoading && rejectedApplications.isNotEmpty()) {
+                            Text(
+                                text = "${rejectedApplications.size} ${if (rejectedApplications.size == 1) "feedback" else "feedbacks"}",
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.9f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Content
             when {
                 isLoading -> {
                     LoadingAnimation()
@@ -164,7 +189,8 @@ fun FeedbackBody(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(vertical = 16.dp)
                     ) {
 
                         items(

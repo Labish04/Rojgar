@@ -19,9 +19,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,7 +34,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -311,8 +312,21 @@ fun HelpAndSupportBody() {
         )
     }
 
-    Scaffold(
-        topBar = {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFE3F2FD),
+                        Color(0xFFBBDEFB),
+                        Color(0xFF90CAF9)
+                    )
+                )
+            )
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Custom Top Bar with gradient - Same as FeedbackActivity
             AnimatedVisibility(
                 visible = topBarVisible,
                 enter = slideInVertically(
@@ -320,79 +334,63 @@ fun HelpAndSupportBody() {
                     animationSpec = tween(600, easing = FastOutSlowInEasing)
                 ) + fadeIn(animationSpec = tween(600))
             ) {
-                Card(
+                Box(
                     modifier = Modifier
-                        .height(140.dp)
-                        .padding(top = 55.dp)
                         .fillMaxWidth()
-                        .shadow(8.dp, RoundedCornerShape(5.dp)),
-                    shape = RoundedCornerShape(5.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2196F3))
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF1976D2),
+                                    Color(0xFF2196F3),
+                                    Color(0xFF42A5F5)
+                                )
+                            )
+                        )
+                        .padding(top = 40.dp)
                 ) {
                     Row(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 15.dp),
+                            .fillMaxWidth()
+                            .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        var backPressed by remember { mutableStateOf(false) }
-                        val backScale by animateFloatAsState(
-                            targetValue = if (backPressed) 0.85f else 1f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMedium
-                            )
-                        )
-
                         IconButton(
-                            onClick = { backPressed = true; activity?.finish() },
-                            modifier = Modifier.graphicsLayer { scaleX = backScale; scaleY = backScale }
+                            onClick = { activity?.finish() },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    color = Color.White.copy(alpha = 0.2f),
+                                    shape = CircleShape
+                                )
                         ) {
                             Icon(
-                                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                                imageVector = Icons.Default.ArrowBack,
                                 contentDescription = "Back",
-                                tint = Color.White,
-                                modifier = Modifier.size(30.dp)
+                                tint = Color.White
                             )
                         }
 
-                        var titleVisible by remember { mutableStateOf(false) }
-                        LaunchedEffect(Unit) { delay(300); titleVisible = true }
+                        Spacer(modifier = Modifier.width(16.dp))
 
-                        AnimatedVisibility(
-                            visible = titleVisible,
-                            enter = fadeIn(tween(500)) + slideInHorizontally(
-                                initialOffsetX = { it / 2 },
-                                animationSpec = tween(500, easing = FastOutSlowInEasing)
-                            ),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                Text(
-                                    "Help & Support",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Help & Support",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+
+                            Text(
+                                text = "We're here to help you",
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.9f)
+                            )
                         }
-                        Spacer(Modifier.size(48.dp))
                     }
                 }
             }
-        }
-    ) { padding ->
-        Box(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color(0xFFE3F2FD), Color(0xFFBBDEFB), Color(0xFF90CAF9))
-                    )
-                )
-        ) {
+
+            // Content
             if (isLoadingUserData) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
@@ -706,7 +704,6 @@ fun HelpAndSupportBody() {
         }
     }
 }
-
 
 @Composable
 fun HelpSupportDropdown(
