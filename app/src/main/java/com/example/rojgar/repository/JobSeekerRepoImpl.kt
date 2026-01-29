@@ -422,124 +422,6 @@ class JobSeekerRepoImpl : JobSeekerRepo {
             }
     }
 
-    override fun followJobSeeker(
-        currentUserId: String,
-        targetJobSeekerId: String,
-        callback: (Boolean, String) -> Unit
-    ) {
-        // Get the target job seeker's current followers list
-        ref.child(targetJobSeekerId).child("followers")
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val currentFollowers = mutableListOf<String>()
-
-                    // Get existing followers
-                    if (snapshot.exists()) {
-                        for (followerSnapshot in snapshot.children) {
-                            val followerId = followerSnapshot.getValue(String::class.java)
-                            if (followerId != null) {
-                                currentFollowers.add(followerId)
-                            }
-                        }
-                    }
-
-                    // Check if already following
-                    if (currentFollowers.contains(currentUserId)) {
-                        callback(false, "Already following this user")
-                        return
-                    }
-
-                    // Add current user to followers list
-                    currentFollowers.add(currentUserId)
-
-                    // Update in database
-                    ref.child(targetJobSeekerId).child("followers").setValue(currentFollowers)
-                        .addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                callback(true, "Following successfully")
-                            } else {
-                                callback(false, task.exception?.message ?: "Failed to follow")
-                            }
-                        }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    callback(false, error.message)
-                }
-            }
-        )
-    }
-
-    override fun unfollowJobSeeker(
-        currentUserId: String,
-        targetJobSeekerId: String,
-        callback: (Boolean, String) -> Unit
-    ) {
-        // Get the target job seeker's current followers list
-        ref.child(targetJobSeekerId).child("followers")
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val currentFollowers = mutableListOf<String>()
-
-                    // Get existing followers
-                    if (snapshot.exists()) {
-                        for (followerSnapshot in snapshot.children) {
-                            val followerId = followerSnapshot.getValue(String::class.java)
-                            if (followerId != null) {
-                                currentFollowers.add(followerId)
-                            }
-                        }
-                    }
-
-                    // Remove current user from followers list
-                    currentFollowers.remove(currentUserId)
-
-                    // Update in database
-                    ref.child(targetJobSeekerId).child("followers").setValue(currentFollowers)
-                        .addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                callback(true, "Unfollowed successfully")
-                            } else {
-                                callback(false, task.exception?.message ?: "Failed to unfollow")
-                            }
-                        }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    callback(false, error.message)
-                }
-            })
-    }
-
-    override fun isFollowing(
-        currentUserId: String,
-        targetJobSeekerId: String,
-        callback: (Boolean) -> Unit
-    ) {
-        ref.child(targetJobSeekerId).child("followers")
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    var following = false
-
-                    if (snapshot.exists()) {
-                        for (followerSnapshot in snapshot.children) {
-                            val followerId = followerSnapshot.getValue(String::class.java)
-                            if (followerId == currentUserId) {
-                                following = true
-                                break
-                            }
-                        }
-                    }
-
-                    callback(following)
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    callback(false)
-                }
-            })
-    }
-
     override fun updateJobSeekerProfile(
         model: JobSeekerModel,
         callback: (Boolean, String) -> Unit
@@ -687,6 +569,69 @@ class JobSeekerRepoImpl : JobSeekerRepo {
     ): String? {
         var fileName: String? = null
         val cursor: Cursor? = context.contentResolver.query(imageUri, null, null, null, null)
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex != -1) {
+                    fileName = it.getString(nameIndex)
+                }
+            }
+        }
+        return fileName
+    }
+
+    // In JobSeekerRepoImpl.kt
+    override fun uploadVideo(
+        context: Context,
+        videoUri: Uri,
+        callback: (String?) -> Unit
+    ) {
+        val executor = Executors.newSingleThreadExecutor()
+        executor.execute {
+            try {
+                val inputStream: InputStream? = context.contentResolver.openInputStream(videoUri)
+                var fileName = getVideoFileNameFromUri(context, videoUri)
+
+                fileName = fileName?.substringBeforeLast(".") ?: "uploaded_video"
+
+                val response = cloudinary.uploader().upload(
+                    inputStream, ObjectUtils.asMap(
+                        "public_id", fileName,
+                        "resource_type", "video"
+                    )
+                )
+
+                var videoUrl = response["url"] as String?
+
+                videoUrl = videoUrl?.replace("http://", "https://")
+
+                Handler(Looper.getMainLooper()).post {
+                    callback(videoUrl)
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Handler(Looper.getMainLooper()).post {
+                    callback(null)
+                }
+            }
+        }
+    }
+
+    override fun getVideoThumbnailUrl(videoUrl: String): String {
+        // Generate thumbnail URL from video URL
+        // Cloudinary format: add transformation parameters
+        return if (videoUrl.contains("cloudinary")) {
+            videoUrl.replace("/upload/", "/upload/w_400,h_300,c_fill/")
+        } else {
+            videoUrl // For non-cloudinary URLs
+        }
+    }
+
+    // Also add this method for video file name
+    fun getVideoFileNameFromUri(context: Context, uri: Uri): String? {
+        var fileName: String? = null
+        val cursor: Cursor? = context.contentResolver.query(uri, null, null, null, null)
         cursor?.use {
             if (it.moveToFirst()) {
                 val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)

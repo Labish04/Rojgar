@@ -181,6 +181,18 @@ class JobSeekerViewModel(val repo: JobSeekerRepo) {
         repo.uploadProfileImage(context, imageUri, callback)
     }
 
+    fun uploadVideo(
+        context: Context,
+        videoUri: Uri,
+        callback: (String?) -> Unit
+    ) {
+        repo.uploadVideo(context, videoUri, callback)
+    }
+
+    fun getVideoThumbnailUrl(videoUrl: String): String {
+        return repo.getVideoThumbnailUrl(videoUrl)
+    }
+
     fun getJobSeekerDetails(jobSeekerId: String) {
         repo.getJobSeekerDetails(jobSeekerId) { success, message, fetchedJobSeeker ->
             if (success && fetchedJobSeeker != null) {

@@ -1434,9 +1434,6 @@ fun CompanySettingsDialog(
     onDeleteAccountClick: () -> Unit,
     context: Context
 ) {
-
-    var isDarkMode by remember { mutableStateOf(false) }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1504,15 +1501,6 @@ fun CompanySettingsDialog(
                     subtitle = "Update your password",
                     iconColor = Color(0xFF4CAF50),
                     onClick = onChangePasswordClick
-                )
-
-                CompanySettingsOptionWithSwitch(
-                    icon = R.drawable.darkmode,
-                    title = "Dark Mode",
-                    subtitle = if (isDarkMode) "Dark theme enabled" else "Light theme enabled",
-                    iconColor = Color(0xFF9C27B0),
-                    isChecked = isDarkMode,
-                    onCheckedChange = { isDarkMode = it }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))

@@ -107,6 +107,9 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
     var selectedVideoUri by remember { mutableStateOf<Uri?>(null) }
     var videoThumbnail by remember { mutableStateOf<Bitmap?>(null) }
+    var uploadedVideoUrl by remember { mutableStateOf<String?>(null) }
+    var isUploadingVideo by remember { mutableStateOf(false) }
+
     var showMoreDialog by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(false) }
     var isDrawerOpen by remember { mutableStateOf(false) }
@@ -134,6 +137,9 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
     ) { uri ->
         if (uri != null) {
             selectedVideoUri = uri
+            isUploadingVideo = true
+
+            // Get video thumbnail
             val filePath = getRealPathFromURI(context, uri)
             if (filePath != null) {
                 videoThumbnail = ThumbnailUtils.createVideoThumbnail(
@@ -141,7 +147,32 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                     MediaStore.Video.Thumbnails.MINI_KIND
                 )
             }
-            Toast.makeText(context, "Video Selected!", Toast.LENGTH_SHORT).show()
+
+            // Upload video to Cloudinary
+            jobSeekerViewModel.uploadVideo(context, uri) { videoUrl ->
+                isUploadingVideo = false
+                if (videoUrl != null) {
+                    uploadedVideoUrl = videoUrl
+
+                    // Update job seeker's video URL in Firebase
+                    val currentJobSeeker = jobSeekerState
+                    if (currentJobSeeker != null) {
+                        val updatedModel = currentJobSeeker.copy(video = videoUrl)
+                        jobSeekerViewModel.updateJobSeekerProfile(updatedModel) { success, message ->
+                            if (success) {
+                                Toast.makeText(context, "Video uploaded successfully!", Toast.LENGTH_SHORT).show()
+                                // Refresh job seeker data
+                                jobSeekerViewModel.fetchCurrentJobSeeker()
+                            } else {
+                                Toast.makeText(context, "Failed to update profile: $message", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    Toast.makeText(context, "Video Selected and Uploaded!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Failed to upload video", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
@@ -165,6 +196,17 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
         val chooserIntent = Intent.createChooser(shareIntent, "Share Profile via")
         context.startActivity(chooserIntent)
+    }
+
+    LaunchedEffect(jobSeekerState) {
+        jobSeekerState?.let { seeker ->
+            if (seeker.video.isNotEmpty()) {
+                uploadedVideoUrl = seeker.video
+                // Clear local selected video if we have a stored URL
+                selectedVideoUri = null
+                videoThumbnail = null
+            }
+        }
     }
 
     LaunchedEffect(isFollowing) {
@@ -919,36 +961,69 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                             elevation = CardDefaults.cardElevation(0.dp)
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
-                                if (isPlaying && selectedVideoUri != null) {
-                                    VideoPlayer(
-                                        uri = selectedVideoUri!!,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                } else {
-                                    if (videoThumbnail != null) {
-                                        Image(
-                                            bitmap = videoThumbnail!!.asImageBitmap(),
-                                            contentDescription = "Video Thumbnail",
-                                            contentScale = ContentScale.Crop,
+                                if (isPlaying) {
+                                    val videoToPlay = uploadedVideoUrl ?: selectedVideoUri?.toString()
+                                    if (videoToPlay != null) {
+                                        VideoPlayer(
+                                            uri = if (uploadedVideoUrl != null) {
+                                                Uri.parse(uploadedVideoUrl)
+                                            } else {
+                                                selectedVideoUri!!
+                                            },
                                             modifier = Modifier.fillMaxSize()
                                         )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(
-                                                    brush = Brush.linearGradient(
-                                                        colors = listOf(
-                                                            Color(0xFF42A5F5),
-                                                            Color(0xFF2196F3)
-                                                        )
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                brush = Brush.linearGradient(
+                                                    colors = listOf(
+                                                        Color(0xFF42A5F5),
+                                                        Color(0xFF2196F3)
                                                     )
-                                                ),
-                                            contentAlignment = Alignment.Center
+                                                )
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
-                                            Column(
-                                                horizontalAlignment = Alignment.CenterHorizontally
-                                            ) {
+                                            if (isUploadingVideo) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(48.dp),
+                                                    color = Color.White,
+                                                    strokeWidth = 3.dp
+                                                )
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(
+                                                    "Uploading video...",
+                                                    color = Color.White.copy(alpha = 0.9f),
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                            } else if (videoThumbnail != null) {
+                                                // Show local video thumbnail
+                                                Image(
+                                                    bitmap = videoThumbnail!!.asImageBitmap(),
+                                                    contentDescription = "Video Thumbnail",
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                            } else if (uploadedVideoUrl != null && uploadedVideoUrl!!.isNotEmpty()) {
+                                                // Show thumbnail from Cloudinary URL
+                                                val thumbnailUrl = jobSeekerViewModel.getVideoThumbnailUrl(uploadedVideoUrl!!)
+                                                AsyncImage(
+                                                    model = thumbnailUrl,
+                                                    contentDescription = "Video Thumbnail",
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    placeholder = painterResource(R.drawable.profileemptypic),
+                                                    error = painterResource(R.drawable.profileemptypic)
+                                                )
+                                            } else {
+                                                // No video selected
                                                 Icon(
                                                     painter = painterResource(R.drawable.baseline_upload_24),
                                                     contentDescription = "Upload",
@@ -968,7 +1043,7 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                 }
 
                                 // Only show video picker/upload option for own profile
-                                if (isOwnProfile) {
+                                if (isOwnProfile && !isUploadingVideo) {
                                     Surface(
                                         modifier = Modifier
                                             .align(Alignment.BottomEnd)
@@ -989,8 +1064,8 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                     }
                                 }
 
-                                // Play button
-                                if (!isPlaying) {
+                                // Play button - show if we have video and not playing
+                                if (!isPlaying && (uploadedVideoUrl != null || selectedVideoUri != null)) {
                                     Surface(
                                         modifier = Modifier
                                             .align(Alignment.Center)
@@ -1005,17 +1080,41 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                                             tint = Color(0xFF1976D2),
                                             modifier = Modifier
                                                 .clickable {
-                                                    if (selectedVideoUri != null) {
+                                                    if (uploadedVideoUrl != null || selectedVideoUri != null) {
                                                         isPlaying = true
                                                     } else {
                                                         Toast.makeText(
                                                             context,
-                                                            "Select a video first!",
+                                                            "Select or upload a video first!",
                                                             Toast.LENGTH_SHORT
                                                         ).show()
                                                     }
                                                 }
                                                 .padding(20.dp)
+                                        )
+                                    }
+                                }
+
+                                // Close button when playing
+                                if (isPlaying) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(16.dp)
+                                            .size(40.dp),
+                                        shape = CircleShape,
+                                        color = Color.Black.copy(alpha = 0.5f),
+                                        shadowElevation = 8.dp
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.outline_close_24),
+                                            contentDescription = "Close",
+                                            tint = Color.White,
+                                            modifier = Modifier
+                                                .clickable {
+                                                    isPlaying = false
+                                                }
+                                                .padding(8.dp)
                                         )
                                     }
                                 }
@@ -1716,19 +1815,27 @@ fun VideoPlayer(uri: Uri, modifier: Modifier = Modifier) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(uri))
             prepare()
+            playWhenReady = true
         }
     }
-
-    AndroidView(
-        factory = { PlayerView(context).apply { player = exoPlayer } },
-        modifier = modifier
-    )
 
     DisposableEffect(Unit) {
         onDispose {
             exoPlayer.release()
         }
     }
+
+    AndroidView(
+        factory = { context ->
+            PlayerView(context).apply {
+                player = exoPlayer
+                useController = true
+                setShowNextButton(false)
+                setShowPreviousButton(false)
+            }
+        },
+        modifier = modifier
+    )
 }
 
 @Composable

@@ -93,24 +93,6 @@ interface JobSeekerRepo {
         callback: (Boolean, String) -> Unit
     )
 
-    fun followJobSeeker(
-        currentUserId: String,
-        targetJobSeekerId: String,
-        callback: (Boolean, String) -> Unit
-    )
-
-    fun unfollowJobSeeker(
-        currentUserId: String,
-        targetJobSeekerId: String,
-        callback: (Boolean, String) -> Unit
-    )
-
-    fun isFollowing(
-        currentUserId: String,
-        targetJobSeekerId: String,
-        callback: (Boolean) -> Unit
-    )
-
     fun uploadProfileImage(
         context: Context,
         imageUri: Uri,
@@ -118,6 +100,14 @@ interface JobSeekerRepo {
     )
 
     fun getFileNameFromUri(context: Context, imageUri: Uri): String?
+
+    fun uploadVideo(
+        context: Context,
+        videoUri: Uri,
+        callback: (String?) -> Unit
+    )
+
+    fun getVideoThumbnailUrl(videoUrl: String): String
 
     fun updateJobSeekerProfile(
         model: JobSeekerModel,
