@@ -99,7 +99,7 @@ fun CompanyHomeScreenBody(){
                     .fillMaxWidth()
                     .clickable {
                         context.startActivity(
-                            Intent(context, JobSeekerSearchActivity::class.java)
+                            Intent(context, CompanySearchActivity::class.java)
                         )
                     }
             ) {

@@ -28,4 +28,5 @@
     <string name="title_activity_help_and_support">HelpAndSupportActivity</string>
     <string name="title_activity_admin_help_and_support">AdminHelpAndSupportActivity</string>
     <string name="title_activity_admin_reports">AdminReportsActivity</string>
+    <string name="title_activity_company_search">CompanySearchActivity</string>
 </resources>
