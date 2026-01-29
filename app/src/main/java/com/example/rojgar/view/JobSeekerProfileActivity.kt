@@ -34,6 +34,7 @@ import android.provider.MediaStore
 import android.graphics.Bitmap
 import android.media.ThumbnailUtils
 import android.util.Log
+import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -64,6 +65,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.media3.common.util.UnstableApi
 import coil.compose.AsyncImage
 import com.example.rojgar.viewmodel.JobSeekerViewModel
 import com.google.firebase.auth.EmailAuthProvider
@@ -1808,6 +1810,7 @@ fun getRealPathFromURI(context: Context, uri: Uri): String? {
     return null
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayer(uri: Uri, modifier: Modifier = Modifier) {
     val context = LocalContext.current
