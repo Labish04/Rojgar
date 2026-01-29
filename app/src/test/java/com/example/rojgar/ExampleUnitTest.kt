@@ -12,10 +12,7 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 
-/**
- * Unit tests for JobSeekerViewModel - Logout, Deactivate, and Delete functionality
- * Uses Mockito-Kotlin for mocking
- */
+
 class JobSeekerViewModelTest {
 
 
