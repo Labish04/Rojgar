@@ -1024,87 +1024,139 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            // View Details button
-                            Button(
-                                onClick = {
-                                    val intent = Intent(
-                                        context,
-                                        JobSeekerProfileDetailsActivity::class.java
-                                    ).apply {
-                                        putExtra("JOB_SEEKER_ID", finalTargetJobSeekerId)
-                                    }
-                                    context.startActivity(intent)
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFE3F2FD),
-                                    contentColor = Color(0xFF1976D2)
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(56.dp),
-                                elevation = ButtonDefaults.buttonElevation(0.dp)
+                        if (isOwnProfile) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
+                                // View Details button
+                                Button(
+                                    onClick = {
+                                        val intent = Intent(
+                                            context,
+                                            JobSeekerProfileDetailsActivity::class.java
+                                        ).apply {
+                                            putExtra("JOB_SEEKER_ID", finalTargetJobSeekerId)
+                                        }
+                                        context.startActivity(intent)
+                                    },
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFE3F2FD),
+                                        contentColor = Color(0xFF1976D2)
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(56.dp),
+                                    elevation = ButtonDefaults.buttonElevation(0.dp)
                                 ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.round_info_outline_24),
-                                        contentDescription = "View Details",
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        "Details",
-                                        fontSize = 17.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.round_info_outline_24),
+                                            contentDescription = "View Details",
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "Details",
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                // View CV button
+                                Button(
+                                    onClick = {
+                                        val profileIdToLoad =
+                                            if (finalTargetJobSeekerId.isNotEmpty()) {
+                                                finalTargetJobSeekerId
+                                            } else {
+                                                currentUserId
+                                            }
+                                        val intent =
+                                            Intent(context, CvViewActivity::class.java).apply {
+                                                putExtra("JOB_SEEKER_ID", profileIdToLoad)
+                                            }
+                                        context.startActivity(intent)
+                                    },
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF2196F3),
+                                        contentColor = Color.White
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(56.dp)
+                                        .shadow(12.dp, RoundedCornerShape(16.dp)),
+                                    elevation = ButtonDefaults.buttonElevation(0.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.document),
+                                            contentDescription = "View CV",
+                                            modifier = Modifier.size(24.dp),
+                                            tint = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "View CV",
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
-
-                            // View CV button
-                            Button(
-                                onClick = {
-                                    val profileIdToLoad = if (finalTargetJobSeekerId.isNotEmpty()) {
-                                        finalTargetJobSeekerId
-                                    } else {
-                                        currentUserId
-                                    }
-                                    val intent = Intent(context, CvViewActivity::class.java).apply {
-                                        putExtra("JOB_SEEKER_ID", profileIdToLoad)
-                                    }
-                                    context.startActivity(intent)
-                                },
-                                shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF2196F3),
-                                    contentColor = Color.White
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(56.dp)
-                                    .shadow(12.dp, RoundedCornerShape(16.dp)),
-                                elevation = ButtonDefaults.buttonElevation(0.dp)
+                        }else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
+                                Button(
+                                    onClick = {
+                                        val profileIdToLoad =
+                                            if (finalTargetJobSeekerId.isNotEmpty()) {
+                                                finalTargetJobSeekerId
+                                            } else {
+                                                currentUserId
+                                            }
+                                        val intent =
+                                            Intent(context, CvViewActivity::class.java).apply {
+                                                putExtra("JOB_SEEKER_ID", profileIdToLoad)
+                                            }
+                                        context.startActivity(intent)
+                                    },
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF2196F3),
+                                        contentColor = Color.White
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(56.dp)
+                                        .shadow(12.dp, RoundedCornerShape(16.dp)),
+                                    elevation = ButtonDefaults.buttonElevation(0.dp)
                                 ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.document),
-                                        contentDescription = "View CV",
-                                        modifier = Modifier.size(24.dp),
-                                        tint = Color.White
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        "View CV",
-                                        fontSize = 17.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.document),
+                                            contentDescription = "View CV",
+                                            modifier = Modifier.size(24.dp),
+                                            tint = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "View CV",
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
                         }

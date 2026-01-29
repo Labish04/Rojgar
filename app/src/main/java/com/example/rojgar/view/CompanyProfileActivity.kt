@@ -387,7 +387,7 @@ fun CompanyProfileBody(
 
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(text = company.value?.companyName ?: "Loading...", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF111827), letterSpacing = (-0.5).sp)
-                        if (company.value?.isVerified == true) {
+                        if (company.value?.verificationStatus == "approved") {
                             Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFFEF3C7), shadowElevation = 2.dp)
                             {
                                 Row(
@@ -456,6 +456,12 @@ fun CompanyProfileBody(
                             icon = R.drawable.jobtype,
                             modifier = Modifier.weight(1f).clickable {
                                 val intent = Intent(context, ActiveJob::class.java)
+                                intent.putExtra(
+                                    "USER_ID",
+                                    if (isOwnProfile) company.value?.companyId ?: "" else companyId
+                                )
+                                intent.putExtra("USER_TYPE", "Company")
+                                intent.putExtra("IS_OWN_PROFILE", isOwnProfile)
                                 context.startActivity(intent)
                             }
                         )
