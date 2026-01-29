@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,6 +33,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -40,8 +42,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import com.example.rojgar.R
 import com.example.rojgar.model.*
 import com.example.rojgar.repository.*
+import com.example.rojgar.ui.theme.White
 import com.example.rojgar.viewmodel.*
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
@@ -49,15 +54,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-
-// Import activities for navigation (add these to your actual project)
-// import com.example.rojgar.MessageActivity
-// import com.example.rojgar.NotificationActivity
-// import com.example.rojgar.JobSeekerSearchActivity
-// import com.example.rojgar.JobDetailActivity
-// import com.example.rojgar.ProfileActivity
-
-// Modern Theme Colors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +77,7 @@ fun JobSeekerHomeScreenBody() {
     val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl(context)) }
     val notificationViewModel = remember { NotificationViewModel(userType = UserType.JOBSEEKER) }
     val chatViewModel = remember { ChatViewModel(ChatRepositoryImpl(context), GroupChatRepositoryImpl()) }
+    val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
 
     // Observe LiveData
     val recommendedJobs by jobViewModel.recommendedJobs.observeAsState(emptyList())
@@ -95,6 +92,10 @@ fun JobSeekerHomeScreenBody() {
     val skills by skillViewModel.allSkills.observeAsState(emptyList())
     val training by trainingViewModel.allTrainings.observeAsState(emptyList())
     val events by calendarViewModel.events.observeAsState(emptyList())
+
+    // Company data for job cards
+    var companies by remember { mutableStateOf<Map<String, CompanyModel>>(emptyMap()) }
+    var isLoadingCompanies by remember { mutableStateOf(true) }
 
     // Notification and Message counts
     val unreadNotificationCount by notificationViewModel.unreadCount.collectAsState()
@@ -123,6 +124,28 @@ fun JobSeekerHomeScreenBody() {
         }
     }
 
+    LaunchedEffect(userPreference) {
+        if (userPreference != null) {
+            jobViewModel.loadRecommendations(userPreference!!)
+        } else {
+            // Load with empty preference if no preference is set
+            jobViewModel.loadRecommendations(PreferenceModel())
+        }
+    }
+
+    LaunchedEffect(recommendedJobs) {
+        if (recommendedJobs.isNotEmpty()) {
+            isLoadingCompanies = true
+            companyViewModel.getAllCompany { success, _, companyList ->
+                if (success && companyList != null) {
+                    companies = companyList.associateBy { it.companyId }
+                }
+                isLoadingCompanies = false
+            }
+        }
+    }
+
+
     Scaffold(
         topBar = {
             ModernTopAppBar(
@@ -149,6 +172,15 @@ fun JobSeekerHomeScreenBody() {
                 .padding(paddingValues),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
+            // Search Bar
+            item {
+                ModernSearchBar(
+                    value = search,
+                    onValueChange = { search = it },
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                )
+            }
+
             // Animated Header Section
             item {
                 AnimatedHeaderSection(
@@ -158,15 +190,6 @@ fun JobSeekerHomeScreenBody() {
                         objective, languages, education, experience,
                         portfolio, userPreference, references, skills, training
                     )
-                )
-            }
-
-            // Search Bar
-            item {
-                ModernSearchBar(
-                    value = search,
-                    onValueChange = { search = it },
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
                 )
             }
 
@@ -191,11 +214,69 @@ fun JobSeekerHomeScreenBody() {
             }
 
             // Job Cards
-            items(recommendedJobs.take(5)) { job ->
-                ModernJobCard(
-                    job = job,
-                    onClick = { }
-                )
+            if (isLoadingCompanies) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+            } else {
+                items(recommendedJobs.take(5)) { job ->
+                    val company = companies[job.companyId]
+
+                    RecommendedJobCard(
+                        job = job,
+                        companyName = company?.companyName ?: "Unknown Company",
+                        companyProfile = company?.companyProfileImage ?: "",
+                        onClick = {
+                            val intent = Intent(context, JobApplyActivity::class.java).apply {
+                                putExtra("POST_ID", job.postId)
+                                putExtra("COMPANY_ID", job.companyId)
+                            }
+                            context.startActivity(intent)
+                        }
+                    )
+                }
+            }
+
+            // View All Jobs Button
+            if (recommendedJobs.size > 5) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        TextButton(
+                            onClick = {
+                                val intent = Intent(context, JobSeekerViewPost::class.java)
+                                context.startActivity(intent)
+                            }
+                        ) {
+                            Text(
+                                text = "View All ${recommendedJobs.size} Jobs",
+                                style = TextStyle(
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = ModernLoginTheme.PrimaryBlue
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Filled.PlayArrow,
+                                contentDescription = "View All",
+                                tint = ModernLoginTheme.PrimaryBlue,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
             }
 
             // Profile Completion Tips
@@ -663,6 +744,7 @@ fun ModernSearchBar(
                 unfocusedContainerColor = ModernLoginTheme.White,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
+                disabledContainerColor = White,
                 cursorColor = ModernLoginTheme.PrimaryBlue
             ),
             modifier = Modifier.fillMaxWidth(),
@@ -1073,143 +1155,216 @@ fun SectionHeader(
 }
 
 @Composable
-fun ModernJobCard(
+fun RecommendedJobCard(
     job: JobModel,
+    companyName: String,
+    companyProfile: String,
     onClick: () -> Unit
 ) {
-    val context = LocalContext.current
-    var visible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        delay(50)
-        visible = true
-    }
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn() + slideInHorizontally(initialOffsetX = { 100 })
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
     ) {
-        Card(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = ModernLoginTheme.White
-            ),
-            elevation = CardDefaults.cardElevation(4.dp),
-            onClick = {
-                val intent = Intent(context, JobApplyActivity::class.java).apply {
-                }
-                context.startActivity(intent)
-            }
+                .padding(16.dp)
         ) {
+            // Company Header
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Company Logo
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(ModernLoginTheme.IceBlue),
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    if (job.imageUrl.isNotEmpty()) {
-                        AsyncImage(
-                            model = job.imageUrl,
+                    // Company Profile Image
+                    if (companyProfile.isNotEmpty()) {
+                        Image(
+                            painter = rememberAsyncImagePainter(companyProfile),
                             contentDescription = "Company Logo",
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape),
                             contentScale = ContentScale.Crop
                         )
                     } else {
-                        Icon(
-                            imageVector = Icons.Filled.Email,
-                            contentDescription = "Company",
-                            tint = ModernLoginTheme.PrimaryBlue,
-                            modifier = Modifier.size(28.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF00BCD4)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = companyName.take(1).uppercase(),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
                     }
-                }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                // Job Details
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = job.title,
-                        style = TextStyle(
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = ModernLoginTheme.TextPrimary
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = job.title,
-                        style = TextStyle(
+                    Column {
+                        Text(
+                            text = companyName,
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = ModernLoginTheme.TextSecondary
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.LocationOn,
-                            contentDescription = "Location",
-                            tint = ModernLoginTheme.AccentBlue,
-                            modifier = Modifier.size(14.dp)
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = job.deadline,
-                            style = TextStyle(
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = ModernLoginTheme.TextSecondary
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Icon(
-                            imageVector = Icons.Filled.Info,
-                            contentDescription = "Salary",
-                            tint = Color(0xFF10B981),
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = job.salary,
-                            style = TextStyle(
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = ModernLoginTheme.TextSecondary
-                            )
+                            text = "Hiring Now",
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
 
-                // Bookmark Icon
-                IconButton(onClick = { /* Bookmark */ }) {
-                    Icon(
-                        imageVector = Icons.Outlined.FavoriteBorder,
-                        contentDescription = "Save",
-                        tint = ModernLoginTheme.PrimaryBlue
-                    )
+                Icon(
+                    painter = painterResource(id = R.drawable.save_outline),
+                    contentDescription = "Save Job",
+                    modifier = Modifier.size(24.dp),
+                    tint = Color.Gray
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Job Image and Details
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Job Image
+                    Card(
+                        modifier = Modifier
+                            .width(150.dp)
+                            .height(120.dp),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            if (job.imageUrl.isNotEmpty()) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(job.imageUrl),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color(0xFF00BCD4)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.jobpost_filled),
+                                            contentDescription = "Job",
+                                            modifier = Modifier.size(40.dp),
+                                            tint = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "we're\nhiring.",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Job Details
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(140.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = job.title,
+                                fontSize = 18.sp,
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = job.position,
+                                fontSize = 14.sp,
+                                color = Color.DarkGray,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            color = Color(0xFF00BCD4).copy(alpha = 0.15f),
+                                            shape = RoundedCornerShape(6.dp)
+                                        )
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = job.jobType,
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF00BCD4),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                Icon(
+                                    painter = painterResource(id = R.drawable.shareicon),
+                                    contentDescription = "Share Job",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = Color.Gray
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun ProfileCompletionTips(
