@@ -108,7 +108,7 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
@@ -119,85 +119,96 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
                     )
                 )
             )
-            .verticalScroll(rememberScrollState())
     ) {
-        // Enhanced Top Bar
-        EnhancedCompanyTopBar(
-            companyName = companyDetails?.companyName ?: "Company",
-            companyProfileImage = companyDetails?.companyProfileImage ?: "",
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Greeting Section
-        GreetingSection(
-            companyName = companyDetails?.companyName ?: "Company",
-            modifier = Modifier.padding(horizontal = 20.dp)
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Search bar
-        CompanySearchBar(
-            value = search,
-            onValueChange = { search = it },
+        // Scrollable Content
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-        )
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Add space for the floating top bar
+            Spacer(modifier = Modifier.height(72.dp))
 
-        Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Calendar Card
-        CalendarCardSection(
-            events = events,
-            onCalendarClick = {
-                val intent = Intent(context, CalendarActivity::class.java)
-                context.startActivity(intent)
+            // Greeting Section
+            GreetingSection(
+                companyName = companyDetails?.companyName ?: "Company",
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Search bar
+            CompanySearchBar(
+                value = search,
+                onValueChange = { search = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Calendar Card
+            CalendarCardSection(
+                events = events,
+                onCalendarClick = {
+                    val intent = Intent(context, CalendarActivity::class.java)
+                    context.startActivity(intent)
+                }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Recent Applications Card
+            if (applications.isNotEmpty()) {
+                RecentApplicationsCard(
+                    applications = applications.sortedByDescending { it.appliedDate }.take(3),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
-        )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Recent Applications Card
-        if (applications.isNotEmpty()) {
-            RecentApplicationsCard(
-                applications = applications.sortedByDescending { it.appliedDate }.take(3),
+            // Reviews & Ratings Card
+            EnhancedReviewsRatingsCard(
+                averageRating = averageRating,
+                totalReviews = reviews.size,
+                reviews = reviews,
+                companyId = companyId,
+                companyName = companyDetails?.companyName ?: "Company",
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Recent Reviews Section
+            if (reviews.isNotEmpty()) {
+                RecentReviewsSection(
+                    reviews = reviews.sortedByDescending { it.timestamp }.take(3),
+                    reviewViewModel = reviewViewModel,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // Reviews & Ratings Card
-        EnhancedReviewsRatingsCard(
-            averageRating = averageRating,
-            totalReviews = reviews.size,
-            reviews = reviews,
-            companyId = companyId,
+        // Floating Top Bar - stays fixed at the top
+        EnhancedCompanyTopBar(
             companyName = companyDetails?.companyName ?: "Company",
+            companyProfileImage = companyDetails?.companyProfileImage ?: "",
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .align(Alignment.TopCenter)
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Recent Reviews Section
-        if (reviews.isNotEmpty()) {
-            RecentReviewsSection(
-                reviews = reviews.sortedByDescending { it.timestamp }.take(3),
-                reviewViewModel = reviewViewModel,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
@@ -211,7 +222,7 @@ fun EnhancedCompanyTopBar(
 
     Surface(
         modifier = modifier,
-        color = Blue,
+        color = Color(0xFF1976D2), // Brighter, more vibrant blue
         shadowElevation = 4.dp
     ) {
         Row(
