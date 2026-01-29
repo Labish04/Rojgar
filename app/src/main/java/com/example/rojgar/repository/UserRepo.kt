@@ -126,6 +126,51 @@ class UserRepo {
         }
     }
 
+    // Add to UserRepo.kt
+    fun getCurrentUserName(callback: (String) -> Unit) {
+        val uid = getCurrentUserId()
+        if (uid.isEmpty()) {
+            callback("Anonymous")
+            return
+        }
+
+        getUserType { userType ->
+            when (userType) {
+                "Company" -> {
+                    // Fetch company name
+                    FirebaseDatabase.getInstance()
+                        .getReference("Companys")
+                        .child(uid)
+                        .child("companyName")
+                        .get()
+                        .addOnSuccessListener { snapshot ->
+                            val name = snapshot.getValue(String::class.java) ?: "Company User"
+                            callback(name)
+                        }
+                        .addOnFailureListener {
+                            callback("Company User")
+                        }
+                }
+                "JobSeeker" -> {
+                    // Fetch job seeker name
+                    FirebaseDatabase.getInstance()
+                        .getReference("JobSeekers")
+                        .child(uid)
+                        .child("fullName")
+                        .get()
+                        .addOnSuccessListener { snapshot ->
+                            val name = snapshot.getValue(String::class.java) ?: "Job Seeker"
+                            callback(name)
+                        }
+                        .addOnFailureListener {
+                            callback("Job Seeker")
+                        }
+                }
+                else -> callback("User")
+            }
+        }
+    }
+
     // Logout all users
     fun logout() {
         auth.signOut()
