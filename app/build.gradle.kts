@@ -93,4 +93,5 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.google.firebase:firebase-messaging-ktx:23.4.0")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("androidx.compose.material:material-icons-extended:1.5.0")
 }

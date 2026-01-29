@@ -2,47 +2,60 @@ package com.example.rojgar.view
 
 import android.content.Intent
 import androidx.compose.animation.core.*
+import androidx.compose.animation.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rojgar.R
 import com.example.rojgar.model.ReviewModel
+import com.example.rojgar.model.ApplicationModel
+import com.example.rojgar.repository.CalendarRepoImpl
 import com.example.rojgar.repository.CompanyRepoImpl
 import com.example.rojgar.repository.ReviewRepoImpl
-import com.example.rojgar.ui.theme.Blue
+import com.example.rojgar.repository.ApplicationRepoImpl
 import com.example.rojgar.ui.theme.Gray
 import com.example.rojgar.ui.theme.White
+import com.example.rojgar.viewmodel.CalendarViewModel
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.ReviewViewModel
-import com.example.rojgar.view.CalendarActivity
-import com.example.rojgar.repository.CalendarRepoImpl
-import com.example.rojgar.viewmodel.CalendarViewModel
-import com.example.rojgar.model.CalendarEventModel
+import com.example.rojgar.viewmodel.ApplicationViewModel
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.Date
 
 @Composable
 fun CompanyHomeScreenBody(){
@@ -52,6 +65,7 @@ fun CompanyHomeScreenBody(){
     val reviewViewModel = remember { ReviewViewModel(ReviewRepoImpl()) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
     val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl(context)) }
+    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl(context)) }
 
     val companyId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
     val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
@@ -60,6 +74,11 @@ fun CompanyHomeScreenBody(){
     val averageRating by reviewViewModel.averageRating.observeAsState(0.0)
     val company by companyViewModel.companyDetails.observeAsState(null)
     val events by calendarViewModel.events.observeAsState(emptyList())
+    val applications by applicationViewModel.applications.observeAsState(emptyList())
+
+    // For demo purposes - you can connect these to actual data later
+    val activeJobs = remember { mutableStateOf(0) }
+    val totalApplications = remember { mutableStateOf(0) }
 
     LaunchedEffect(companyId) {
         if (companyId.isNotEmpty()) {
@@ -73,149 +92,788 @@ fun CompanyHomeScreenBody(){
         }
     }
 
-    // Fetch calendar events for current month
     LaunchedEffect(currentUserId) {
         if (currentUserId.isNotEmpty()) {
             calendarViewModel.observeAllEventsForUser(currentUserId)
         }
     }
 
+    LaunchedEffect(companyId) {
+        if (companyId.isNotEmpty()) {
+            applicationViewModel.getApplicationsByCompany(companyId)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Blue)
-    ) {
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .height(50.dp)
-                    .fillMaxWidth()
-                    .clickable {
-                        context.startActivity(
-                            Intent(context, CompanySearchActivity::class.java)
-                        )
-                    }
-            ) {
-                OutlinedTextField(
-                    value = search,
-                    onValueChange = {},
-                    readOnly = true,
-                    enabled = false,
-                    placeholder = {
-                        Text(
-                            "Search",
-                            fontSize = 20.sp,
-                            color = Color.Gray
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(R.drawable.searchicon),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = Gray
-                        )
-                    },
-                    shape = RoundedCornerShape(15.dp),
-                    colors = TextFieldDefaults.colors(
-                        disabledContainerColor = White,
-                        disabledIndicatorColor = Color.Transparent
-                    ),
-                    modifier = Modifier.fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        ModernLoginTheme.SurfaceLight,
+                        ModernLoginTheme.IceBlue
+                    )
                 )
-            }
-        }
+            )
+            .verticalScroll(rememberScrollState())
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Welcome Header Section
+        AnimatedWelcomeHeader(
+            companyName = company?.companyName ?: "Company",
+            modifier = Modifier.padding(horizontal = 20.dp)
+        )
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Row(
+        // Search bar
+        CompanySearchBar(
+            value = search,
+            onValueChange = { search = it },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
-        ) {
-            ReviewsRatingsCard(
-                averageRating = averageRating,
-                totalReviews = reviews.size,
-                reviews = reviews,
-                companyId = companyId,
-                companyName = company?.companyName ?: "Company",
-                modifier = Modifier
-                    .height(220.dp)
-                    .width(200.dp)
-            )
+        )
 
-            Spacer(modifier = Modifier.width(20.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-            Card(
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .height(220.dp)
-                    .width(200.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 2.dp
-                )
-            ) {
-                MiniEventList(
-                    events = events,
-                    maxItems = 3,
-                    showAllEvents = true
-                )
+        // Calendar Card
+        CalendarCardSection(
+            events = events,
+            onCalendarClick = {
+                val intent = Intent(context, CalendarActivity::class.java)
+                context.startActivity(intent)
             }
-        }
+        )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp)
-                .padding(vertical = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Posted Jobs",
-                style = TextStyle(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp
-                )
-            )
-            Row(
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Recent Applications Card
+        if (applications.isNotEmpty()) {
+            RecentApplicationsCard(
+                applications = applications.sortedByDescending { it.appliedDate }.take(3),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(end = 20.dp),
-                horizontalArrangement = Arrangement.End
+                    .padding(horizontal = 20.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Reviews & Ratings Card
+        EnhancedReviewsRatingsCard(
+            averageRating = averageRating,
+            totalReviews = reviews.size,
+            reviews = reviews,
+            companyId = companyId,
+            companyName = company?.companyName ?: "Company",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Recent Reviews Section
+        if (reviews.isNotEmpty()) {
+            RecentReviewsSection(
+                reviews = reviews.sortedByDescending { it.timestamp }.take(3),
+                reviewViewModel = reviewViewModel,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun RecentApplicationsCard(
+    applications: List<ApplicationModel>,
+    modifier: Modifier = Modifier
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        isExpanded = true
+    }
+
+    AnimatedVisibility(
+        visible = isExpanded,
+        enter = fadeIn(animationSpec = tween(400)) + expandVertically(
+            animationSpec = tween(400),
+            expandFrom = Alignment.Top
+        )
+    ) {
+        Card(
+            modifier = modifier,
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = ModernLoginTheme.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                // Section Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Assignment,
+                            contentDescription = null,
+                            tint = ModernLoginTheme.PrimaryBlue,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Recent Applications",
+                            style = TextStyle(
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ModernLoginTheme.TextPrimary
+                            )
+                        )
+                    }
+
+                    Text(
+                        text = "${applications.size}",
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = ModernLoginTheme.PrimaryBlue
+                        ),
+                        modifier = Modifier
+                            .background(
+                                color = ModernLoginTheme.PrimaryBlue.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Applications List
+                applications.forEachIndexed { index, application ->
+                    RecentApplicationItem(
+                        application = application,
+                        delay = index * 100L
+                    )
+
+                    if (index < applications.lastIndex) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Divider(
+                            color = ModernLoginTheme.TextSecondary.copy(alpha = 0.1f),
+                            thickness = 1.dp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RecentApplicationItem(
+    application: ApplicationModel,
+    delay: Long
+) {
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(delay)
+        isVisible = true
+    }
+
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
+            animationSpec = tween(300),
+            initialOffsetY = { 20 }
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            // User Avatar
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                ModernLoginTheme.PrimaryBlue,
+                                ModernLoginTheme.PrimaryBlue.copy(alpha = 0.7f)
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "Show All",
+                    text = application.jobSeekerName.firstOrNull()?.uppercase() ?: "A",
                     style = TextStyle(
-                        fontSize = 18.sp
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
                 )
             }
-        }
 
-        Card(
-            shape = RoundedCornerShape(0.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(395.dp)
-                .padding(horizontal = 20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.Transparent
-            )
-        ) {}
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Application Content
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = application.jobSeekerName.ifEmpty { "Applicant" },
+                        style = TextStyle(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = ModernLoginTheme.TextPrimary
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = formatTimeAgo(application.appliedDate),
+                        style = TextStyle(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = ModernLoginTheme.TextSecondary
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Email or phone info
+                if (application.jobSeekerEmail.isNotEmpty()) {
+                    Text(
+                        text = application.jobSeekerEmail,
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = ModernLoginTheme.TextSecondary
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
+
+                // Status Badge
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = getApplicationStatusColor(application.status),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = application.status,
+                            style = TextStyle(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = getApplicationStatusTextColor(application.status)
+                            )
+                        )
+                    }
+
+                    if (application.status == "Pending") {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF57F17))
+                        )
+                    }
+                }
+            }
+        }
     }
 }
+
+fun formatTimeAgo(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+
+    return when {
+        diff < 60000 -> "Just now"
+        diff < 3600000 -> "${diff / 60000}m ago"
+        diff < 86400000 -> "${diff / 3600000}h ago"
+        diff < 604800000 -> "${diff / 86400000}d ago"
+        else -> {
+            val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
+            sdf.format(Date(timestamp))
+        }
+    }
+}
+
+fun getApplicationStatusColor(status: String): Color {
+    return when (status) {
+        "Pending" -> Color(0xFFFFF9C4)
+        "Reviewed" -> Color(0xFFE1F5FE)
+        "Shortlisted" -> Color(0xFFE8F5E9)
+        "Accepted" -> Color(0xFFC8E6C9)
+        "Rejected" -> Color(0xFFFFCDD2)
+        else -> Color.LightGray
+    }
+}
+
+fun getApplicationStatusTextColor(status: String): Color {
+    return when (status) {
+        "Pending" -> Color(0xFFF57F17)
+        "Reviewed" -> Color(0xFF01579B)
+        "Shortlisted" -> Color(0xFF2E7D32)
+        "Accepted" -> Color(0xFF1B5E20)
+        "Rejected" -> Color(0xFFC62828)
+        else -> Color.DarkGray
+    }
+}
+
 @Composable
-fun ReviewsRatingsCard(
+fun AnimatedWelcomeHeader(
+    companyName: String,
+    modifier: Modifier = Modifier
+) {
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
+
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(animationSpec = tween(600)) + slideInVertically(
+            animationSpec = tween(600),
+            initialOffsetY = { -40 }
+        ),
+        modifier = modifier
+    ) {
+        Column {
+            Text(
+                text = getGreeting(),
+                style = TextStyle(
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = ModernLoginTheme.TextSecondary
+                )
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = companyName,
+                style = TextStyle(
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ModernLoginTheme.TextPrimary,
+                    letterSpacing = (-0.5).sp
+                )
+            )
+        }
+    }
+}
+
+fun getGreeting(): String {
+    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    return when (hour) {
+        in 0..11 -> "Good Morning"
+        in 12..16 -> "Good Afternoon"
+        else -> "Good Evening"
+    }
+}
+
+@Composable
+fun CompanySearchBar(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    Box(
+        modifier = modifier
+            .height(56.dp)
+            .clickable {
+                context.startActivity(
+                    Intent(context, CompanySearchActivity::class.java)
+                )
+            }
+    ) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = ModernLoginTheme.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                readOnly = true,
+                enabled = false,
+                placeholder = {
+                    Text(
+                        "Search jobs, candidates...",
+                        fontSize = 14.sp,
+                        color = ModernLoginTheme.TextSecondary
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.searchicon),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = ModernLoginTheme.PrimaryBlue
+                    )
+                },
+                shape = RoundedCornerShape(20.dp),
+                colors = TextFieldDefaults.colors(
+                    disabledContainerColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun QuickStatsRow(
+    activeJobs: Int,
+    totalApplications: Int,
+    averageRating: Double,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        QuickStatCard(
+            title = "Active Jobs",
+            value = activeJobs.toString(),
+            icon = Icons.Filled.Work,
+            color = ModernLoginTheme.PrimaryBlue,
+            modifier = Modifier.weight(1f)
+        )
+        QuickStatCard(
+            title = "Applications",
+            value = totalApplications.toString(),
+            icon = Icons.Filled.Description,
+            color = ModernLoginTheme.AccentBlue,
+            modifier = Modifier.weight(1f)
+        )
+        QuickStatCard(
+            title = "Rating",
+            value = String.format("%.1f", averageRating),
+            icon = Icons.Filled.Star,
+            color = Color(0xFFFFD700),
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+fun QuickStatCard(
+    title: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        isVisible = true
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0.8f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+
+    Card(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = ModernLoginTheme.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = color,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            AnimatedCounterText(targetValue = value, color = color)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                color = ModernLoginTheme.TextSecondary,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+fun AnimatedCounterText(targetValue: String, color: Color) {
+    val numericValue = targetValue.toIntOrNull() ?: 0
+    var count by remember { mutableStateOf(0) }
+
+    LaunchedEffect(numericValue) {
+        if (numericValue > 0) {
+            val step = if (numericValue > 100) numericValue / 20 else 1
+            while (count < numericValue) {
+                count = (count + step).coerceAtMost(numericValue)
+                delay(30)
+            }
+        } else {
+            count = numericValue
+        }
+    }
+
+    Text(
+        text = if (targetValue.contains(".")) targetValue else count.toString(),
+        fontSize = 24.sp,
+        fontWeight = FontWeight.Bold,
+        color = color
+    )
+}
+
+@Composable
+fun ActionCardsGrid(
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Quick Actions",
+            style = TextStyle(
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = ModernLoginTheme.TextPrimary
+            )
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ActionCard(
+                title = "Post Job",
+                icon = Icons.Filled.Add,
+                gradient = Brush.linearGradient(
+                    colors = listOf(
+                        ModernLoginTheme.PrimaryBlue,
+                        ModernLoginTheme.LightBlue
+                    )
+                ),
+                onClick = {
+                    try {
+                        val intent = Intent(context, Class.forName("com.example.rojgar.view.CompanyUploadPostActivity"))
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // Activity not found - handle gracefully
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            )
+            ActionCard(
+                title = "Analytics",
+                icon = Icons.Filled.TrendingUp,
+                gradient = Brush.linearGradient(
+                    colors = listOf(
+                        ModernLoginTheme.AccentBlue,
+                        ModernLoginTheme.SkyBlue
+                    )
+                ),
+                onClick = {
+                    try {
+                        val intent = Intent(context, Class.forName("com.example.rojgar.view.AnalyticsActivity"))
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // Activity not found - handle gracefully
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ActionCard(
+                title = "Messages",
+                icon = Icons.Filled.Message,
+                gradient = Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFF10B981),
+                        Color(0xFF34D399)
+                    )
+                ),
+                onClick = {
+                    try {
+                        val intent = Intent(context, Class.forName("com.example.rojgar.view.MessageActivity"))
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // Activity not found - handle gracefully
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            )
+            ActionCard(
+                title = "Applicants",
+                icon = Icons.Filled.People,
+                gradient = Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFFF59E0B),
+                        Color(0xFFFBBF24)
+                    )
+                ),
+                onClick = {
+                    try {
+                        val intent = Intent(context, Class.forName("com.example.rojgar.view.ApplicantListActivity"))
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        // Activity not found - handle gracefully
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+fun ActionCard(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    gradient: Brush,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isPressed by remember { mutableStateOf(false) }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "scale"
+    )
+
+    Card(
+        modifier = modifier
+            .height(100.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable {
+                isPressed = true
+                onClick()
+            },
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(gradient),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = ModernLoginTheme.White,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ModernLoginTheme.White
+                )
+            }
+        }
+    }
+
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            delay(100)
+            isPressed = false
+        }
+    }
+}
+
+@Composable
+fun EnhancedReviewsRatingsCard(
     averageRating: Double,
     totalReviews: Int,
     reviews: List<ReviewModel>,
@@ -234,51 +892,160 @@ fun ReviewsRatingsCard(
     }
 
     Card(
-        shape = RoundedCornerShape(16.dp),
-        modifier = modifier.clickable {
-            val intent = Intent(context, CompanyReviewActivity::class.java)
-            intent.putExtra("COMPANY_ID", companyId)
-            intent.putExtra("COMPANY_NAME", companyName)
-            context.startActivity(intent)
-        },
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp)
+        shape = RoundedCornerShape(20.dp),
+        modifier = modifier
+            .clickable {
+                val intent = Intent(context, CompanyReviewActivity::class.java)
+                intent.putExtra("COMPANY_ID", companyId)
+                intent.putExtra("COMPANY_NAME", companyName)
+                context.startActivity(intent)
+            },
+        colors = CardDefaults.cardColors(containerColor = ModernLoginTheme.White),
+        elevation = CardDefaults.cardElevation(8.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(20.dp)
         ) {
-            // Large animated rating number
-            AnimatedRatingNumber(rating = averageRating)
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Star rating display
-            StarRatingDisplay(rating = averageRating)
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Total reviews with animation
-            AnimatedReviewCount(count = totalReviews)
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Rating distribution bars
-            Column(
+            // Header
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                (5 downTo 1).forEach { star ->
-                    AnimatedRatingBar(
-                        star = star,
-                        count = ratingDistribution[star] ?: 0,
-                        total = totalReviews
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = "Reviews",
+                        tint = Color(0xFFFFD700),
+                        modifier = Modifier.size(24.dp)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Reviews & Ratings",
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ModernLoginTheme.TextPrimary
+                        )
+                    )
+                }
+
+                if (totalReviews > 0) {
+                    Badge(
+                        containerColor = ModernLoginTheme.IceBlue,
+                        contentColor = ModernLoginTheme.PrimaryBlue
+                    ) {
+                        Text(
+                            text = "$totalReviews",
+                            style = TextStyle(
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left side - Big Rating Number with circular progress
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.size(120.dp)
+                    ) {
+                        CircularRatingIndicator(
+                            rating = averageRating,
+                            maxRating = 5.0
+                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            AnimatedRatingNumber(rating = averageRating)
+                            StarRatingDisplay(rating = averageRating, size = 16.dp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    AnimatedReviewCount(count = totalReviews)
+                }
+
+                // Right side - Distribution bars
+                Column(
+                    modifier = Modifier.weight(1.2f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    (5 downTo 1).forEach { star ->
+                        AnimatedRatingBar(
+                            star = star,
+                            count = ratingDistribution[star] ?: 0,
+                            total = totalReviews
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun CircularRatingIndicator(
+    rating: Double,
+    maxRating: Double
+) {
+    var animationPlayed by remember { mutableStateOf(false) }
+    val percentage = (rating / maxRating).toFloat()
+
+    val animatedPercentage by animateFloatAsState(
+        targetValue = if (animationPlayed) percentage else 0f,
+        animationSpec = tween(
+            durationMillis = 1000,
+            easing = FastOutSlowInEasing
+        ),
+        label = "rating_circle"
+    )
+
+    LaunchedEffect(Unit) {
+        animationPlayed = true
+    }
+
+    Canvas(modifier = Modifier.size(120.dp)) {
+        val strokeWidth = 10.dp.toPx()
+        val radius = (size.minDimension - strokeWidth) / 2
+
+        // Background circle
+        drawCircle(
+            color = Color(0xFFE8E8E8),
+            radius = radius,
+            style = Stroke(width = strokeWidth)
+        )
+
+        // Progress arc
+        val sweepAngle = animatedPercentage * 360f
+        drawArc(
+            brush = Brush.sweepGradient(
+                colors = listOf(
+                    Color(0xFFFFD700),
+                    Color(0xFFFFA500),
+                    Color(0xFFFFD700)
+                )
+            ),
+            startAngle = -90f,
+            sweepAngle = sweepAngle,
+            useCenter = false,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+            size = Size(size.width - strokeWidth, size.height - strokeWidth),
+            topLeft = Offset(strokeWidth / 2, strokeWidth / 2)
+        )
     }
 }
 
@@ -299,17 +1066,17 @@ fun AnimatedRatingNumber(rating: Double) {
     Text(
         text = String.format("%.1f", animatedRating),
         style = TextStyle(
-            fontSize = 44.sp,
+            fontSize = 36.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.Black,
+            color = ModernLoginTheme.PrimaryBlue,
             letterSpacing = (-1).sp
         )
     )
 }
 
 @Composable
-fun StarRatingDisplay(rating: Double) {
-    val starColor = Color(0xFFFFD700) // Gold color
+fun StarRatingDisplay(rating: Double, size: androidx.compose.ui.unit.Dp = 20.dp) {
+    val starColor = Color(0xFFFFD700)
 
     Row(
         horizontalArrangement = Arrangement.Center,
@@ -329,7 +1096,8 @@ fun StarRatingDisplay(rating: Double) {
             AnimatedStar(
                 fillPercentage = fillPercentage,
                 color = starColor,
-                index = index
+                index = index,
+                size = size
             )
 
             if (index < 4) {
@@ -343,7 +1111,8 @@ fun StarRatingDisplay(rating: Double) {
 fun AnimatedStar(
     fillPercentage: Float,
     color: Color,
-    index: Int
+    index: Int,
+    size: androidx.compose.ui.unit.Dp = 20.dp
 ) {
     var isVisible by remember { mutableStateOf(false) }
 
@@ -363,7 +1132,7 @@ fun AnimatedStar(
 
     Box(
         modifier = Modifier
-            .size(20.dp)
+            .size(size)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -408,11 +1177,11 @@ fun AnimatedReviewCount(count: Int) {
     )
 
     Text(
-        text = String.format("%,d", animatedCount),
+        text = if (animatedCount == 1) "$animatedCount review" else "$animatedCount reviews",
         style = TextStyle(
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Normal,
-            color = Color.Gray,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = ModernLoginTheme.TextSecondary,
             letterSpacing = 0.sp
         )
     )
@@ -425,7 +1194,7 @@ fun AnimatedRatingBar(
     total: Int
 ) {
     val percentage = if (total > 0) (count.toFloat() / total.toFloat()) else 0f
-    val barColor = Color(0xFFFFD700) // Gold color
+    val barColor = Color(0xFFFFD700)
 
     var animateBar by remember { mutableStateOf(false) }
 
@@ -446,40 +1215,279 @@ fun AnimatedRatingBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(14.dp),
+            .height(18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = "$star",
             style = TextStyle(
-                fontSize = 14.sp,
-                color = Color.Black,
+                fontSize = 13.sp,
+                color = ModernLoginTheme.TextPrimary,
                 fontWeight = FontWeight.Medium
             ),
-            modifier = Modifier.width(10.dp)
+            modifier = Modifier.width(16.dp)
         )
 
-        Spacer(modifier = Modifier.width(6.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
         Box(
             modifier = Modifier
                 .weight(1f)
-                .height(6.dp)
+                .height(8.dp)
                 .background(
                     color = Color(0xFFE8E8E8),
-                    shape = RoundedCornerShape(3.dp)
+                    shape = RoundedCornerShape(4.dp)
                 )
         ) {
-            // Show bar only if there's actual percentage
             if (animatedPercentage > 0) {
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
                         .fillMaxWidth(animatedPercentage.coerceIn(0f, 1f))
                         .background(
-                            color = barColor,
-                            shape = RoundedCornerShape(3.dp)
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    barColor,
+                                    barColor.copy(alpha = 0.8f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(4.dp)
                         )
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Text(
+            text = count.toString(),
+            style = TextStyle(
+                fontSize = 12.sp,
+                color = ModernLoginTheme.TextSecondary,
+                fontWeight = FontWeight.Medium
+            ),
+            modifier = Modifier.width(24.dp),
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+@Composable
+fun RecentReviewsSection(
+    reviews: List<ReviewModel>,
+    reviewViewModel: ReviewViewModel,
+    modifier: Modifier = Modifier
+) {
+    val jobSeekerUsernames by reviewViewModel.jobSeekerUsernames.observeAsState(emptyMap())
+    var isExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        isExpanded = true
+    }
+
+    AnimatedVisibility(
+        visible = isExpanded,
+        enter = fadeIn(animationSpec = tween(400)) + expandVertically(
+            animationSpec = tween(400),
+            expandFrom = Alignment.Top
+        )
+    ) {
+        Card(
+            modifier = modifier,
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = ModernLoginTheme.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                // Section Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.RateReview,
+                            contentDescription = null,
+                            tint = ModernLoginTheme.PrimaryBlue,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Recent Reviews",
+                            style = TextStyle(
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ModernLoginTheme.TextPrimary
+                            )
+                        )
+                    }
+
+                    Text(
+                        text = "${reviews.size}",
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = ModernLoginTheme.PrimaryBlue
+                        ),
+                        modifier = Modifier
+                            .background(
+                                color = ModernLoginTheme.PrimaryBlue.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Reviews List
+                reviews.forEachIndexed { index, review ->
+                    RecentReviewItem(
+                        review = review,
+                        username = jobSeekerUsernames[review.userId] ?: "Job Seeker",
+                        reviewViewModel = reviewViewModel,
+                        delay = index * 100L
+                    )
+
+                    if (index < reviews.lastIndex) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Divider(
+                            color = ModernLoginTheme.TextSecondary.copy(alpha = 0.1f),
+                            thickness = 1.dp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RecentReviewItem(
+    review: ReviewModel,
+    username: String,
+    reviewViewModel: ReviewViewModel,
+    delay: Long
+) {
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(delay)
+        isVisible = true
+    }
+
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
+            animationSpec = tween(300),
+            initialOffsetY = { 20 }
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            // User Avatar
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                ModernLoginTheme.PrimaryBlue,
+                                ModernLoginTheme.PrimaryBlue.copy(alpha = 0.7f)
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = username.firstOrNull()?.uppercase() ?: "U",
+                    style = TextStyle(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Review Content
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = username,
+                        style = TextStyle(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = ModernLoginTheme.TextPrimary
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = reviewViewModel.formatTimeAgo(review.timestamp),
+                        style = TextStyle(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = ModernLoginTheme.TextSecondary
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Star Rating
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(5) { index ->
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = if (index < review.rating) Color(0xFFFFD700) else Color(0xFFE8E8E8),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        if (index < 4) Spacer(modifier = Modifier.width(2.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Review Text
+                Text(
+                    text = review.reviewText,
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = ModernLoginTheme.TextPrimary.copy(alpha = 0.8f),
+                        lineHeight = 20.sp
+                    ),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
