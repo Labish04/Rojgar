@@ -5,18 +5,21 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -44,10 +47,24 @@ import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+// Modern Design Theme Colors
+object ModernCompanyTheme {
+    val PrimaryBlue = Color(0xFF4A90E2)
+    val AccentBlue = Color(0xFF00BCD4)
+    val DeepBlue = Color(0xFF2C5F8D)
+    val SurfaceLight = Color(0xFFF8FAFC)
+    val CardBackground = Color.White
+    val TextPrimary = Color(0xFF1E293B)
+    val TextSecondary = Color(0xFF64748B)
+    val BorderLight = Color(0xFFE2E8F0)
+    val GradientStart = Color(0xFFAFCEFC)
+    val GradientEnd = Color(0xFF5594FA)
+    val StarGold = Color(0xFFFFD700)
+}
+
 @Composable
 fun CompanyHomeScreenBody(){
     val context = LocalContext.current
-    var search by remember { mutableStateOf("") }
 
     val reviewViewModel = remember { ReviewViewModel(ReviewRepoImpl()) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
@@ -73,149 +90,228 @@ fun CompanyHomeScreenBody(){
         }
     }
 
-    // Fetch calendar events for current month
     LaunchedEffect(currentUserId) {
         if (currentUserId.isNotEmpty()) {
             calendarViewModel.observeAllEventsForUser(currentUserId)
         }
     }
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Blue)
+            .background(ModernCompanyTheme.SurfaceLight),
+        contentPadding = PaddingValues(bottom = 24.dp)
     ) {
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .height(50.dp)
-                    .fillMaxWidth()
-                    .clickable {
-                        context.startActivity(
-                            Intent(context, JobSeekerSearchActivity::class.java)
-                        )
-                    }
-            ) {
-                OutlinedTextField(
-                    value = search,
-                    onValueChange = {},
-                    readOnly = true,
-                    enabled = false,
-                    placeholder = {
-                        Text(
-                            "Search",
-                            fontSize = 20.sp,
-                            color = Color.Gray
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(R.drawable.searchicon),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = Gray
-                        )
-                    },
-                    shape = RoundedCornerShape(15.dp),
-                    colors = TextFieldDefaults.colors(
-                        disabledContainerColor = White,
-                        disabledIndicatorColor = Color.Transparent
-                    ),
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+        // Modern Search Bar Section
+        item {
+            ModernCompanySearchBar(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+            )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-        ) {
-            ReviewsRatingsCard(
-                averageRating = averageRating,
-                totalReviews = reviews.size,
-                reviews = reviews,
-                companyId = companyId,
+        // Welcome Header with Animation
+        item {
+            WelcomeHeaderSection(
                 companyName = company?.companyName ?: "Company",
-                modifier = Modifier
-                    .height(220.dp)
-                    .width(200.dp)
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
             )
-
-            Spacer(modifier = Modifier.width(20.dp))
-
-            Card(
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .height(220.dp)
-                    .width(200.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 2.dp
-                )
-            ) {
-                MiniEventList(
-                    events = events,
-                    maxItems = 3,
-                    showAllEvents = true
-                )
-            }
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp)
-                .padding(vertical = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Posted Jobs",
-                style = TextStyle(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp
-                )
-            )
+        // Stats Cards Row (Reviews & Calendar)
+        item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(end = 20.dp),
-                horizontalArrangement = Arrangement.End
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    "Show All",
-                    style = TextStyle(
-                        fontSize = 18.sp
-                    )
+                // Enhanced Reviews Card
+                EnhancedReviewsCard(
+                    averageRating = averageRating,
+                    totalReviews = reviews.size,
+                    reviews = reviews,
+                    companyId = companyId,
+                    companyName = company?.companyName ?: "Company",
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Enhanced Calendar Card
+                EnhancedCalendarCard(
+                    events = events,
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
 
-        Card(
-            shape = RoundedCornerShape(0.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(395.dp)
-                .padding(horizontal = 20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.Transparent
-            )
-        ) {}
+        // Posted Jobs Section Header
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Posted Jobs",
+                    style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp,
+                        color = ModernCompanyTheme.TextPrimary
+                    )
+                )
+
+                TextButton(onClick = { /* Navigate to all jobs */ }) {
+                    Text(
+                        "See All",
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = ModernCompanyTheme.PrimaryBlue
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = ModernCompanyTheme.PrimaryBlue
+                    )
+                }
+            }
+        }
+
+        // Jobs Placeholder - You can replace this with actual job list
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                EmptyStateJobsPlaceholder()
+            }
+        }
     }
 }
+
 @Composable
-fun ReviewsRatingsCard(
+fun ModernCompanySearchBar(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(16.dp),
+                spotColor = ModernCompanyTheme.PrimaryBlue.copy(alpha = 0.15f)
+            ),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = ModernCompanyTheme.CardBackground
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    context.startActivity(
+                        Intent(context, JobSeekerSearchActivity::class.java)
+                    )
+                }
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                color = ModernCompanyTheme.PrimaryBlue.copy(alpha = 0.1f)
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.searchicon),
+                        contentDescription = "Search",
+                        modifier = Modifier.size(20.dp),
+                        tint = ModernCompanyTheme.PrimaryBlue
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Text(
+                "Search jobs, candidates...",
+                style = TextStyle(
+                    fontSize = 16.sp,
+                    color = ModernCompanyTheme.TextSecondary,
+                    fontWeight = FontWeight.Normal
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun WelcomeHeaderSection(
+    companyName: String,
+    modifier: Modifier = Modifier
+) {
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        isVisible = true
+    }
+
+    val offsetY by animateDpAsState(
+        targetValue = if (isVisible) 0.dp else 20.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "header_offset"
+    )
+
+    val alpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 600),
+        label = "header_alpha"
+    )
+
+    Column(
+        modifier = modifier
+            .offset(y = offsetY)
+            .graphicsLayer { this.alpha = alpha }
+    ) {
+        Text(
+            text = "Welcome back,",
+            style = TextStyle(
+                fontSize = 16.sp,
+                color = ModernCompanyTheme.TextSecondary,
+                fontWeight = FontWeight.Normal
+            )
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = companyName,
+            style = TextStyle(
+                fontSize = 28.sp,
+                color = ModernCompanyTheme.TextPrimary,
+                fontWeight = FontWeight.Bold
+            )
+        )
+    }
+}
+
+@Composable
+fun EnhancedReviewsCard(
     averageRating: Double,
     totalReviews: Int,
     reviews: List<ReviewModel>,
@@ -224,6 +320,22 @@ fun ReviewsRatingsCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(200)
+        isVisible = true
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0.9f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "card_scale"
+    )
 
     val ratingDistribution = remember(reviews) {
         val distribution = mutableMapOf<Int, Int>()
@@ -234,47 +346,399 @@ fun ReviewsRatingsCard(
     }
 
     Card(
-        shape = RoundedCornerShape(16.dp),
-        modifier = modifier.clickable {
-            val intent = Intent(context, CompanyReviewActivity::class.java)
-            intent.putExtra("COMPANY_ID", companyId)
-            intent.putExtra("COMPANY_NAME", companyName)
-            context.startActivity(intent)
-        },
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp)
+        modifier = modifier
+            .height(280.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable {
+                val intent = Intent(context, CompanyReviewActivity::class.java)
+                intent.putExtra("COMPANY_ID", companyId)
+                intent.putExtra("COMPANY_NAME", companyName)
+                context.startActivity(intent)
+            }
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(20.dp),
+                spotColor = ModernCompanyTheme.PrimaryBlue.copy(alpha = 0.15f)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = ModernCompanyTheme.CardBackground
+        )
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Large animated rating number
-            AnimatedRatingNumber(rating = averageRating)
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Gradient Background Decoration
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                ModernCompanyTheme.GradientStart.copy(alpha = 0.1f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Star rating display
-            StarRatingDisplay(rating = averageRating)
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Total reviews with animation
-            AnimatedReviewCount(count = totalReviews)
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Rating distribution bars
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                (5 downTo 1).forEach { star ->
-                    AnimatedRatingBar(
-                        star = star,
-                        count = ratingDistribution[star] ?: 0,
-                        total = totalReviews
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Reviews",
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ModernCompanyTheme.TextPrimary
+                        )
+                    )
+
+                    Surface(
+                        shape = CircleShape,
+                        color = ModernCompanyTheme.PrimaryBlue.copy(alpha = 0.1f),
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                tint = ModernCompanyTheme.StarGold,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Large animated rating number
+                AnimatedRatingNumber(rating = averageRating)
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Star rating display
+                EnhancedStarRating(rating = averageRating)
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Total reviews with animation
+                AnimatedReviewCount(count = totalReviews)
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Rating distribution bars
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    (5 downTo 1).forEach { star ->
+                        EnhancedRatingBar(
+                            star = star,
+                            count = ratingDistribution[star] ?: 0,
+                            total = totalReviews
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EnhancedCalendarCard(
+    events: List<CalendarEventModel>,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(300)
+        isVisible = true
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0.9f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "calendar_scale"
+    )
+
+    val currentTime = System.currentTimeMillis()
+    val upcomingEvents = events
+        .filter { it.endTimeMillis > currentTime }
+        .sortedBy { it.startTimeMillis }
+        .take(3)
+
+    Card(
+        modifier = modifier
+            .height(280.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable {
+                context.startActivity(Intent(context, CalendarActivity::class.java))
+            }
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(20.dp),
+                spotColor = ModernCompanyTheme.AccentBlue.copy(alpha = 0.15f)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = ModernCompanyTheme.CardBackground
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Gradient Background Decoration
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                ModernCompanyTheme.AccentBlue.copy(alpha = 0.08f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Upcoming Events",
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ModernCompanyTheme.TextPrimary
+                        )
+                    )
+
+                    Surface(
+                        shape = CircleShape,
+                        color = ModernCompanyTheme.AccentBlue.copy(alpha = 0.1f),
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.calendaricon),
+                                contentDescription = null,
+                                tint = ModernCompanyTheme.AccentBlue,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (upcomingEvents.isEmpty()) {
+                    // Empty state with animation
+                    EmptyCalendarState()
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        upcomingEvents.forEachIndexed { index, event ->
+                            EnhancedEventItem(
+                                event = event,
+                                index = index
+                            )
+                        }
+
+                        if (events.size > 3) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "View all events",
+                                style = TextStyle(
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = ModernCompanyTheme.AccentBlue
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        context.startActivity(
+                                            Intent(context, CalendarActivity::class.java)
+                                        )
+                                    },
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyCalendarState() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Surface(
+            modifier = Modifier.size(60.dp),
+            shape = CircleShape,
+            color = ModernCompanyTheme.SurfaceLight
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.calendaricon),
+                    contentDescription = null,
+                    tint = ModernCompanyTheme.TextSecondary.copy(alpha = 0.5f),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "No upcoming events",
+            style = TextStyle(
+                fontSize = 14.sp,
+                color = ModernCompanyTheme.TextSecondary,
+                fontWeight = FontWeight.Medium
+            )
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = "Your schedule is clear!",
+            style = TextStyle(
+                fontSize = 12.sp,
+                color = ModernCompanyTheme.TextSecondary.copy(alpha = 0.7f)
+            )
+        )
+    }
+}
+
+@Composable
+fun EnhancedEventItem(
+    event: CalendarEventModel,
+    index: Int
+) {
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(index * 80L)
+        isVisible = true
+    }
+
+    val offsetX by animateDpAsState(
+        targetValue = if (isVisible) 0.dp else 20.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "event_offset"
+    )
+
+    val alpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 400),
+        label = "event_alpha"
+    )
+
+    val startTime = SimpleDateFormat("MMM dd, h:mm a", Locale.getDefault())
+        .format(java.util.Date(event.startTimeMillis))
+    val eventColor = Color(android.graphics.Color.parseColor(event.colorHex))
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .offset(x = offsetX)
+            .graphicsLayer { this.alpha = alpha },
+        shape = RoundedCornerShape(12.dp),
+        color = ModernCompanyTheme.SurfaceLight,
+        tonalElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Color indicator with pulse animation
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(eventColor)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = event.title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ModernCompanyTheme.TextPrimary,
+                    maxLines = 1
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.DateRange,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = ModernCompanyTheme.TextSecondary
+                    )
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    Text(
+                        text = startTime,
+                        fontSize = 11.sp,
+                        color = ModernCompanyTheme.TextSecondary,
+                        maxLines = 1
                     )
                 }
             }
@@ -292,25 +756,23 @@ fun AnimatedRatingNumber(rating: Double) {
 
     val animatedRating by animateFloatAsState(
         targetValue = targetRating.toFloat(),
-        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
         label = "rating"
     )
 
     Text(
         text = String.format("%.1f", animatedRating),
         style = TextStyle(
-            fontSize = 44.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black,
+            fontSize = 48.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = ModernCompanyTheme.TextPrimary,
             letterSpacing = (-1).sp
         )
     )
 }
 
 @Composable
-fun StarRatingDisplay(rating: Double) {
-    val starColor = Color(0xFFFFD700) // Gold color
-
+fun EnhancedStarRating(rating: Double) {
     Row(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
@@ -328,12 +790,12 @@ fun StarRatingDisplay(rating: Double) {
 
             AnimatedStar(
                 fillPercentage = fillPercentage,
-                color = starColor,
+                color = ModernCompanyTheme.StarGold,
                 index = index
             )
 
             if (index < 4) {
-                Spacer(modifier = Modifier.width(2.dp))
+                Spacer(modifier = Modifier.width(4.dp))
             }
         }
     }
@@ -348,7 +810,7 @@ fun AnimatedStar(
     var isVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        delay(index * 50L)
+        delay(index * 80L)
         isVisible = true
     }
 
@@ -363,7 +825,7 @@ fun AnimatedStar(
 
     Box(
         modifier = Modifier
-            .size(20.dp)
+            .size(22.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -373,7 +835,7 @@ fun AnimatedStar(
             imageVector = Icons.Default.Star,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            tint = Color(0xFFE8E8E8)
+            tint = ModernCompanyTheme.BorderLight
         )
 
         if (fillPercentage > 0f) {
@@ -403,41 +865,39 @@ fun AnimatedReviewCount(count: Int) {
 
     val animatedCount by animateIntAsState(
         targetValue = targetCount,
-        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
         label = "count"
     )
 
     Text(
-        text = String.format("%,d", animatedCount),
+        text = "${String.format("%,d", animatedCount)} reviews",
         style = TextStyle(
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Normal,
-            color = Color.Gray,
-            letterSpacing = 0.sp
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = ModernCompanyTheme.TextSecondary
         )
     )
 }
 
 @Composable
-fun AnimatedRatingBar(
+fun EnhancedRatingBar(
     star: Int,
     count: Int,
     total: Int
 ) {
     val percentage = if (total > 0) (count.toFloat() / total.toFloat()) else 0f
-    val barColor = Color(0xFFFFD700) // Gold color
 
     var animateBar by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        delay((6 - star) * 80L)
+        delay((6 - star) * 100L)
         animateBar = true
     }
 
     val animatedPercentage by animateFloatAsState(
         targetValue = if (animateBar) percentage else 0f,
         animationSpec = tween(
-            durationMillis = 600,
+            durationMillis = 800,
             easing = FastOutSlowInEasing
         ),
         label = "bar_percentage"
@@ -446,42 +906,109 @@ fun AnimatedRatingBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(14.dp),
+            .height(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = "$star",
             style = TextStyle(
-                fontSize = 14.sp,
-                color = Color.Black,
-                fontWeight = FontWeight.Medium
+                fontSize = 12.sp,
+                color = ModernCompanyTheme.TextPrimary,
+                fontWeight = FontWeight.SemiBold
             ),
-            modifier = Modifier.width(10.dp)
+            modifier = Modifier.width(12.dp)
         )
 
-        Spacer(modifier = Modifier.width(6.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
         Box(
             modifier = Modifier
                 .weight(1f)
                 .height(6.dp)
                 .background(
-                    color = Color(0xFFE8E8E8),
+                    color = ModernCompanyTheme.SurfaceLight,
                     shape = RoundedCornerShape(3.dp)
                 )
         ) {
-            // Show bar only if there's actual percentage
             if (animatedPercentage > 0) {
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
                         .fillMaxWidth(animatedPercentage.coerceIn(0f, 1f))
                         .background(
-                            color = barColor,
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    ModernCompanyTheme.StarGold,
+                                    ModernCompanyTheme.StarGold.copy(alpha = 0.8f)
+                                )
+                            ),
                             shape = RoundedCornerShape(3.dp)
                         )
                 )
             }
         }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Text(
+            text = "$count",
+            style = TextStyle(
+                fontSize = 11.sp,
+                color = ModernCompanyTheme.TextSecondary,
+                fontWeight = FontWeight.Medium
+            ),
+            modifier = Modifier.width(24.dp),
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+@Composable
+fun EmptyStateJobsPlaceholder() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Surface(
+            modifier = Modifier.size(80.dp),
+            shape = CircleShape,
+            color = ModernCompanyTheme.SurfaceLight
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.jobpost),
+                    contentDescription = null,
+                    tint = ModernCompanyTheme.TextSecondary.copy(alpha = 0.5f),
+                    modifier = Modifier.size(36.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(
+            text = "No jobs posted yet",
+            style = TextStyle(
+                fontSize = 18.sp,
+                color = ModernCompanyTheme.TextPrimary,
+                fontWeight = FontWeight.SemiBold
+            )
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Start posting jobs to find the best talent",
+            style = TextStyle(
+                fontSize = 14.sp,
+                color = ModernCompanyTheme.TextSecondary,
+                textAlign = TextAlign.Center
+            )
+        )
     }
 }
