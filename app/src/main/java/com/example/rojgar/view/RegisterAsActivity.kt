@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -206,6 +207,7 @@ fun RegisterBody() {
                 AccountTypeCard(
                     title = "Job Seeker",
                     description = "Find your dream job and grow your career",
+                    tag = "jobSeeker",
                     icon = R.drawable.employee,
                     iconColor = ModernRegisterTheme.JobSeekerGreen,
                     gradientColors = listOf(
@@ -227,6 +229,7 @@ fun RegisterBody() {
                 AccountTypeCard(
                     title = "Company",
                     description = "Hire top talent and build your team",
+                    tag = "company",
                     icon = R.drawable.office,
                     iconColor = ModernRegisterTheme.CompanyPurple,
                     gradientColors = listOf(
@@ -348,6 +351,7 @@ fun RegisterBody() {
 fun AccountTypeCard(
     title: String,
     description: String,
+    tag: String = "",
     icon: Int,
     iconColor: Color,
     gradientColors: List<Color>,
@@ -388,6 +392,7 @@ fun AccountTypeCard(
         modifier = Modifier
             .fillMaxWidth()
             .height(140.dp)
+            .testTag(tag)
             .offset(y = offsetY)
             .alpha(alpha)
             .scale(scale),

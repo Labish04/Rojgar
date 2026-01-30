@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -206,6 +207,7 @@ fun SignUpCompanyBody() {
                         value = companyName,
                         onValueChange = { companyName = it },
                         label = "Company Name",
+                        tag = "companyName",
                         leadingIcon = R.drawable.office,
                         delay = 200
                     )
@@ -217,6 +219,7 @@ fun SignUpCompanyBody() {
                         value = phoneNumber,
                         onValueChange = { phoneNumber = it },
                         label = "Contact Number",
+                        tag = "phoneNumber",
                         leadingIcon = R.drawable.phoneiconoutlined,
                         delay = 300
                     )
@@ -228,6 +231,7 @@ fun SignUpCompanyBody() {
                         value = email,
                         onValueChange = { email = it },
                         label = "Business Email",
+                        tag = "email",
                         leadingIcon = R.drawable.email,
                         delay = 400
                     )
@@ -239,6 +243,7 @@ fun SignUpCompanyBody() {
                         value = password,
                         onValueChange = { password = it },
                         label = "Password",
+                        tag = "password",
                         leadingIcon = R.drawable.outline_lock_24,
                         isPassword = true,
                         showPassword = showPassword,
@@ -253,6 +258,7 @@ fun SignUpCompanyBody() {
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it },
                         label = "Confirm Password",
+                        tag = "confirmPassword",
                         leadingIcon = R.drawable.outline_lock_24,
                         isPassword = true,
                         showPassword = showConfirmPassword,
@@ -269,6 +275,7 @@ fun SignUpCompanyBody() {
             // Sign Up Button
             EnhancedCompanyButton(
                 text = "Create Company Account",
+                tag = "signup",
                 isLoading = isLoading,
                 onClick = {
                     if (companyName.isEmpty() || phoneNumber.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
@@ -406,6 +413,7 @@ fun SignUpCompanyBody() {
 fun EnhancedCompanyButton(
     text: String,
     isLoading: Boolean,
+    tag: String = "",
     onClick: () -> Unit,
     delay: Int = 0
 ) {
@@ -433,6 +441,7 @@ fun EnhancedCompanyButton(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
+            .testTag(tag)
             .height(62.dp)
             .scale(scale)
             .alpha(alpha),

@@ -239,6 +239,7 @@ fun JobSeekerSignUpScreen() {
                         value = fullName,
                         onValueChange = { fullName = it },
                         label = "Full Name",
+                        tag = "fullName",
                         leadingIcon = R.drawable.user,
                         delay = 200
                     )
@@ -250,6 +251,7 @@ fun JobSeekerSignUpScreen() {
                         value = phoneNumber,
                         onValueChange = { phoneNumber = it },
                         label = "Phone Number",
+                        tag = "phoneNumber",
                         leadingIcon = R.drawable.phoneiconoutlined,
                         delay = 300
                     )
@@ -261,6 +263,7 @@ fun JobSeekerSignUpScreen() {
                         value = email,
                         onValueChange = { email = it },
                         label = "Email Address",
+                        tag = "email",
                         leadingIcon = R.drawable.email,
                         delay = 400
                     )
@@ -272,6 +275,7 @@ fun JobSeekerSignUpScreen() {
                         value = password,
                         onValueChange = { password = it },
                         label = "Password",
+                        tag = "password",
                         leadingIcon = R.drawable.outline_lock_24,
                         isPassword = true,
                         showPassword = showPassword,
@@ -286,6 +290,7 @@ fun JobSeekerSignUpScreen() {
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it },
                         label = "Confirm Password",
+                        tag = "confirmPassword",
                         leadingIcon = R.drawable.outline_lock_24,
                         isPassword = true,
                         showPassword = showConfirmPassword,
@@ -303,6 +308,7 @@ fun JobSeekerSignUpScreen() {
             // Sign Up Button
             EnhancedButton(
                 text = "Create Account",
+                tag = "signup",
                 isLoading = isLoading,
                 onClick = {
                     if (fullName.isEmpty() || phoneNumber.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
