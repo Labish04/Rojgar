@@ -27,6 +27,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -60,7 +61,13 @@ import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date
+import com.example.rojgar.repository.ChatRepositoryImpl
+import com.example.rojgar.repository.GroupChatRepositoryImpl
+import com.example.rojgar.viewmodel.ChatViewModel
+import com.example.rojgar.viewmodel.NotificationViewModel
+import com.example.rojgar.model.UserType
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompanyHomeScreenBody(company: CompanyModel? = null){
     val context = LocalContext.current
@@ -71,6 +78,10 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
     val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl(context)) }
     val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl(context)) }
 
+    // Add Chat and Notification ViewModels
+    val chatViewModel = remember { ChatViewModel(ChatRepositoryImpl(context), GroupChatRepositoryImpl()) }
+    val notificationViewModel = remember { NotificationViewModel(userType = UserType.COMPANY) }
+
     val companyId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
     val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
 
@@ -79,6 +90,11 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
     val companyDetails by companyViewModel.companyDetails.observeAsState(company)
     val events by calendarViewModel.events.observeAsState(emptyList())
     val applications by applicationViewModel.applications.observeAsState(emptyList())
+
+    // Add Chat and Notification states
+    val chatRooms by chatViewModel.chatRooms.observeAsState(emptyList())
+    val unreadNotificationCount by notificationViewModel.unreadCount.collectAsState()
+    val unreadMessageCount = chatRooms.count { it.unreadCount > 0 }
 
     // For demo purposes - you can connect these to actual data later
     val activeJobs = remember { mutableStateOf(0) }
@@ -108,27 +124,40 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        ModernLoginTheme.SurfaceLight,
-                        ModernLoginTheme.IceBlue
-                    )
-                )
+    // Load chat rooms for company
+    LaunchedEffect(companyId) {
+        if (companyId.isNotEmpty()) {
+            chatViewModel.loadChatRooms(companyId)
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            CompanyTopAppBar(
+                company = companyDetails,
+                unreadNotificationCount = unreadNotificationCount,
+                unreadMessageCount = unreadMessageCount,
+                onNotificationClick = {
+                    val intent = Intent(context, NotificationActivity::class.java).apply {
+                        putExtra("USER_TYPE", "COMPANY")
+                    }
+                    context.startActivity(intent)
+                },
+                onMessageClick = {
+                    val intent = Intent(context, MessageActivity::class.java)
+                    context.startActivity(intent)
+                }
             )
-    ) {
+        },
+        containerColor = ModernLoginTheme.SurfaceLight
+    ) { paddingValues ->
         // Scrollable Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .padding(paddingValues)
         ) {
-            // Add space for the floating top bar
-            Spacer(modifier = Modifier.height(72.dp))
-
             Spacer(modifier = Modifier.height(16.dp))
 
             // Greeting Section
@@ -198,160 +227,164 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(84.dp))
         }
-
-        // Floating Top Bar - stays fixed at the top
-        EnhancedCompanyTopBar(
-            companyName = companyDetails?.companyName ?: "Company",
-            companyProfileImage = companyDetails?.companyProfileImage ?: "",
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.TopCenter)
-        )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EnhancedCompanyTopBar(
-    companyName: String,
-    companyProfileImage: String,
-    modifier: Modifier = Modifier
+fun CompanyTopAppBar(
+    company: CompanyModel?,
+    unreadNotificationCount: Int,
+    unreadMessageCount: Int,
+    onNotificationClick: () -> Unit,
+    onMessageClick: () -> Unit
 ) {
-    val context = LocalContext.current
+    var scale by remember { mutableStateOf(1f) }
 
-    Surface(
-        modifier = modifier,
-        color = Color(0xFF1976D2), // Brighter, more vibrant blue
-        shadowElevation = 4.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Profile and Name Section
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+    LaunchedEffect(Unit) {
+        while (true) {
+            scale = 1.1f
+            delay(1000)
+            scale = 1f
+            delay(1000)
+        }
+    }
+
+    TopAppBar(
+        title = {
+            Column {
+                Text(
+                    "Let's find top talent today!",
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        color = ModernLoginTheme.TextSecondary,
+                        fontWeight = FontWeight.Normal
+                    )
+                )
+                Text(
+                    company?.companyName ?: "Company",
+                    style = TextStyle(
+                        fontSize = 18.sp,
+                        color = ModernLoginTheme.TextPrimary,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        },
+        navigationIcon = {
+            Box(
+                modifier = Modifier
+                    .padding(start = 16.dp)
+                    .size(48.dp)
             ) {
-                // Profile Picture
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                        .background(Color.White),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (companyProfileImage.isNotEmpty()) {
-                        AsyncImage(
-                            model = companyProfileImage,
-                            contentDescription = "Company Profile",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
+                if (company?.companyProfileImage?.isNotEmpty() == true) {
+                    AsyncImage(
+                        model = company.companyProfileImage,
+                        contentDescription = "Company Profile",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        ModernLoginTheme.LightBlue,
+                                        ModernLoginTheme.PrimaryBlue
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = companyName.firstOrNull()?.uppercase() ?: "C",
+                            text = company?.companyName?.firstOrNull()?.toString()?.uppercase() ?: "C",
                             style = TextStyle(
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Blue
+                                color = ModernLoginTheme.White
                             )
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                // Company Name and Subtitle
-                Column {
-                    Text(
-                        text = "Hi, $companyName!",
-                        style = TextStyle(
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "Let's find top talent today",
-                        style = TextStyle(
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
-                    )
-                }
             }
-
-            // Action Icons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+        },
+        actions = {
+            // Messages Icon with Badge
+            Box(
+                modifier = Modifier.padding(end = 8.dp)
             ) {
-                // Chat Icon with Badge
-                Box {
-                    IconButton(
-                        onClick = {
-                            val intent = Intent(context, MessageActivity::class.java)
-                            context.startActivity(intent)
-                        },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.chat),
-                            contentDescription = "Messages",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    // Badge
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFFF5252))
-                            .align(Alignment.TopEnd)
+                IconButton(onClick = onMessageClick) {
+                    Icon(
+                        imageVector = Icons.Outlined.Send,
+                        contentDescription = "Messages",
+                        tint = ModernLoginTheme.TextPrimary
                     )
                 }
-
-                // Notification Icon with Badge
-                Box {
-                    IconButton(
-                        onClick = {
-                            val intent = Intent(context, NotificationActivity::class.java).apply {
-                                putExtra("USER_TYPE", "COMPANY")
-                            }
-                            context.startActivity(intent)
-                        },
-                        modifier = Modifier.size(40.dp)
+                if (unreadMessageCount > 0) {
+                    Badge(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = (-4).dp, y = 4.dp)
+                            .scale(scale),
+                        containerColor = Color(0xFFEF4444),
+                        contentColor = ModernLoginTheme.White
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.notification),
-                            contentDescription = "Notifications",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
+                        Text(
+                            text = if (unreadMessageCount > 9) "9+" else unreadMessageCount.toString(),
+                            style = TextStyle(
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         )
                     }
-                    // Badge
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFFF5252))
-                            .align(Alignment.TopEnd)
-                    )
                 }
             }
-        }
-    }
+
+            // Notifications Icon with Badge
+            Box(
+                modifier = Modifier.padding(end = 16.dp)
+            ) {
+                IconButton(onClick = onNotificationClick) {
+                    Icon(
+                        imageVector = Icons.Outlined.Notifications,
+                        contentDescription = "Notifications",
+                        tint = ModernLoginTheme.TextPrimary
+                    )
+                }
+                if (unreadNotificationCount > 0) {
+                    Badge(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = (-4).dp, y = 4.dp)
+                            .scale(scale),
+                        containerColor = Color(0xFFEF4444),
+                        contentColor = ModernLoginTheme.White
+                    ) {
+                        Text(
+                            text = if (unreadNotificationCount > 9) "9+" else unreadNotificationCount.toString(),
+                            style = TextStyle(
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = ModernLoginTheme.White,
+            titleContentColor = ModernLoginTheme.TextPrimary
+        )
+    )
 }
 
 @Composable
@@ -510,29 +543,42 @@ fun RecentApplicationItem(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top
         ) {
-            // User Avatar
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                ModernLoginTheme.PrimaryBlue,
-                                ModernLoginTheme.PrimaryBlue.copy(alpha = 0.7f)
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = application.jobSeekerName.firstOrNull()?.uppercase() ?: "A",
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+            // User Avatar - UPDATED TO SHOW PROFILE IMAGE
+            if (application.jobSeekerProfile.isNotEmpty()) {
+                // Show profile image if available
+                AsyncImage(
+                    model = application.jobSeekerProfile,
+                    contentDescription = "Applicant Profile",
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
                 )
+            } else {
+                // Fallback to gradient with initial
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    ModernLoginTheme.PrimaryBlue,
+                                    ModernLoginTheme.PrimaryBlue.copy(alpha = 0.7f)
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = application.jobSeekerName.firstOrNull()?.uppercase() ?: "A",
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))

@@ -354,7 +354,7 @@ fun JobPostListScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(100.dp))
             }
         }
     }

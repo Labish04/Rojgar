@@ -204,7 +204,7 @@ fun AnalyticsScreen(viewModel: AnalyticsViewModel, companyId: String) {
                     }
                 }
                 // Bottom spacer
-                item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(32.dp)) }
+                item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(82.dp)) }
             }
         }
     }
