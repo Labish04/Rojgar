@@ -157,8 +157,8 @@ fun CalendarBody() {
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFFAFCEFC),
-                            Color(0xFF5594FA)
+                            ModernLoginTheme.SurfaceLight,
+                            ModernLoginTheme.IceBlue
                         )
                     )
                 )
@@ -167,55 +167,63 @@ fun CalendarBody() {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(20.dp)
             ) {
-                Row(
+                // Enhanced Top Bar
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    color = Color(0xFF1976D2),
+                    shadowElevation = 4.dp
                 ) {
-                    IconButton(
-                        onClick = { (context as? ComponentActivity)?.finish() },
+                    Row(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f))
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                            contentDescription = "Back",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                        IconButton(
+                            onClick = { (context as? ComponentActivity)?.finish() },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f))
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                                contentDescription = "Back",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Text(
+                            "Calendar",
+                            style = TextStyle(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 24.sp,
+                                color = Color.White
+                            )
                         )
+                        
+                        Spacer(modifier = Modifier.weight(1f))
                     }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Text(
-                        "Calendar",
-                        style = TextStyle(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 28.sp,
-                            color = Color.White
-                        )
-                    )
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Calendar Card
-                Card(
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(24.dp),
-                            spotColor = Color.Black.copy(alpha = 0.25f)
-                        ),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White
-                    )
+                        .fillMaxSize()
+                        .padding(20.dp)
                 ) {
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Calendar Card
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                    ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -475,7 +483,7 @@ fun CalendarBody() {
                         text = "Events for $currentMonthName $currentYear",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = Color(0xFF1976D2)
                     )
 
                     if (events.isNotEmpty()) {
@@ -489,8 +497,8 @@ fun CalendarBody() {
                                 )
                             },
                             colors = AssistChipDefaults.assistChipColors(
-                                containerColor = Color.White.copy(alpha = 0.2f),
-                                labelColor = Color.White
+                                containerColor = Color(0xFF1976D2).copy(alpha = 0.1f),
+                                labelColor = Color(0xFF1976D2)
                             )
                         )
                     }
@@ -505,8 +513,9 @@ fun CalendarBody() {
                         .weight(1f),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color.White.copy(alpha = 0.95f)
-                    )
+                        containerColor = Color.White
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     // Filter events for current month
                     val currentMonthEvents = events.filter { event ->
@@ -588,6 +597,7 @@ fun CalendarBody() {
                         }
                     }
                 }
+            }
             }
         }
 

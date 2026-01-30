@@ -27,7 +27,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -61,13 +60,20 @@ import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date
+import com.example.rojgar.viewmodel.NotificationViewModel
+import com.example.rojgar.viewmodel.ChatViewModel
+import com.example.rojgar.repository.NotificationRepoImpl
 import com.example.rojgar.repository.ChatRepositoryImpl
 import com.example.rojgar.repository.GroupChatRepositoryImpl
-import com.example.rojgar.viewmodel.ChatViewModel
-import com.example.rojgar.viewmodel.NotificationViewModel
 import com.example.rojgar.model.UserType
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.foundation.border
 
-@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun CompanyHomeScreenBody(company: CompanyModel? = null){
     val context = LocalContext.current
@@ -77,10 +83,8 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
     val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl(context)) }
     val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl(context)) }
-
-    // Add Chat and Notification ViewModels
+    val notificationViewModel = remember { NotificationViewModel(NotificationRepoImpl(), UserType.COMPANY) }
     val chatViewModel = remember { ChatViewModel(ChatRepositoryImpl(context), GroupChatRepositoryImpl()) }
-    val notificationViewModel = remember { NotificationViewModel(userType = UserType.COMPANY) }
 
     val companyId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
     val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
@@ -91,10 +95,9 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
     val events by calendarViewModel.events.observeAsState(emptyList())
     val applications by applicationViewModel.applications.observeAsState(emptyList())
 
-    // Add Chat and Notification states
+    val unreadNotificationCount by notificationViewModel.unreadCount.collectAsState(initial = 0)
     val chatRooms by chatViewModel.chatRooms.observeAsState(emptyList())
-    val unreadNotificationCount by notificationViewModel.unreadCount.collectAsState()
-    val unreadMessageCount = chatRooms.count { it.unreadCount > 0 }
+    val unreadMessageCount = remember(chatRooms) { chatRooms.sumOf { it.unreadCount } }
 
     // For demo purposes - you can connect these to actual data later
     val activeJobs = remember { mutableStateOf(0) }
@@ -115,6 +118,7 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
     LaunchedEffect(currentUserId) {
         if (currentUserId.isNotEmpty()) {
             calendarViewModel.observeAllEventsForUser(currentUserId)
+            chatViewModel.loadChatRooms(currentUserId)
         }
     }
 
@@ -124,49 +128,28 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
         }
     }
 
-    // Load chat rooms for company
-    LaunchedEffect(companyId) {
-        if (companyId.isNotEmpty()) {
-            chatViewModel.loadChatRooms(companyId)
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            CompanyTopAppBar(
-                company = companyDetails,
-                unreadNotificationCount = unreadNotificationCount,
-                unreadMessageCount = unreadMessageCount,
-                onNotificationClick = {
-                    val intent = Intent(context, NotificationActivity::class.java).apply {
-                        putExtra("USER_TYPE", "COMPANY")
-                    }
-                    context.startActivity(intent)
-                },
-                onMessageClick = {
-                    val intent = Intent(context, MessageActivity::class.java)
-                    context.startActivity(intent)
-                }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        ModernLoginTheme.SurfaceLight,
+                        ModernLoginTheme.IceBlue
+                    )
+                )
             )
-        },
-        containerColor = ModernLoginTheme.SurfaceLight
-    ) { paddingValues ->
+    ) {
         // Scrollable Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(paddingValues)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            // Add space for the floating top bar
+            Spacer(modifier = Modifier.height(72.dp))
 
-            // Greeting Section
-            GreetingSection(
-                companyName = companyDetails?.companyName ?: "Company",
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Search bar
             CompanySearchBar(
@@ -196,7 +179,14 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
                     applications = applications.sortedByDescending { it.appliedDate }.take(3),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
+                        .padding(horizontal = 20.dp),
+                    onApplicationClick = { application ->
+                        val intent = Intent(context, ApplicationActivity::class.java).apply {
+                            putExtra("JOB_POST_ID", application.postId)
+                            putExtra("COMPANY_ID", application.companyId)
+                        }
+                        context.startActivity(intent)
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -209,224 +199,229 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
                 reviews = reviews,
                 companyId = companyId,
                 companyName = companyDetails?.companyName ?: "Company",
+                reviewViewModel = reviewViewModel,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+        }
 
-            // Recent Reviews Section
-            if (reviews.isNotEmpty()) {
-                RecentReviewsSection(
-                    reviews = reviews.sortedByDescending { it.timestamp }.take(3),
-                    reviewViewModel = reviewViewModel,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
+        // Floating Top Bar - stays fixed at the top
+        EnhancedCompanyTopBar(
+            companyName = companyDetails?.companyName ?: "Company",
+            companyProfileImage = companyDetails?.companyProfileImage ?: "",
+            unreadMessageCount = unreadMessageCount,
+            unreadNotificationCount = unreadNotificationCount,
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
+        )
+    }
+}
+
+@Composable
+fun NotificationBadge(
+    count: Int,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = count > 0,
+        enter = scaleIn(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+        exit = scaleOut(animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+    ) {
+        val infiniteTransition = rememberInfiniteTransition()
+        val scale by infiniteTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.2f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1000),
+                repeatMode = RepeatMode.Reverse
+            )
+        )
+
+        Box(
+            modifier = modifier
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFFFF5252), Color(0xFFB71C1C))
+                    ),
+                    shape = CircleShape
                 )
-            }
-
-            Spacer(modifier = Modifier.height(84.dp))
+                .border(1.5.dp, Color.White, CircleShape)
+                .size(if (count > 99) 22.dp else 18.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = if (count > 99) "99+" else count.toString(),
+                color = Color.White,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompanyTopAppBar(
-    company: CompanyModel?,
-    unreadNotificationCount: Int,
-    unreadMessageCount: Int,
-    onNotificationClick: () -> Unit,
-    onMessageClick: () -> Unit
+fun EnhancedCompanyTopBar(
+    companyName: String,
+    companyProfileImage: String,
+    unreadMessageCount: Int = 0,
+    unreadNotificationCount: Int = 0,
+    modifier: Modifier = Modifier
 ) {
-    var scale by remember { mutableStateOf(1f) }
+    val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            scale = 1.1f
-            delay(1000)
-            scale = 1f
-            delay(1000)
-        }
-    }
-
-    TopAppBar(
-        title = {
-            Column {
-                Text(
-                    "Let's find top talent today!",
-                    style = TextStyle(
-                        fontSize = 12.sp,
-                        color = ModernLoginTheme.TextSecondary,
-                        fontWeight = FontWeight.Normal
-                    )
-                )
-                Text(
-                    company?.companyName ?: "Company",
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        color = ModernLoginTheme.TextPrimary,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        },
-        navigationIcon = {
-            Box(
-                modifier = Modifier
-                    .padding(start = 16.dp)
-                    .size(48.dp)
+    Surface(
+        modifier = modifier,
+        color = Color(0xFF1976D2), // Brighter, more vibrant blue
+        shadowElevation = 4.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Profile and Name Section
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
             ) {
-                if (company?.companyProfileImage?.isNotEmpty() == true) {
-                    AsyncImage(
-                        model = company.companyProfileImage,
-                        contentDescription = "Company Profile",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        ModernLoginTheme.LightBlue,
-                                        ModernLoginTheme.PrimaryBlue
-                                    )
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
+                // Profile Picture
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(Color.White),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (companyProfileImage.isNotEmpty()) {
+                        AsyncImage(
+                            model = companyProfileImage,
+                            contentDescription = "Company Profile",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
                         Text(
-                            text = company?.companyName?.firstOrNull()?.toString()?.uppercase() ?: "C",
+                            text = companyName.firstOrNull()?.uppercase() ?: "C",
                             style = TextStyle(
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = ModernLoginTheme.White
+                                color = Blue
                             )
                         )
                     }
                 }
-            }
-        },
-        actions = {
-            // Messages Icon with Badge
-            Box(
-                modifier = Modifier.padding(end = 8.dp)
-            ) {
-                IconButton(onClick = onMessageClick) {
-                    Icon(
-                        imageVector = Icons.Outlined.Send,
-                        contentDescription = "Messages",
-                        tint = ModernLoginTheme.TextPrimary
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Company Name and Subtitle
+                Column(horizontalAlignment = Alignment.Start) {
+                    val greeting = remember {
+                        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                        when (hour) {
+                            in 0..11 -> "Good Morning"
+                            in 12..16 -> "Good Afternoon"
+                            else -> "Good Evening"
+                        }
+                    }
+
+                    Text(
+                        text = "$greeting, $companyName !",
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                }
-                if (unreadMessageCount > 0) {
-                    Badge(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = (-4).dp, y = 4.dp)
-                            .scale(scale),
-                        containerColor = Color(0xFFEF4444),
-                        contentColor = ModernLoginTheme.White
-                    ) {
-                        Text(
-                            text = if (unreadMessageCount > 9) "9+" else unreadMessageCount.toString(),
-                            style = TextStyle(
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Let's find top talent today",
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = Color.White.copy(alpha = 0.9f)
                         )
-                    }
+                    )
                 }
             }
 
-            // Notifications Icon with Badge
-            Box(
-                modifier = Modifier.padding(end = 16.dp)
+            // Action Icons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onNotificationClick) {
-                    Icon(
-                        imageVector = Icons.Outlined.Notifications,
-                        contentDescription = "Notifications",
-                        tint = ModernLoginTheme.TextPrimary
-                    )
-                }
-                if (unreadNotificationCount > 0) {
-                    Badge(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = (-4).dp, y = 4.dp)
-                            .scale(scale),
-                        containerColor = Color(0xFFEF4444),
-                        contentColor = ModernLoginTheme.White
+                // Chat Icon with Badge
+                Box {
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(context, MessageActivity::class.java)
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.size(40.dp)
                     ) {
-                        Text(
-                            text = if (unreadNotificationCount > 9) "9+" else unreadNotificationCount.toString(),
-                            style = TextStyle(
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                        Icon(
+                            painter = painterResource(R.drawable.chat),
+                            contentDescription = "Messages",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
+                    // Badge
+                    NotificationBadge(
+                        count = unreadMessageCount,
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    )
+                }
+
+                // Notification Icon with Badge
+                Box {
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(context, NotificationActivity::class.java).apply {
+                                putExtra("USER_TYPE", "COMPANY")
+                            }
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.notification),
+                            contentDescription = "Notifications",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    // Badge
+                    NotificationBadge(
+                        count = unreadNotificationCount,
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    )
                 }
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = ModernLoginTheme.White,
-            titleContentColor = ModernLoginTheme.TextPrimary
-        )
-    )
-}
-
-@Composable
-fun GreetingSection(
-    companyName: String,
-    modifier: Modifier = Modifier
-) {
-    val greeting = remember {
-        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        when (hour) {
-            in 0..11 -> "Good Morning"
-            in 12..16 -> "Good Afternoon"
-            else -> "Good Evening"
         }
     }
-
-    Column(
-        modifier = modifier
-    ) {
-        Text(
-            text = greeting,
-            style = TextStyle(
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                color = ModernLoginTheme.TextSecondary
-            )
-        )
-        Text(
-            text = companyName,
-            style = TextStyle(
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = ModernLoginTheme.TextPrimary
-            )
-        )
-    }
 }
-
 @Composable
 fun RecentApplicationsCard(
     applications: List<ApplicationModel>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onApplicationClick: (ApplicationModel) -> Unit = {}
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -503,7 +498,8 @@ fun RecentApplicationsCard(
                 applications.forEachIndexed { index, application ->
                     RecentApplicationItem(
                         application = application,
-                        delay = index * 100L
+                        delay = index * 100L,
+                        onClick = { onApplicationClick(application) }
                     )
 
                     if (index < applications.lastIndex) {
@@ -523,7 +519,8 @@ fun RecentApplicationsCard(
 @Composable
 fun RecentApplicationItem(
     application: ApplicationModel,
-    delay: Long
+    delay: Long,
+    onClick: () -> Unit
 ) {
     var isVisible by remember { mutableStateOf(false) }
 
@@ -540,45 +537,34 @@ fun RecentApplicationItem(
         )
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() },
             verticalAlignment = Alignment.Top
         ) {
-            // User Avatar - UPDATED TO SHOW PROFILE IMAGE
-            if (application.jobSeekerProfile.isNotEmpty()) {
-                // Show profile image if available
-                AsyncImage(
-                    model = application.jobSeekerProfile,
-                    contentDescription = "Applicant Profile",
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                // Fallback to gradient with initial
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    ModernLoginTheme.PrimaryBlue,
-                                    ModernLoginTheme.PrimaryBlue.copy(alpha = 0.7f)
-                                )
+            // User Avatar
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                ModernLoginTheme.PrimaryBlue,
+                                ModernLoginTheme.PrimaryBlue.copy(alpha = 0.7f)
                             )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = application.jobSeekerName.firstOrNull()?.uppercase() ?: "A",
-                        style = TextStyle(
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
                         )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = application.jobSeekerName.firstOrNull()?.uppercase() ?: "A",
+                    style = TextStyle(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
-                }
+                )
             }
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -1125,6 +1111,7 @@ fun EnhancedReviewsRatingsCard(
     reviews: List<ReviewModel>,
     companyId: String,
     companyName: String,
+    reviewViewModel: ReviewViewModel,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -1239,6 +1226,81 @@ fun EnhancedReviewsRatingsCard(
                     }
                 }
             }
+
+            // Light gray divider line
+            Spacer(modifier = Modifier.height(20.dp))
+            Divider(
+                color = Color.LightGray.copy(alpha = 0.5f),
+                thickness = 1.dp,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Recent Reviews Section
+            val jobSeekerUsernames by reviewViewModel.jobSeekerUsernames.observeAsState(emptyMap())
+
+            // Section Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.RateReview,
+                        contentDescription = null,
+                        tint = ModernLoginTheme.PrimaryBlue,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Recent Reviews",
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ModernLoginTheme.TextPrimary
+                        )
+                    )
+                }
+
+                Text(
+                    text = "${reviews.size}",
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ModernLoginTheme.PrimaryBlue
+                    ),
+                    modifier = Modifier
+                        .background(
+                            color = ModernLoginTheme.PrimaryBlue.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Reviews List (showing only first 3)
+            reviews.take(3).forEachIndexed { index, review ->
+                RecentReviewItem(
+                    review = review,
+                    username = jobSeekerUsernames[review.userId] ?: "Job Seeker",
+                    reviewViewModel = reviewViewModel,
+                    delay = index * 100L
+                )
+
+                if (index < reviews.take(3).lastIndex) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Divider(
+                        color = ModernLoginTheme.TextSecondary.copy(alpha = 0.1f),
+                        thickness = 1.dp
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+            }
         }
     }
 }
@@ -1314,7 +1376,7 @@ fun AnimatedRatingNumber(rating: Double) {
         style = TextStyle(
             fontSize = 36.sp,
             fontWeight = FontWeight.Bold,
-            color = ModernLoginTheme.PrimaryBlue,
+            color = Color.Black,
             letterSpacing = (-1).sp
         )
     )
