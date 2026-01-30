@@ -43,6 +43,7 @@ import com.example.rojgar.model.NotificationModel
 import com.example.rojgar.model.NotificationType
 import com.example.rojgar.model.UserType
 import com.example.rojgar.viewmodel.NotificationViewModel
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
@@ -84,7 +85,22 @@ class NotificationActivity : ComponentActivity() {
             }
             NotificationType.MESSAGE -> {
                 // Navigate to messages
-                navigateToMessages()
+                val senderId = notification.data["senderId"] ?: ""
+                val senderName = notification.data["senderName"] ?: "User"
+                val senderImage = notification.data["senderImage"] ?: ""
+                val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+                if (senderId.isNotEmpty() && currentUserId.isNotEmpty()) {
+                    val intent = Intent(this, ChatActivity::class.java).apply {
+                        putExtra("receiverId", senderId)
+                        putExtra("receiverName", senderName)
+                        putExtra("receiverImage", senderImage)
+                        putExtra("currentUserId", currentUserId)
+                    }
+                    startActivity(intent)
+                } else {
+                    navigateToMessages()
+                }
             }
             NotificationType.EVENTS -> {
                 // Navigate to events/calendar
@@ -95,8 +111,21 @@ class NotificationActivity : ComponentActivity() {
                 navigateToJobs()
             }
             NotificationType.CANDIDATE_ALERT -> {
-                // Navigate to candidates list
-                navigateToProfile(userType)
+                // Navigate to job applications list (Company side)
+                val jobId = notification.data["jobId"] ?: ""
+                val companyId = notification.data["companyId"] ?: ""
+                val jobTitle = notification.data["jobTitle"] ?: "Job Applications"
+                
+                if (jobId.isNotEmpty() && companyId.isNotEmpty()) {
+                    val intent = Intent(this, ApplicationActivity::class.java).apply {
+                        putExtra("JOB_POST_ID", jobId)
+                        putExtra("COMPANY_ID", companyId)
+                        putExtra("JOB_TITLE", jobTitle)
+                    }
+                    startActivity(intent)
+                } else {
+                    navigateToProfile(userType)
+                }
             }
             NotificationType.SYSTEM -> {
                 // Navigate to settings or verification
@@ -456,7 +485,6 @@ fun AnimatedNotificationItem(
                     shape = RoundedCornerShape(20.dp),
                     spotColor = Color(0xFF4FC3F7).copy(alpha = 0.3f)
                 )
-                .clickable { onClick() }
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onPress = {
@@ -466,6 +494,9 @@ fun AnimatedNotificationItem(
                         },
                         onLongPress = {
                             showMenu = true
+                        },
+                        onTap = {
+                            onClick()
                         }
                     )
                 },
