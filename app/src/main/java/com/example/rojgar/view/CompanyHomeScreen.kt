@@ -60,6 +60,19 @@ import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date
+import com.example.rojgar.viewmodel.NotificationViewModel
+import com.example.rojgar.viewmodel.ChatViewModel
+import com.example.rojgar.repository.NotificationRepoImpl
+import com.example.rojgar.repository.ChatRepositoryImpl
+import com.example.rojgar.repository.GroupChatRepositoryImpl
+import com.example.rojgar.model.UserType
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.foundation.border
+
 
 @Composable
 fun CompanyHomeScreenBody(company: CompanyModel? = null){
@@ -70,6 +83,8 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
     val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl(context)) }
     val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl(context)) }
+    val notificationViewModel = remember { NotificationViewModel(NotificationRepoImpl(), UserType.COMPANY) }
+    val chatViewModel = remember { ChatViewModel(ChatRepositoryImpl(context), GroupChatRepositoryImpl()) }
 
     val companyId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
     val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
@@ -79,6 +94,10 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
     val companyDetails by companyViewModel.companyDetails.observeAsState(company)
     val events by calendarViewModel.events.observeAsState(emptyList())
     val applications by applicationViewModel.applications.observeAsState(emptyList())
+
+    val unreadNotificationCount by notificationViewModel.unreadCount.collectAsState(initial = 0)
+    val chatRooms by chatViewModel.chatRooms.observeAsState(emptyList())
+    val unreadMessageCount = remember(chatRooms) { chatRooms.sumOf { it.unreadCount } }
 
     // For demo purposes - you can connect these to actual data later
     val activeJobs = remember { mutableStateOf(0) }
@@ -99,6 +118,7 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
     LaunchedEffect(currentUserId) {
         if (currentUserId.isNotEmpty()) {
             calendarViewModel.observeAllEventsForUser(currentUserId)
+            chatViewModel.loadChatRooms(currentUserId)
         }
     }
 
@@ -129,15 +149,7 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
             // Add space for the floating top bar
             Spacer(modifier = Modifier.height(72.dp))
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Greeting Section
-            GreetingSection(
-                companyName = companyDetails?.companyName ?: "Company",
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Search bar
             CompanySearchBar(
@@ -167,7 +179,14 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
                     applications = applications.sortedByDescending { it.appliedDate }.take(3),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
+                        .padding(horizontal = 20.dp),
+                    onApplicationClick = { application ->
+                        val intent = Intent(context, ApplicationActivity::class.java).apply {
+                            putExtra("JOB_POST_ID", application.postId)
+                            putExtra("COMPANY_ID", application.companyId)
+                        }
+                        context.startActivity(intent)
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -180,23 +199,11 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
                 reviews = reviews,
                 companyId = companyId,
                 companyName = companyDetails?.companyName ?: "Company",
+                reviewViewModel = reviewViewModel,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Recent Reviews Section
-            if (reviews.isNotEmpty()) {
-                RecentReviewsSection(
-                    reviews = reviews.sortedByDescending { it.timestamp }.take(3),
-                    reviewViewModel = reviewViewModel,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                )
-            }
 
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -205,6 +212,8 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
         EnhancedCompanyTopBar(
             companyName = companyDetails?.companyName ?: "Company",
             companyProfileImage = companyDetails?.companyProfileImage ?: "",
+            unreadMessageCount = unreadMessageCount,
+            unreadNotificationCount = unreadNotificationCount,
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.TopCenter)
@@ -213,9 +222,58 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
 }
 
 @Composable
+fun NotificationBadge(
+    count: Int,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = count > 0,
+        enter = scaleIn(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+        exit = scaleOut(animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+    ) {
+        val infiniteTransition = rememberInfiniteTransition()
+        val scale by infiniteTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.2f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1000),
+                repeatMode = RepeatMode.Reverse
+            )
+        )
+
+        Box(
+            modifier = modifier
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFFFF5252), Color(0xFFB71C1C))
+                    ),
+                    shape = CircleShape
+                )
+                .border(1.5.dp, Color.White, CircleShape)
+                .size(if (count > 99) 22.dp else 18.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = if (count > 99) "99+" else count.toString(),
+                color = Color.White,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
 fun EnhancedCompanyTopBar(
     companyName: String,
     companyProfileImage: String,
+    unreadMessageCount: Int = 0,
+    unreadNotificationCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -269,9 +327,18 @@ fun EnhancedCompanyTopBar(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 // Company Name and Subtitle
-                Column {
+                Column(horizontalAlignment = Alignment.Start) {
+                    val greeting = remember {
+                        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                        when (hour) {
+                            in 0..11 -> "Good Morning"
+                            in 12..16 -> "Good Afternoon"
+                            else -> "Good Evening"
+                        }
+                    }
+
                     Text(
-                        text = "Hi, $companyName!",
+                        text = "$greeting, $companyName !",
                         style = TextStyle(
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -280,6 +347,9 @@ fun EnhancedCompanyTopBar(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     Text(
                         text = "Let's find top talent today",
                         style = TextStyle(
@@ -313,12 +383,9 @@ fun EnhancedCompanyTopBar(
                         )
                     }
                     // Badge
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFFF5252))
-                            .align(Alignment.TopEnd)
+                    NotificationBadge(
+                        count = unreadMessageCount,
+                        modifier = Modifier.align(Alignment.TopEnd)
                     )
                 }
 
@@ -341,59 +408,20 @@ fun EnhancedCompanyTopBar(
                         )
                     }
                     // Badge
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFFF5252))
-                            .align(Alignment.TopEnd)
+                    NotificationBadge(
+                        count = unreadNotificationCount,
+                        modifier = Modifier.align(Alignment.TopEnd)
                     )
                 }
             }
         }
     }
 }
-
-@Composable
-fun GreetingSection(
-    companyName: String,
-    modifier: Modifier = Modifier
-) {
-    val greeting = remember {
-        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        when (hour) {
-            in 0..11 -> "Good Morning"
-            in 12..16 -> "Good Afternoon"
-            else -> "Good Evening"
-        }
-    }
-
-    Column(
-        modifier = modifier
-    ) {
-        Text(
-            text = greeting,
-            style = TextStyle(
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                color = ModernLoginTheme.TextSecondary
-            )
-        )
-        Text(
-            text = companyName,
-            style = TextStyle(
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = ModernLoginTheme.TextPrimary
-            )
-        )
-    }
-}
-
 @Composable
 fun RecentApplicationsCard(
     applications: List<ApplicationModel>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onApplicationClick: (ApplicationModel) -> Unit = {}
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -470,7 +498,8 @@ fun RecentApplicationsCard(
                 applications.forEachIndexed { index, application ->
                     RecentApplicationItem(
                         application = application,
-                        delay = index * 100L
+                        delay = index * 100L,
+                        onClick = { onApplicationClick(application) }
                     )
 
                     if (index < applications.lastIndex) {
@@ -490,7 +519,8 @@ fun RecentApplicationsCard(
 @Composable
 fun RecentApplicationItem(
     application: ApplicationModel,
-    delay: Long
+    delay: Long,
+    onClick: () -> Unit
 ) {
     var isVisible by remember { mutableStateOf(false) }
 
@@ -507,7 +537,9 @@ fun RecentApplicationItem(
         )
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() },
             verticalAlignment = Alignment.Top
         ) {
             // User Avatar
@@ -1079,6 +1111,7 @@ fun EnhancedReviewsRatingsCard(
     reviews: List<ReviewModel>,
     companyId: String,
     companyName: String,
+    reviewViewModel: ReviewViewModel,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -1193,6 +1226,81 @@ fun EnhancedReviewsRatingsCard(
                     }
                 }
             }
+
+            // Light gray divider line
+            Spacer(modifier = Modifier.height(20.dp))
+            Divider(
+                color = Color.LightGray.copy(alpha = 0.5f),
+                thickness = 1.dp,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Recent Reviews Section
+            val jobSeekerUsernames by reviewViewModel.jobSeekerUsernames.observeAsState(emptyMap())
+
+            // Section Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.RateReview,
+                        contentDescription = null,
+                        tint = ModernLoginTheme.PrimaryBlue,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Recent Reviews",
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ModernLoginTheme.TextPrimary
+                        )
+                    )
+                }
+
+                Text(
+                    text = "${reviews.size}",
+                    style = TextStyle(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ModernLoginTheme.PrimaryBlue
+                    ),
+                    modifier = Modifier
+                        .background(
+                            color = ModernLoginTheme.PrimaryBlue.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Reviews List (showing only first 3)
+            reviews.take(3).forEachIndexed { index, review ->
+                RecentReviewItem(
+                    review = review,
+                    username = jobSeekerUsernames[review.userId] ?: "Job Seeker",
+                    reviewViewModel = reviewViewModel,
+                    delay = index * 100L
+                )
+
+                if (index < reviews.take(3).lastIndex) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Divider(
+                        color = ModernLoginTheme.TextSecondary.copy(alpha = 0.1f),
+                        thickness = 1.dp
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+            }
         }
     }
 }
@@ -1268,7 +1376,7 @@ fun AnimatedRatingNumber(rating: Double) {
         style = TextStyle(
             fontSize = 36.sp,
             fontWeight = FontWeight.Bold,
-            color = ModernLoginTheme.PrimaryBlue,
+            color = Color.Black,
             letterSpacing = (-1).sp
         )
     )

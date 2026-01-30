@@ -309,7 +309,7 @@ fun CompanyProfileBody(
                     )
                 )
         ) {
-            Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            Column(modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
                 Box(modifier = Modifier.fillMaxWidth().height(240.dp)) {
                     if (selectedCoverUri != null || displayedCoverUrl.isNotEmpty()) {
                         Image(
@@ -764,6 +764,7 @@ fun CompanyProfileBody(
                         )
                     ) {
                         Column(modifier = Modifier.fillMaxSize()) {
+                            Spacer(modifier = Modifier.height(50.dp))
                             Box(
                                 modifier = Modifier.fillMaxWidth().height(140.dp).background(
                                     Brush.horizontalGradient(
@@ -962,6 +963,7 @@ fun CompanyProfileBody(
                                     )
                                 }
                             }
+                            Spacer(modifier = Modifier.height(100.dp))
                         }
                     }
                 }

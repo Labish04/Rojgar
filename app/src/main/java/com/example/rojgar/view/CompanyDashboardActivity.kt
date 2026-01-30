@@ -204,7 +204,7 @@ fun CompanyDashboardBody(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding()
         ) {
             when (selectedIndex) {
                 0 -> CompanyHomeScreenBody(
