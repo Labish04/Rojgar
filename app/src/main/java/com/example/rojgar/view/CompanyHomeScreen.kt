@@ -74,6 +74,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.border
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompanyHomeScreenBody(company: CompanyModel? = null){
     val context = LocalContext.current
@@ -128,27 +129,46 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        ModernLoginTheme.SurfaceLight,
-                        ModernLoginTheme.IceBlue
+    Scaffold(
+        topBar = {
+            // Floating Top Bar - stays fixed at the top
+            EnhancedCompanyTopBar(
+                companyName = companyDetails?.companyName ?: "Company",
+                companyProfileImage = companyDetails?.companyProfileImage ?: "",
+                unreadMessageCount = unreadMessageCount,
+                unreadNotificationCount = unreadNotificationCount,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF1976D2),
+                                Color(0xFF2196F3),
+                                Color(0xFF42A5F5)
+                            )
+                        )
                     )
+                    .padding(top = 45.dp)
+            )
+        },
+        containerColor = Color.Transparent,
+        contentColor = Color.Transparent,
+        modifier = Modifier.background(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    ModernLoginTheme.SurfaceLight,
+                    ModernLoginTheme.IceBlue
                 )
             )
-    ) {
+        )
+    ) { innerPadding ->
         // Scrollable Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .padding(innerPadding)
         ) {
-            // Add space for the floating top bar
-            Spacer(modifier = Modifier.height(72.dp))
-
             Spacer(modifier = Modifier.height(24.dp))
 
             // Search bar
@@ -205,19 +225,8 @@ fun CompanyHomeScreenBody(company: CompanyModel? = null){
                     .padding(horizontal = 20.dp)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(80.dp))
         }
-
-        // Floating Top Bar - stays fixed at the top
-        EnhancedCompanyTopBar(
-            companyName = companyDetails?.companyName ?: "Company",
-            companyProfileImage = companyDetails?.companyProfileImage ?: "",
-            unreadMessageCount = unreadMessageCount,
-            unreadNotificationCount = unreadNotificationCount,
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.TopCenter)
-        )
     }
 }
 
@@ -280,7 +289,7 @@ fun EnhancedCompanyTopBar(
 
     Surface(
         modifier = modifier,
-        color = Color(0xFF1976D2), // Brighter, more vibrant blue
+        color = Color.Transparent,
         shadowElevation = 4.dp
     ) {
         Row(
@@ -376,7 +385,7 @@ fun EnhancedCompanyTopBar(
                         modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.chat),
+                            painter = painterResource(R.drawable.chat_filled),
                             contentDescription = "Messages",
                             tint = Color.White,
                             modifier = Modifier.size(24.dp)
@@ -401,7 +410,7 @@ fun EnhancedCompanyTopBar(
                         modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.notification),
+                            painter = painterResource(R.drawable.notification_filled),
                             contentDescription = "Notifications",
                             tint = Color.White,
                             modifier = Modifier.size(24.dp)
@@ -542,29 +551,48 @@ fun RecentApplicationItem(
                 .clickable { onClick() },
             verticalAlignment = Alignment.Top
         ) {
-            // User Avatar
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                ModernLoginTheme.PrimaryBlue,
-                                ModernLoginTheme.PrimaryBlue.copy(alpha = 0.7f)
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = application.jobSeekerName.firstOrNull()?.uppercase() ?: "A",
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+            // User Avatar - Fixed: Use jobSeekerProfile if available
+            if (application.jobSeekerProfile.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                ) {
+                    AsyncImage(
+                        model = application.jobSeekerProfile,
+                        contentDescription = "Applicant Profile",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                        placeholder = painterResource(R.drawable.profileemptypic),
+                        error = painterResource(R.drawable.profileemptypic)
                     )
-                )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    ModernLoginTheme.PrimaryBlue,
+                                    ModernLoginTheme.PrimaryBlue.copy(alpha = 0.7f)
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = application.jobSeekerName.firstOrNull()?.uppercase() ?: "A",
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
