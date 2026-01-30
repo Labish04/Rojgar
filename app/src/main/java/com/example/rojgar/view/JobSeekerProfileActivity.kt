@@ -485,7 +485,14 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                         // Right Side: Action Buttons
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IconButton(
-                                onClick = { /* share logic */ },
+                                onClick = {
+                                    val id = if (finalTargetJobSeekerId.isNotEmpty()) {
+                                        finalTargetJobSeekerId
+                                    } else {
+                                        currentUserId
+                                    }
+                                    shareProfile(context, id, jobSeekerState?.fullName ?: "User", jobSeekerState?.profession ?: "")
+                                },
                                 modifier = Modifier
                                     .shadow(4.dp, CircleShape)
                                     .background(Color.White.copy(alpha = 0.95f), CircleShape)
@@ -749,8 +756,14 @@ fun JobSeekerProfileBody(targetJobSeekerId: String = "") {
                         ) {
                             Button(
                                 onClick = {
-                                    Toast.makeText(context, "Message clicked", Toast.LENGTH_SHORT)
-                                        .show()
+                                    val intent = Intent(context, ChatActivity::class.java).apply {
+                                        putExtra("receiverId", finalTargetJobSeekerId)
+                                        putExtra("receiverName", jobSeekerState?.fullName ?: "Job Seeker")
+                                        putExtra("receiverImage", jobSeekerState?.profilePhoto ?: "")
+                                        putExtra("currentUserId", currentUserId)
+                                        putExtra("currentUserName", "User") // Will be fetched in ChatActivity
+                                    }
+                                    context.startActivity(intent)
                                 },
                                 shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier
