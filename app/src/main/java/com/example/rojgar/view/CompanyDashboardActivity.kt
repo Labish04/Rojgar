@@ -7,14 +7,25 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,7 +49,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -59,6 +74,7 @@ import com.example.rojgar.viewmodel.AnalyticsViewModel
 import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.JobSeekerViewModel
 import com.google.firebase.auth.FirebaseAuth
+
 
 class CompanyDashboardActivity : ComponentActivity() {
     lateinit var imageUtils: ImageUtils
@@ -107,6 +123,202 @@ class CompanyDashboardActivity : ComponentActivity() {
     }
 }
 
+data class NavItem(
+    val label: String,
+    val selectedIcon: Int,
+    val unselectedIcon: Int
+)
+
+@Composable
+fun ModernBottomNavigationBar(
+    items: List<NavItem>,
+    selectedIndex: Int,
+    onItemSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp)
+    ) {
+        // Glass morphism background with gradient
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp)
+                .shadow(
+                    elevation = 20.dp,
+                    shape = RoundedCornerShape(32.dp),
+                    spotColor = ModernLoginTheme.PrimaryBlue.copy(alpha = 0.3f)
+                ),
+            shape = RoundedCornerShape(32.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                ModernLoginTheme.GlassWhite,
+                                ModernLoginTheme.White.copy(alpha = 0.95f)
+                            )
+                        )
+                    )
+            ) {
+                // Subtle top border gradient
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    ModernLoginTheme.PrimaryBlue.copy(alpha = 0.3f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    items.forEachIndexed { index, item ->
+                        NavigationItem(
+                            item = item,
+                            isSelected = selectedIndex == index,
+                            onClick = { onItemSelected(index) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NavigationItem(
+    item: NavItem,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1f else 0.9f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+
+    val iconSize by animateDpAsState(
+        targetValue = if (isSelected) 28.dp else 24.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "iconSize"
+    )
+
+    val containerColor by animateColorAsState(
+        targetValue = if (isSelected) ModernLoginTheme.PrimaryBlue else Color.Transparent,
+        animationSpec = tween(durationMillis = 300),
+        label = "containerColor"
+    )
+
+    val iconTint by animateColorAsState(
+        targetValue = if (isSelected) ModernLoginTheme.White else ModernLoginTheme.TextSecondary,
+        animationSpec = tween(durationMillis = 300),
+        label = "iconTint"
+    )
+
+    val offsetY by animateDpAsState(
+        targetValue = if (isSelected) (-4).dp else 0.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "offsetY"
+    )
+
+    Box(
+        modifier = Modifier
+            .offset(y = offsetY)
+            .scale(scale)
+            .size(56.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(containerColor)
+            .clickable(
+                onClick = onClick,
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        // Animated glow effect when selected
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                ModernLoginTheme.PrimaryBlue.copy(alpha = 0.3f),
+                                Color.Transparent
+                            )
+                        ),
+                        shape = CircleShape
+                    )
+            )
+        }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                painter = painterResource(
+                    if (isSelected) item.selectedIcon else item.unselectedIcon
+                ),
+                contentDescription = item.label,
+                modifier = Modifier.size(iconSize),
+                tint = iconTint
+            )
+
+            // Animated label
+            if (isSelected) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = item.label,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = iconTint,
+                    modifier = Modifier.graphicsLayer(alpha = 0.9f)
+                )
+            }
+        }
+
+        // Ripple indicator dot
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = (-2).dp)
+                    .size(4.dp)
+                    .background(
+                        color = ModernLoginTheme.White,
+                        shape = CircleShape
+                    )
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompanyDashboardBody(
@@ -124,13 +336,6 @@ fun CompanyDashboardBody(
 
     val company = companyViewModel.companyDetails.observeAsState(initial = null)
 
-
-    data class NavItem(
-        val label: String,
-        val selectedIcon: Int,
-        val unselectedIcon: Int
-    )
-
     var selectedIndex by remember { mutableStateOf(0) }
 
     val listItem = listOf(
@@ -140,7 +345,7 @@ fun CompanyDashboardBody(
             unselectedIcon = R.drawable.home
         ),
         NavItem(
-            label = "Message",
+            label = "Analytics",
             selectedIcon = R.drawable.analysis_filled,
             unselectedIcon = R.drawable.analysis
         ),
@@ -150,14 +355,13 @@ fun CompanyDashboardBody(
             unselectedIcon = R.drawable.upload
         ),
         NavItem(
-            label = "Map",
+            label = "Profile",
             selectedIcon = R.drawable.profile_filled,
             unselectedIcon = R.drawable.profile
         )
     )
 
     LaunchedEffect(Unit) {
-
         // Get current user ID
         val currentUser = FirebaseAuth.getInstance().currentUser
         if (currentUser != null) {
@@ -168,38 +372,15 @@ fun CompanyDashboardBody(
         }
     }
 
-
     Scaffold(
+        containerColor = ModernLoginTheme.SurfaceLight,
         bottomBar = {
-            Surface(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(24.dp))
-                    .fillMaxWidth(),
-                color = Color.White,
-                shadowElevation = 10.dp
-            ) {
-                NavigationBar(
-                    containerColor = Color.Transparent
-                ) {
-                    listItem.forEachIndexed { index, item ->
-                        NavigationBarItem(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(
-                                        if (selectedIndex == index) item.selectedIcon else item.unselectedIcon
-                                    ),
-                                    contentDescription = item.label,
-                                    modifier = Modifier.size(25.dp)
-                                )
-                            },
-                            selected = selectedIndex == index,
-                            onClick = { selectedIndex = index }
-                        )
-                    }
-                }
-            }
+            ModernBottomNavigationBar(
+                items = listItem,
+                selectedIndex = selectedIndex,
+                onItemSelected = { selectedIndex = it }
+            )
         }
-
     ) { padding ->
         Column(
             modifier = Modifier

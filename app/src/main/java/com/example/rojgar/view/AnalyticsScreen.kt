@@ -64,147 +64,150 @@ fun AnalyticsScreen(viewModel: AnalyticsViewModel, companyId: String) {
     val categoryPerformance = viewModel.categoryPerformance.observeAsState()
     val errorMessage = viewModel.errorMessage.observeAsState()
 
-    // Handle blank companyId before loading
-    if (companyId.isBlank()) {
+    Scaffold { padding ->
+        // Handle blank companyId before loading
+        if (companyId.isBlank()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(AnalyticsTheme.SurfaceLight, AnalyticsTheme.IceBlue)
+                        )
+                    )
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = AnalyticsTheme.White)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(padding)
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Login Required",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AnalyticsTheme.TextPrimary
+                        )
+                        Text(
+                            text = "Please log in to view analytics",
+                            fontSize = 14.sp,
+                            color = AnalyticsTheme.TextSecondary
+                        )
+                    }
+                }
+            }
+        }
+
+        LaunchedEffect(companyId) {
+            viewModel.loadCompanyDashboard(companyId)
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(padding)
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(AnalyticsTheme.SurfaceLight, AnalyticsTheme.IceBlue)
                     )
                 )
-                .padding(16.dp),
-            contentAlignment = Alignment.Center
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = AnalyticsTheme.White)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+            if (loading.value) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Login Required",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AnalyticsTheme.TextPrimary
-                    )
-                    Text(
-                        text = "Please log in to view analytics",
-                        fontSize = 14.sp,
-                        color = AnalyticsTheme.TextSecondary
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        color = AnalyticsTheme.PrimaryBlue,
+                        strokeWidth = 4.dp
                     )
                 }
-            }
-        }
-        return
-    }
-
-    LaunchedEffect(companyId) {
-        viewModel.loadCompanyDashboard(companyId)
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(AnalyticsTheme.SurfaceLight, AnalyticsTheme.IceBlue)
-                )
-            )
-    ) {
-        if (loading.value) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(48.dp),
-                    color = AnalyticsTheme.PrimaryBlue,
-                    strokeWidth = 4.dp
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                // Header
-                item(key = "header") {
-                    AnimatedHeaderSection()
-                }
-
-                // Key Metrics Cards
-                item(key = "metrics_row") {
-                    companyProfile.value?.let { profile ->
-                        AnimatedKeyMetricsRow(profile, followersCount.value ?: 0)
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    // Header
+                    item(key = "header") {
+                        AnimatedHeaderSection()
                     }
-                }
 
-                // Performance Chart
-                item(key = "performance_chart") {
-                    conversionMetrics.value?.let { metrics ->
-                        PerformanceLineChart(metrics)
+                    // Key Metrics Cards
+                    item(key = "metrics_row") {
+                        companyProfile.value?.let { profile ->
+                            AnimatedKeyMetricsRow(profile, followersCount.value ?: 0)
+                        }
                     }
-                }
 
-                // Conversion Funnel
-                item(key = "conversion_funnel") {
-                    conversionMetrics.value?.let { metrics ->
-                        AnimatedConversionFunnel(metrics)
+                    // Performance Chart
+                    item(key = "performance_chart") {
+                        conversionMetrics.value?.let { metrics ->
+                            PerformanceLineChart(metrics)
+                        }
                     }
-                }
 
-                // Analytics Overview Cards
-                item(key = "overview_grid") {
-                    companyProfile.value?.let { profile ->
-                        AnalyticsOverviewGrid(profile)
+                    // Conversion Funnel
+                    item(key = "conversion_funnel") {
+                        conversionMetrics.value?.let { metrics ->
+                            AnimatedConversionFunnel(metrics)
+                        }
                     }
-                }
 
-                // Top Performing Jobs Chart
-                item(key = "top_jobs_chart") {
-                    val jobs = topJobs.value ?: emptyList()
-                    if (jobs.isNotEmpty()) {
-                        TopJobsBarChart(jobs = jobs)
-                    } else {
-                        EmptyDataCard(
-                            title = "Top Performing Jobs",
-                            hint = "Post jobs and receive applications to see analytics"
-                        )
+                    // Analytics Overview Cards
+                    item(key = "overview_grid") {
+                        companyProfile.value?.let { profile ->
+                            AnalyticsOverviewGrid(profile)
+                        }
                     }
-                }
 
-                // Category Performance
-                item(key = "category_performance") {
-                    val categories = categoryPerformance.value ?: emptyList()
-                    if (categories.isNotEmpty() && categories.any { it.totalApplications > 0 }) {
-                        CategoryPerformanceSection(categories)
-                    } else {
-                        EmptyDataCard(
-                            title = "Category Performance",
-                            hint = "Post jobs and receive applications to see analytics"
-                        )
+                    // Top Performing Jobs Chart
+                    item(key = "top_jobs_chart") {
+                        val jobs = topJobs.value ?: emptyList()
+                        if (jobs.isNotEmpty()) {
+                            TopJobsBarChart(jobs = jobs)
+                        } else {
+                            EmptyDataCard(
+                                title = "Top Performing Jobs",
+                                hint = "Post jobs and receive applications to see analytics"
+                            )
+                        }
                     }
-                }
 
-                // Detailed Job Cards
-                item(key = "detailed_jobs") {
-                    val jobs = topJobs.value ?: emptyList()
-                    if (jobs.isNotEmpty()) {
-                        DetailedJobPerformanceSection(jobs)
+                    // Category Performance
+                    item(key = "category_performance") {
+                        val categories = categoryPerformance.value ?: emptyList()
+                        if (categories.isNotEmpty() && categories.any { it.totalApplications > 0 }) {
+                            CategoryPerformanceSection(categories)
+                        } else {
+                            EmptyDataCard(
+                                title = "Category Performance",
+                                hint = "Post jobs and receive applications to see analytics"
+                            )
+                        }
                     }
+
+                    // Detailed Job Cards
+                    item(key = "detailed_jobs") {
+                        val jobs = topJobs.value ?: emptyList()
+                        if (jobs.isNotEmpty()) {
+                            DetailedJobPerformanceSection(jobs)
+                        }
+                    }
+                    // Bottom spacer
+                    item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(82.dp)) }
                 }
-                // Bottom spacer
-                item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(82.dp)) }
             }
         }
     }

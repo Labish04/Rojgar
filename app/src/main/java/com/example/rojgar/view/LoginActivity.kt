@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -418,6 +419,7 @@ fun LoginScreen(
                         value = email,
                         onValueChange = { email = it },
                         label = "Email Address",
+                        tag = "email",
                         leadingIcon = R.drawable.email,
                         delay = 400
                     )
@@ -429,6 +431,7 @@ fun LoginScreen(
                         value = password,
                         onValueChange = { password = it },
                         label = "Password",
+                        tag = "password",
                         leadingIcon = R.drawable.outline_lock_24,
                         isPassword = true,
                         showPassword = showPassword,
@@ -486,6 +489,7 @@ fun LoginScreen(
             // Enhanced Login Button
             EnhancedButton(
                 text = "Sign In",
+                tag = "login",
                 isLoading = isLoading,
                 onClick = {
                     if (email.isEmpty() || password.isEmpty()) {
@@ -799,6 +803,7 @@ fun GlassCard(
 @Composable
 fun EnhancedTextField(
     value: String,
+    tag: String = "",
     onValueChange: (String) -> Unit,
     label: String,
     leadingIcon: Int,
@@ -885,6 +890,7 @@ fun EnhancedTextField(
         modifier = Modifier
             .fillMaxWidth()
             .offset(y = offsetY)
+            .testTag(tag)
             .alpha(alpha),
         shape = RoundedCornerShape(20.dp),
         colors = OutlinedTextFieldDefaults.colors(
@@ -908,6 +914,7 @@ fun EnhancedTextField(
 @Composable
 fun EnhancedButton(
     text: String,
+    tag: String = "",
     isLoading: Boolean,
     onClick: () -> Unit,
     delay: Int = 0
@@ -945,6 +952,7 @@ fun EnhancedButton(
         modifier = Modifier
             .fillMaxWidth()
             .height(62.dp)
+            .testTag(tag)
             .scale(scale)
             .alpha(alpha),
         enabled = !isLoading,

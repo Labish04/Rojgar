@@ -6,13 +6,16 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -30,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -46,6 +50,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.rojgar.R
 import com.example.rojgar.model.*
 import com.example.rojgar.repository.*
+import com.example.rojgar.ui.theme.Blue
 import com.example.rojgar.ui.theme.White
 import com.example.rojgar.viewmodel.*
 import com.google.firebase.auth.FirebaseAuth
@@ -75,7 +80,7 @@ fun JobSeekerHomeScreenBody() {
     val trainingViewModel = remember { TrainingViewModel(TrainingRepoImpl()) }
     val languageViewModel = remember { LanguageViewModel(LanguageRepoImpl()) }
     val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl(context)) }
-    val notificationViewModel = remember { NotificationViewModel(userType = UserType.JOBSEEKER) }
+    val notificationViewModel = remember { NotificationViewModel(NotificationRepoImpl(), UserType.JOBSEEKER) }
     val chatViewModel = remember { ChatViewModel(ChatRepositoryImpl(context), GroupChatRepositoryImpl()) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
 
@@ -98,9 +103,9 @@ fun JobSeekerHomeScreenBody() {
     var isLoadingCompanies by remember { mutableStateOf(true) }
 
     // Notification and Message counts
-    val unreadNotificationCount by notificationViewModel.unreadCount.collectAsState()
+    val unreadNotificationCount by notificationViewModel.unreadCount.collectAsState(initial = 0)
     val chatRooms by chatViewModel.chatRooms.observeAsState(emptyList())
-    val unreadMessageCount = chatRooms.count { it.unreadCount > 0 }
+    val unreadMessageCount = remember(chatRooms) { chatRooms.sumOf { it.unreadCount } }
 
     var search by remember { mutableStateOf("") }
 
@@ -145,77 +150,117 @@ fun JobSeekerHomeScreenBody() {
         }
     }
 
+    // ADD THIS AT THE END OF THE IMPORTS SECTION:
+    // Add this import if not already present
+    // import androidx.compose.animation.core.*
+    // import androidx.compose.foundation.border
 
     Scaffold(
         topBar = {
-            ModernTopAppBar(
-                jobSeeker = jobSeeker,
-                unreadNotificationCount = unreadNotificationCount,
+            EnhancedJobSeekerTopBar(
+                jobSeekerName = jobSeeker?.fullName ?: "Job Seeker",
+                jobSeekerProfileImage = jobSeeker?.profilePhoto ?: "",
                 unreadMessageCount = unreadMessageCount,
-                onNotificationClick = {
-                    val intent = Intent(context, NotificationActivity::class.java).apply {
-                        putExtra("USER_TYPE", "JOBSEEKER")
-                    }
-                    context.startActivity(intent)
-                },
-                onMessageClick = {
-                    val intent = Intent(context, MessageActivity::class.java)
+                unreadNotificationCount = unreadNotificationCount,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF1976D2),
+                                Color(0xFF2196F3),
+                                Color(0xFF42A5F5)
+                            )
+                        )
+                    )
+                    .padding(top = 45.dp)
+            )
+        },
+        containerColor = Color.Transparent,
+        contentColor = Color.Transparent,
+        modifier = Modifier.background(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    ModernLoginTheme.SurfaceLight,
+                    ModernLoginTheme.IceBlue
+                )
+            )
+        )
+    ) { padding ->
+        // Scrollable Content
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(padding)
+        ) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Search bar - Use CompanySearchBar style
+            JobSeekerSearchBar(
+                value = search,
+                onValueChange = { search = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Animated Header Section
+            AnimatedHeaderSection(
+                jobSeeker = jobSeeker,
+                completionPercentage = calculateProfileCompletion(
+                    jobSeeker ?: JobSeekerModel(),
+                    objective, languages, education, experience,
+                    portfolio, userPreference, references, skills, training
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Calendar Card Section
+            CalendarCardSection(
+                events = events,
+                onCalendarClick = {
+                    val intent = Intent(context, CalendarActivity::class.java)
                     context.startActivity(intent)
                 }
             )
-        },
-        containerColor = ModernLoginTheme.SurfaceLight
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            // Search Bar
-            item {
-                ModernSearchBar(
-                    value = search,
-                    onValueChange = { search = it },
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
-                )
-            }
 
-            // Animated Header Section
-            item {
-                AnimatedHeaderSection(
-                    jobSeeker = jobSeeker,
-                    completionPercentage = calculateProfileCompletion(
-                        jobSeeker ?: JobSeekerModel(),
-                        objective, languages, education, experience,
-                        portfolio, userPreference, references, skills, training
-                    )
-                )
-            }
-
-            // Calendar Card Section
-            item {
-                CalendarCardSection(
-                    events = events,
-                    onCalendarClick = {
-                        val intent = Intent(context, CalendarActivity::class.java)
-                        context.startActivity(intent)
-                    }
-                )
-            }
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Recommended Jobs Section
-            item {
-                SectionHeader(
-                    title = "Recommended For You",
-                    subtitle = "${recommendedJobs.size} jobs match your profile",
-                    icon = Icons.Filled.Email
+            if (recommendedJobs.isNotEmpty()) {
+                Text(
+                    text = "Recommended For You",
+                    style = TextStyle(
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = ModernLoginTheme.TextPrimary
+                    ),
+                    modifier = Modifier.padding(horizontal = 20.dp)
                 )
-            }
 
-            // Job Cards
-            if (isLoadingCompanies) {
-                item {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "${recommendedJobs.size} jobs match your profile",
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = ModernLoginTheme.TextSecondary
+                    ),
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Job Cards
+                if (isLoadingCompanies) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -224,29 +269,28 @@ fun JobSeekerHomeScreenBody() {
                     ) {
                         CircularProgressIndicator()
                     }
-                }
-            } else {
-                items(recommendedJobs.take(5)) { job ->
-                    val company = companies[job.companyId]
+                } else {
+                    recommendedJobs.take(5).forEach { job ->
+                        val company = companies[job.companyId]
 
-                    RecommendedJobCard(
-                        job = job,
-                        companyName = company?.companyName ?: "Unknown Company",
-                        companyProfile = company?.companyProfileImage ?: "",
-                        onClick = {
-                            val intent = Intent(context, JobApplyActivity::class.java).apply {
-                                putExtra("POST_ID", job.postId)
-                                putExtra("COMPANY_ID", job.companyId)
+                        RecommendedJobCard(
+                            job = job,
+                            companyName = company?.companyName ?: "Unknown Company",
+                            companyProfile = company?.companyProfileImage ?: "",
+                            onClick = {
+                                val intent = Intent(context, JobApplyActivity::class.java).apply {
+                                    putExtra("POST_ID", job.postId)
+                                    putExtra("COMPANY_ID", job.companyId)
+                                }
+                                context.startActivity(intent)
                             }
-                            context.startActivity(intent)
-                        }
-                    )
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                 }
-            }
 
-            // View All Jobs Button
-            if (recommendedJobs.size > 5) {
-                item {
+                // View All Jobs Button
+                if (recommendedJobs.size > 5) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -279,177 +323,235 @@ fun JobSeekerHomeScreenBody() {
                 }
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Profile Completion Tips
-            item {
-                ProfileCompletionTips(
-                    jobSeeker = jobSeeker,
-                    skills = skills,
-                    experience = experience
-                )
-            }
+            ProfileCompletionTips(
+                jobSeeker = jobSeeker,
+                skills = skills,
+                experience = experience
+            )
+
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModernTopAppBar(
-    jobSeeker: JobSeekerModel?,
-    unreadNotificationCount: Int,
-    unreadMessageCount: Int,
-    onNotificationClick: () -> Unit,
-    onMessageClick: () -> Unit
+fun EnhancedJobSeekerTopBar(
+    jobSeekerName: String,
+    jobSeekerProfileImage: String,
+    unreadMessageCount: Int = 0,
+    unreadNotificationCount: Int = 0,
+    modifier: Modifier = Modifier
 ) {
-    var scale by remember { mutableStateOf(1f) }
+    val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            scale = 1.1f
-            delay(1000)
-            scale = 1f
-            delay(1000)
-        }
-    }
-
-    TopAppBar(
-        title = {
-            Column {
-                Text(
-                    "Let's find your dream job!",
-                    style = TextStyle(
-                        fontSize = 12.sp,
-                        color = ModernLoginTheme.TextSecondary,
-                        fontWeight = FontWeight.Normal
-                    )
-                )
-                Text(
-                    jobSeeker?.fullName ?: "User",
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        color = ModernLoginTheme.TextPrimary,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        },
-        navigationIcon = {
-            Box(
-                modifier = Modifier
-                    .padding(start = 16.dp)
-                    .size(48.dp)
+    Surface(
+        modifier = modifier,
+        color = Color.Transparent,
+        shadowElevation = 4.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Profile and Name Section
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
             ) {
-                if (jobSeeker?.profilePhoto?.isNotEmpty() == true) {
-                    AsyncImage(
-                        model = jobSeeker.profilePhoto,
-                        contentDescription = "Profile",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        ModernLoginTheme.LightBlue,
-                                        ModernLoginTheme.PrimaryBlue
-                                    )
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
+                // Profile Picture
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(Color.White),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (jobSeekerProfileImage.isNotEmpty()) {
+                        AsyncImage(
+                            model = jobSeekerProfileImage,
+                            contentDescription = "Job Seeker Profile",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
                         Text(
-                            text = jobSeeker?.fullName?.firstOrNull()?.toString()?.uppercase() ?: "U",
+                            text = jobSeekerName.firstOrNull()?.uppercase() ?: "J",
                             style = TextStyle(
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = ModernLoginTheme.White
+                                color = Blue
                             )
                         )
                     }
                 }
-            }
-        },
-        actions = {
-            // Messages Icon with Badge
-            Box(
-                modifier = Modifier.padding(end = 8.dp)
-            ) {
-                IconButton(onClick = onMessageClick) {
-                    Icon(
-                        imageVector = Icons.Outlined.Send,
-                        contentDescription = "Messages",
-                        tint = ModernLoginTheme.TextPrimary
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Job Seeker Name and Subtitle
+                Column(horizontalAlignment = Alignment.Start) {
+                    val greeting = remember {
+                        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                        when (hour) {
+                            in 0..11 -> "Good Morning"
+                            in 12..16 -> "Good Afternoon"
+                            else -> "Good Evening"
+                        }
+                    }
+
+                    Text(
+                        text = "$greeting, $jobSeekerName!",
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                }
-                if (unreadMessageCount > 0) {
-                    Badge(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = (-4).dp, y = 4.dp)
-                            .scale(scale),
-                        containerColor = Color(0xFFEF4444),
-                        contentColor = ModernLoginTheme.White
-                    ) {
-                        Text(
-                            text = if (unreadMessageCount > 9) "9+" else unreadMessageCount.toString(),
-                            style = TextStyle(
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Let's find your dream job today",
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = Color.White.copy(alpha = 0.9f)
                         )
-                    }
+                    )
                 }
             }
 
-            // Notifications Icon with Badge
-            Box(
-                modifier = Modifier.padding(end = 16.dp)
+            // Action Icons
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onNotificationClick) {
-                    Icon(
-                        imageVector = Icons.Outlined.Notifications,
-                        contentDescription = "Notifications",
-                        tint = ModernLoginTheme.TextPrimary
-                    )
-                }
-                if (unreadNotificationCount > 0) {
-                    Badge(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = (-4).dp, y = 4.dp)
-                            .scale(scale),
-                        containerColor = Color(0xFFEF4444),
-                        contentColor = ModernLoginTheme.White
+                // Chat Icon with Badge
+                Box {
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(context, MessageActivity::class.java)
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.size(40.dp)
                     ) {
-                        Text(
-                            text = if (unreadNotificationCount > 9) "9+" else unreadNotificationCount.toString(),
-                            style = TextStyle(
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                        Icon(
+                            painter = painterResource(R.drawable.chat_filled),
+                            contentDescription = "Messages",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
+                    // Badge
+                    NotificationBadge(
+                        count = unreadMessageCount,
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    )
+                }
+
+                // Notification Icon with Badge
+                Box {
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(context, NotificationActivity::class.java).apply {
+                                putExtra("USER_TYPE", "JOBSEEKER")
+                            }
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.notification_filled),
+                            contentDescription = "Notifications",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    // Badge
+                    NotificationBadge(
+                        count = unreadNotificationCount,
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    )
                 }
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = ModernLoginTheme.White,
-            titleContentColor = ModernLoginTheme.TextPrimary
-        )
-    )
+        }
+    }
 }
 
+// Add this function for Job Seeker Search Bar (similar to CompanySearchBar)
+@Composable
+fun JobSeekerSearchBar(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+
+    Box(
+        modifier = modifier
+            .height(56.dp)
+            .clickable {
+                context.startActivity(
+                    Intent(context, JobSeekerSearchActivity::class.java)
+                )
+            }
+    ) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = ModernLoginTheme.White
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                readOnly = true,
+                enabled = false,
+                placeholder = {
+                    Text(
+                        "Search jobs, companies...",
+                        fontSize = 14.sp,
+                        color = ModernLoginTheme.TextSecondary
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.searchicon),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = ModernLoginTheme.PrimaryBlue
+                    )
+                },
+                shape = RoundedCornerShape(20.dp),
+                colors = TextFieldDefaults.colors(
+                    disabledContainerColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+            )
+        }
+    }
+}
+
+// Update the AnimatedHeaderSection to accept a modifier parameter
 @Composable
 fun AnimatedHeaderSection(
     jobSeeker: JobSeekerModel?,
-    completionPercentage: Int
+    completionPercentage: Int,
+    modifier: Modifier = Modifier
 ) {
     var visible by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
@@ -466,9 +568,7 @@ fun AnimatedHeaderSection(
     }
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+        modifier = modifier
             .scale(scale),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
