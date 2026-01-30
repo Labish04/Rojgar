@@ -111,14 +111,6 @@ fun ChatbotScreen(
     ) {
         Scaffold(
             containerColor = Color.Transparent,
-            topBar = {
-                ChatbotTopBar(
-                    onBackClick = {
-                        (context as? ComponentActivity)?.finish()
-                    },
-                    onClearClick = { viewModel.clearChat() }
-                )
-            },
             bottomBar = {
                 ChatInputBar(
                     messageInput = messageInput,
@@ -138,6 +130,12 @@ fun ChatbotScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
+                ChatbotTopBar(
+                    onBackClick = {
+                        (context as? ComponentActivity)?.finish()
+                    },
+                    onClearClick = { viewModel.clearChat() }
+                )
                 // Error display
                 state.error?.let { error ->
                     ErrorBanner(
@@ -229,7 +227,7 @@ fun ChatbotTopBar(
                         )
                     )
                     Text(
-                        text = "Powered by Gemini",
+                        text = "Ask me anything...",
                         style = TextStyle(
                             fontSize = 12.sp,
                             color = AccentCyan,
