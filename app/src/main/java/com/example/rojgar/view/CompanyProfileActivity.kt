@@ -67,6 +67,8 @@ import com.example.rojgar.repository.ReportRepoImpl
 import com.example.rojgar.viewmodel.JobViewModel
 import kotlinx.coroutines.launch
 import java.util.Date
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DatabaseReference
 
 class CompanyProfileActivity : ComponentActivity() {
     lateinit var imageUtils: ImageUtils
@@ -147,6 +149,7 @@ fun CompanyProfileBody(
     var currentUserRole by remember { mutableStateOf<String?>(null) }
     val currentUserId = remember { authRepo.getCurrentUserId() }
     var currentUserName by remember { mutableStateOf("") }
+    val database = remember { FirebaseDatabase.getInstance() }
 
     val company = companyViewModel.companyDetails.observeAsState(initial = null)
     val isFollowingState by followViewModel.isFollowing.observeAsState(initial = false)
@@ -586,11 +589,38 @@ fun CompanyProfileBody(
 
                             OutlinedButton(
                                 onClick = {
-                                    Toast.makeText(
-                                        context,
-                                        "Message feature coming soon!",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    // Get current user details
+                                    val currentUserId = authRepo.getCurrentUserId()
+                                    val currentUserRole = currentUserRole ?: ""
+
+                                    if (currentUserId.isEmpty()) {
+                                        Toast.makeText(context, "Please login to send messages", Toast.LENGTH_SHORT).show()
+                                        return@OutlinedButton
+                                    }
+
+                                    // Fetch current user's name based on role
+                                    val userRef = database.getReference(
+                                        if (currentUserRole == "JobSeeker") "JobSeekers" else "Companys"
+                                    ).child(currentUserId)
+
+                                    userRef.child(if (currentUserRole == "JobSeeker") "fullName" else "companyName")
+                                        .get()
+                                        .addOnSuccessListener { snapshot ->
+                                            val currentUserName = snapshot.getValue(String::class.java) ?: "User"
+
+                                            // Navigate to ChatActivity
+                                            val intent = Intent(context, ChatActivity::class.java).apply {
+                                                putExtra("receiverId", companyId)
+                                                putExtra("receiverName", company.value?.companyName ?: "")
+                                                putExtra("receiverImage", company.value?.companyProfileImage ?: "")
+                                                putExtra("currentUserId", currentUserId)
+                                                putExtra("currentUserName", currentUserName)
+                                            }
+                                            context.startActivity(intent)
+                                        }
+                                        .addOnFailureListener {
+                                            Toast.makeText(context, "Failed to fetch user info", Toast.LENGTH_SHORT).show()
+                                        }
                                 },
                                 modifier = Modifier.weight(1f).height(52.dp)
                                     .shadow(4.dp, RoundedCornerShape(16.dp)),
