@@ -10,9 +10,6 @@ import com.example.rojgar.model.JobAnalyticsMetrics
 import com.example.rojgar.model.ConversionMetrics
 import com.example.rojgar.model.CategoryPerformance
 import com.example.rojgar.model.CompanyProfileAnalytics
-import com.example.rojgar.repository.AnalyticsRepo
-import com.example.rojgar.repository.FollowRepo
-import com.example.rojgar.repository.ApplicationRepo
 import com.example.rojgar.repository.AnalyticsRepoImpl
 import com.example.rojgar.repository.FollowRepoImpl
 import com.example.rojgar.repository.ApplicationRepoImpl
@@ -22,13 +19,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class AnalyticsViewModel @JvmOverloads constructor(
-    application: Application,
-    private val repo: AnalyticsRepo = AnalyticsRepoImpl(),
-    private val followRepo: FollowRepo = FollowRepoImpl(application),
-    private val applicationRepo: ApplicationRepo = ApplicationRepoImpl(context = application)
-) : AndroidViewModel(application) {
+class AnalyticsViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val repo: AnalyticsRepoImpl = AnalyticsRepoImpl()
+    private val followRepo: FollowRepoImpl = FollowRepoImpl(getApplication())
+    private val applicationRepo: ApplicationRepoImpl = ApplicationRepoImpl(context = getApplication())
     private var currentCompanyId: String = ""
     private val viewModelJob = Job()
     private val viewModelScope = CoroutineScope(Dispatchers.Main + viewModelJob)
