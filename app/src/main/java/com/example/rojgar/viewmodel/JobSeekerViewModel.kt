@@ -40,6 +40,16 @@ class JobSeekerViewModel(val repo: JobSeekerRepo) {
         repo.addJobSeekerToDatabase(jobSeekerId, model, callback)
     }
 
+    fun signInWithGoogle(
+        idToken: String,
+        fullName: String,
+        email: String,
+        photoUrl: String,
+        callback: (Boolean, String, String?) -> Unit
+    ) {
+        repo.signInWithGoogle(idToken, fullName, email, photoUrl, callback)
+    }
+
     fun getCurrentJobSeeker(): FirebaseUser? {
         return repo.getCurrentJobSeeker()
     }
@@ -171,6 +181,18 @@ class JobSeekerViewModel(val repo: JobSeekerRepo) {
         repo.uploadProfileImage(context, imageUri, callback)
     }
 
+    fun uploadVideo(
+        context: Context,
+        videoUri: Uri,
+        callback: (String?) -> Unit
+    ) {
+        repo.uploadVideo(context, videoUri, callback)
+    }
+
+    fun getVideoThumbnailUrl(videoUrl: String): String {
+        return repo.getVideoThumbnailUrl(videoUrl)
+    }
+
     fun getJobSeekerDetails(jobSeekerId: String) {
         repo.getJobSeekerDetails(jobSeekerId) { success, message, fetchedJobSeeker ->
             if (success && fetchedJobSeeker != null) {
@@ -181,11 +203,19 @@ class JobSeekerViewModel(val repo: JobSeekerRepo) {
         }
     }
 
-    // NEW METHOD: Get job seeker by email
     fun getJobSeekerByEmail(
         email: String,
         callback: (Boolean, String, JobSeekerModel?) -> Unit
     ) {
         repo.getJobSeekerByEmail(email, callback)
     }
+
+    fun incrementProfileView(
+        jobSeekerId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        repo.incrementProfileView(jobSeekerId, callback)
+    }
+
+
 }

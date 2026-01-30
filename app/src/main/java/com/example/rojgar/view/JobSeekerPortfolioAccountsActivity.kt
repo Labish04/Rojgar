@@ -6,6 +6,9 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -21,7 +24,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +45,7 @@ import com.example.rojgar.viewmodel.PortfolioViewModel
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.text.style.TextOverflow
+import kotlinx.coroutines.delay
 
 class JobSeekerPortfolioAccountsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,7 +56,8 @@ class JobSeekerPortfolioAccountsActivity : ComponentActivity() {
         }
     }
 }
-@OptIn(ExperimentalMaterial3Api::class)
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun JobSeekerPortfolioAccountsBody() {
     val context = LocalContext.current
@@ -81,6 +89,10 @@ fun JobSeekerPortfolioAccountsBody() {
     var showDeleteAlert by remember { mutableStateOf(false) }
     var portfolioToDelete by remember { mutableStateOf<PortfolioModel?>(null) }
 
+    var topBarVisible by remember { mutableStateOf(false) }
+    var showContent by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(true) }
+
     // Show Toast messages
     LaunchedEffect(error) {
         error?.let {
@@ -102,9 +114,14 @@ fun JobSeekerPortfolioAccountsBody() {
 
     // Load portfolios on initial composition
     LaunchedEffect(Unit) {
+        delay(100)
+        topBarVisible = true
         if (jobSeekerId.isNotEmpty()) {
             portfolioViewModel.getPortfoliosByJobSeekerId(jobSeekerId)
+            delay(500)
         }
+        isLoading = false
+        showContent = true
     }
 
     // Function to reset form
@@ -174,7 +191,7 @@ fun JobSeekerPortfolioAccountsBody() {
     }
 
     // Loading indicator
-    if (loading) {
+    if (isLoading) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -182,470 +199,563 @@ fun JobSeekerPortfolioAccountsBody() {
             contentAlignment = Alignment.Center
         ) {
             CircularProgressIndicator(
-                color = DarkBlue2,
-                modifier = Modifier.size(50.dp)
+                color = Color(0xFF2196F3),
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(48.dp)
             )
         }
     }
 
     // Delete Dialog
     if (showDeleteAlert && portfolioToDelete != null) {
-        AlertDialog(
-            onDismissRequest = {
+        ModernPortfolioDeleteDialog(
+            onDismiss = {
                 showDeleteAlert = false
                 portfolioToDelete = null
             },
-            title = {
-                Text(
-                    text = "Delete Portfolio",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color.Red
-                )
-            },
-            text = {
-                Text(
-                    text = "Are you sure you want to delete ${portfolioToDelete?.accountName}?",
-                    fontSize = 16.sp
-                )
-            },
-            confirmButton = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Cancel Button
-                    TextButton(
-                        onClick = {
-                            showDeleteAlert = false
-                            portfolioToDelete = null
-                        },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = Color.Gray
-                        )
-                    ) {
-                        Text("Cancel")
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Delete Button
-                    Button(
-                        onClick = {
-                            portfolioToDelete?.let { portfolio ->
-                                portfolioViewModel.deletePortfolio(
-                                    portfolio.portfolioId,
-                                    jobSeekerId
-                                ) { success, message ->
-                                    if (success) {
-                                        showDetailDialog = false
-                                    }
-                                }
-                            }
-                            showDeleteAlert = false
-                            portfolioToDelete = null
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Red
-                        )
-                    ) {
-                        Text("Delete", color = Color.White)
+            onConfirm = {
+                portfolioToDelete?.let { portfolio ->
+                    portfolioViewModel.deletePortfolio(
+                        portfolio.portfolioId,
+                        jobSeekerId
+                    ) { success, message ->
+                        if (success) {
+                            showDetailDialog = false
+                        }
                     }
                 }
-            }
+                showDeleteAlert = false
+                portfolioToDelete = null
+            },
+            portfolioName = portfolioToDelete?.accountName ?: ""
         )
     }
 
     Scaffold(
         topBar = {
-            Card(
-                modifier = Modifier
-                    .height(140.dp)
-                    .padding(top = 55.dp)
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(5.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkBlue2),
+            AnimatedVisibility(
+                visible = topBarVisible,
+                enter = slideInVertically(
+                    initialOffsetY = { -it },
+                    animationSpec = tween(600, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(600))
             ) {
-                Row(
+                Card(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 15.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .height(140.dp)
+                        .padding(top = 55.dp)
+                        .fillMaxWidth()
+                        .shadow(8.dp, RoundedCornerShape(5.dp)),
+                    shape = RoundedCornerShape(5.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2196F3)),
                 ) {
-                    IconButton(onClick = {
-                        val intent = Intent(context, JobSeekerProfileDetailsActivity::class.java)
-                        context.startActivity(intent)
-                    }) {
-                        Icon(
-                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(30.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 15.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        var backPressed by remember { mutableStateOf(false) }
+                        val backScale by animateFloatAsState(
+                            targetValue = if (backPressed) 0.85f else 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
                         )
+
+                        IconButton(
+                            onClick = {
+                                backPressed = true
+                                (context as? ComponentActivity)?.finish()
+                            },
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = backScale
+                                scaleY = backScale
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
+
+                        var titleVisible by remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) {
+                            delay(300)
+                            titleVisible = true
+                        }
+
+                        AnimatedVisibility(
+                            visible = titleVisible,
+                            enter = fadeIn(animationSpec = tween(500)) +
+                                    slideInHorizontally(
+                                        initialOffsetX = { it / 2 },
+                                        animationSpec = tween(500, easing = FastOutSlowInEasing)
+                                    ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Portfolio Accounts",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.size(48.dp))
                     }
-                    Spacer(modifier = Modifier.width(80.dp))
-                    Text(
-                        "Portfolio Accounts",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
                 }
             }
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Blue)
-        ) {
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                "Which project or task highlights your professional strengths the most?",
-                fontWeight = FontWeight.Normal,
-                fontSize = 16.sp,
-                color = Color.Black,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            if (portfolios.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Spacer(modifier = Modifier.height(40.dp))
-
-                    Icon(
-                        painter = painterResource(id = R.drawable.noexperience),
-                        contentDescription = "no links",
-                        tint = Color.Gray,
-                        modifier = Modifier.size(110.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFE3F2FD),
+                            Color(0xFFBBDEFB),
+                            Color(0xFF90CAF9)
+                        )
                     )
+                )
+        ) {
+            AnimatedVisibility(
+                visible = showContent,
+                enter = fadeIn(animationSpec = tween(600))
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    var headerVisible by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        delay(200)
+                        headerVisible = true
+                    }
+
+                    AnimatedVisibility(
+                        visible = headerVisible,
+                        enter = slideInVertically(
+                            initialOffsetY = { -it / 2 },
+                            animationSpec = tween(500, easing = FastOutSlowInEasing)
+                        ) + fadeIn(animationSpec = tween(500))
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp)
+                                .shadow(8.dp, RoundedCornerShape(20.dp)),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    modifier = Modifier.size(56.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = Color(0xFF2196F3).copy(alpha = 0.12f)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.linkicon),
+                                        contentDescription = "Portfolio",
+                                        tint = Color(0xFF2196F3),
+                                        modifier = Modifier.padding(14.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Portfolio & Links",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF263238)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Showcase your online presence",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFF78909C)
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Text(
-                        "Your Portfolio Section is currently empty. Tap the + button to add your portfolio links.",
-                        textAlign = TextAlign.Center,
-                        color = Color.DarkGray,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
+                    if (portfolios.isEmpty()) {
+                        var emptyStateVisible by remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) {
+                            delay(400)
+                            emptyStateVisible = true
+                        }
 
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 24.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Button(
-                            onClick = { openAddForm() },
-                            shape = RoundedCornerShape(25.dp),
-                            modifier = Modifier
-                                .width(170.dp)
-                                .height(50.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = DarkBlue2,
-                                contentColor = Color.White
-                            )
+                        AnimatedVisibility(
+                            visible = emptyStateVisible,
+                            enter = fadeIn(animationSpec = tween(600)) +
+                                    scaleIn(
+                                        initialScale = 0.8f,
+                                        animationSpec = tween(600, easing = FastOutSlowInEasing)
+                                    )
                         ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.addexperience),
-                                contentDescription = "Add",
-                                modifier = Modifier.size(26.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(text = "Add", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Surface(
+                                    modifier = Modifier.size(120.dp),
+                                    shape = RoundedCornerShape(60.dp),
+                                    color = Color.White.copy(alpha = 0.5f)
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.noexperience),
+                                            contentDescription = "no portfolio",
+                                            tint = Color(0xFF78909C),
+                                            modifier = Modifier.size(70.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                Text(
+                                    "No Portfolio Added Yet",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF263238)
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                    "Add your portfolio links to showcase your work",
+                                    textAlign = TextAlign.Center,
+                                    color = Color(0xFF78909C),
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.padding(horizontal = 32.dp)
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(horizontal = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(vertical = 8.dp)
+                        ) {
+                            items(portfolios) { portfolio ->
+                                ModernPortfolioCard(
+                                    portfolio = portfolio,
+                                    onClick = {
+                                        selectedPortfolio = portfolio
+                                        showDetailDialog = true
+                                    },
+                                    onEditClick = { openEditForm(portfolio) },
+                                    onDeleteClick = { deletePortfolio(portfolio) }
+                                )
+                            }
                         }
                     }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(horizontal = 20.dp, vertical = 0.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp)
-                ) {
-                    items(portfolios) { portfolio ->
-                        PortfolioCard(
-                            portfolio = portfolio,
-                            onClick = {
-                                selectedPortfolio = portfolio
-                                showDetailDialog = true
-                            },
-                            onEditClick = { openEditForm(portfolio) },
-                            onDeleteClick = { deletePortfolio(portfolio) }
-                        )
-                    }
-                }
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 24.dp, top = 16.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Button(
-                        onClick = { openAddForm() },
-                        shape = RoundedCornerShape(25.dp),
-                        modifier = Modifier
-                            .width(170.dp)
-                            .height(50.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DarkBlue2,
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.addexperience),
-                            contentDescription = "Add",
-                            modifier = Modifier.size(26.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(text = "Add", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    var buttonVisible by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        delay(600)
+                        buttonVisible = true
                     }
+
+                    AnimatedVisibility(
+                        visible = buttonVisible,
+                        enter = slideInVertically(
+                            initialOffsetY = { it / 2 },
+                            animationSpec = tween(500, easing = FastOutSlowInEasing)
+                        ) + fadeIn(animationSpec = tween(500))
+                    ) {
+                        ModernAddButton(
+                            text = if (portfolios.isEmpty()) "Add Portfolio" else "Add Another",
+                            onClick = { openAddForm() }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }
     }
 
-
-
     // Portfolio Form Dialog
     if (showPortfolioSheet) {
-        Dialog(
-            onDismissRequest = {
+        ModernPortfolioFormDialog(
+            isEditing = isEditing,
+            accountName = accountName,
+            url = url,
+            onAccountNameChange = { accountName = it },
+            onUrlChange = { url = it },
+            onDismiss = {
                 showPortfolioSheet = false
                 resetForm()
             },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize()
-                    .clickable {
-                        showPortfolioSheet = false
-                        resetForm()
-                    },
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                Card(
-                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.35f),
-                    colors = CardDefaults.cardColors(containerColor = White)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp)
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        Text(
-                            text = if (isEditing) "Edit Portfolio" else "Add Portfolio",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
+            onSave = { savePortfolio() }
+        )
+    }
 
-                        Spacer(Modifier.height(16.dp))
-
-                        // Account Name
-                        OutlinedTextField(
-                            value = accountName,
-                            onValueChange = { accountName = it },
-                            label = { Text("Account Name *") },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.document),
-                                    contentDescription = "Account Name",
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            },
-                            placeholder = { Text("e.g., LinkedIn, GitHub") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp),
-                            shape = RoundedCornerShape(15.dp),
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = White,
-                                unfocusedContainerColor = White,
-                                focusedIndicatorColor = DarkBlue2,
-                                unfocusedIndicatorColor = Color.LightGray
-                            )
-                        )
-
-                        Spacer(Modifier.height(12.dp))
-
-                        // URL
-                        OutlinedTextField(
-                            value = url,
-                            onValueChange = { url = it },
-                            label = { Text("URL *") },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.linkicon),
-                                    contentDescription = "URL",
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            },
-                            placeholder = { Text("https://example.com") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp),
-                            shape = RoundedCornerShape(15.dp),
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = White,
-                                unfocusedContainerColor = White,
-                                focusedIndicatorColor = DarkBlue2,
-                                unfocusedIndicatorColor = Color.LightGray
-                            )
-                        )
-
-                        Spacer(Modifier.height(24.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            // Back Button
-                            OutlinedButton(
-                                onClick = {
-                                    showPortfolioSheet = false
-                                    resetForm()
-                                },
-                                shape = RoundedCornerShape(15.dp),
-                                modifier = Modifier
-                                    .weight(0.4f)
-                                    .height(50.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = DarkBlue2
-                                )
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.outline_arrow_back_ios_24),
-                                    contentDescription = "Back",
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            // Save Button
-                            Button(
-                                onClick = { savePortfolio() },
-                                shape = RoundedCornerShape(15.dp),
-                                modifier = Modifier
-                                    .weight(0.6f)
-                                    .height(50.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = DarkBlue2,
-                                    contentColor = Color.White
-                                )
-                            ) {
-                                Text(
-                                    text = if (isEditing) "Update" else "Save",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                }
+    // Detail Dialog
+    if (showDetailDialog && selectedPortfolio != null) {
+        ModernPortfolioDetailDialog(
+            portfolio = selectedPortfolio!!,
+            onDismiss = {
+                showDetailDialog = false
+                selectedPortfolio = null
+            },
+            onEdit = {
+                showDetailDialog = false
+                openEditForm(selectedPortfolio!!)
+                selectedPortfolio = null
+            },
+            onDelete = {
+                showDetailDialog = false
+                deletePortfolio(selectedPortfolio!!)
+                selectedPortfolio = null
             }
-        }
+        )
     }
 }
 
 @Composable
-fun PortfolioCard(
+fun ModernPortfolioCard(
     portfolio: PortfolioModel,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .shadow(8.dp, RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        onClick = onClick
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        modifier = Modifier.size(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF2196F3).copy(alpha = 0.12f)
                     ) {
+                        Icon(
+                            painter = painterResource(R.drawable.linkicon),
+                            contentDescription = "Portfolio",
+                            tint = Color(0xFF2196F3),
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = portfolio.accountName,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = Color.Black
+                            fontSize = 17.sp,
+                            color = Color(0xFF263238)
                         )
-                        Spacer(modifier = Modifier.width(18.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = portfolio.accountLink,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp,
+                            color = Color(0xFF78909C),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Row {
+                    var editPressed by remember { mutableStateOf(false) }
+                    val editScale by animateFloatAsState(
+                        targetValue = if (editPressed) 0.85f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    )
+
+                    IconButton(
+                        onClick = {
+                            editPressed = true
+                            onEditClick()
+                        },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .graphicsLayer {
+                                scaleX = editScale
+                                scaleY = editScale
+                            }
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF2196F3).copy(alpha = 0.1f),
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            IconButton(
-                                onClick = onEditClick,
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Edit",
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            // Delete Icon
-                            IconButton(
-                                onClick = onDeleteClick,
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete",
-                                    tint = Color.Red,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                tint = Color(0xFF2196F3),
+                                modifier = Modifier.padding(8.dp)
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    LaunchedEffect(editPressed) {
+                        if (editPressed) {
+                            delay(150)
+                            editPressed = false
+                        }
+                    }
 
-                    // URL
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    var deletePressed by remember { mutableStateOf(false) }
+                    val deleteScale by animateFloatAsState(
+                        targetValue = if (deletePressed) 0.85f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    )
+
+                    IconButton(
+                        onClick = {
+                            deletePressed = true
+                            onDeleteClick()
+                        },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .graphicsLayer {
+                                scaleX = deleteScale
+                                scaleY = deleteScale
+                            }
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFFF44336).copy(alpha = 0.1f),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = Color(0xFFF44336),
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+
+                    LaunchedEffect(deletePressed) {
+                        if (deletePressed) {
+                            delay(150)
+                            deletePressed = false
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = Color(0xFFE0E0E0)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, Color(0xFF2196F3).copy(alpha = 0.3f)),
+                color = Color.White
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.linkicon),
+                        contentDescription = "Link",
+                        tint = Color(0xFF2196F3),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = portfolio.accountLink,
-                        fontSize = 14.sp,
-                        color = DarkBlue2,
+                        fontSize = 13.sp,
+                        color = Color(0xFF2196F3),
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(
+                        painter = painterResource(R.drawable.openicon),
+                        contentDescription = "Open",
+                        tint = Color(0xFF2196F3),
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
@@ -654,22 +764,364 @@ fun PortfolioCard(
 }
 
 @Composable
-fun Details(title: String, value: String) {
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        Text(
-            text = title,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-            color = Color.Gray
-        )
-        Text(
-            text = value,
-            fontSize = 16.sp,
-            color = Color.Black,
-            modifier = Modifier.padding(top = 2.dp)
-        )
+fun ModernPortfolioFormDialog(
+    isEditing: Boolean,
+    accountName: String,
+    url: String,
+    onAccountNameChange: (String) -> Unit,
+    onUrlChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.39f)
+                .padding(16.dp)
+                .shadow(16.dp, RoundedCornerShape(24.dp)),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp)
+            ) {
+                Text(
+                    text = if (isEditing) "Edit Portfolio" else "Add Portfolio",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF263238)
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    // Account Name Field
+                    ModernPortfolioTextField(
+                        value = accountName,
+                        onValueChange = onAccountNameChange,
+                        label = "Account Name *",
+                        icon = R.drawable.document,
+                        placeholder = "e.g., LinkedIn, GitHub, Behance"
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // URL Field
+                    ModernPortfolioTextField(
+                        value = url,
+                        onValueChange = onUrlChange,
+                        label = "URL *",
+                        icon = R.drawable.linkicon,
+                        placeholder = "https://example.com"
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(0.3f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF78909C)
+                        )
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Button(
+                        onClick = onSave,
+                        modifier = Modifier
+                            .weight(0.7f)
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2196F3)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 4.dp,
+                            pressedElevation = 8.dp
+                        )
+                    ) {
+                        Text(
+                            text = if (isEditing) "Update" else "Save",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
     }
 }
+
+@Composable
+fun ModernPortfolioTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    icon: Int,
+    placeholder: String = "",
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        leadingIcon = {
+            Icon(
+                painter = painterResource(id = icon),
+                contentDescription = null,
+                tint = Color(0xFF2196F3),
+                modifier = Modifier.size(24.dp)
+            )
+        },
+        placeholder = { Text(placeholder) },
+        modifier = modifier
+            .fillMaxWidth()
+            .height(60.dp),
+        shape = RoundedCornerShape(16.dp),
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Color(0xFF2196F3),
+            unfocusedBorderColor = Color(0xFFE0E0E0),
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            focusedLabelColor = Color(0xFF2196F3),
+            unfocusedLabelColor = Color(0xFF78909C)
+        )
+    )
+}
+
+//@Composable
+//fun ModernAddButton(
+//    text: String,
+//    onClick: () -> Unit
+//) {
+//    var isPressed by remember { mutableStateOf(false) }
+//    val scale by animateFloatAsState(
+//        targetValue = if (isPressed) 0.95f else 1f,
+//        animationSpec = spring(
+//            dampingRatio = Spring.DampingRatioMediumBouncy,
+//            stiffness = Spring.StiffnessMedium
+//        )
+//    )
+//
+//    Button(
+//        onClick = {
+//            isPressed = true
+//            onClick()
+//        },
+//        modifier = Modifier
+//            .padding(horizontal = 24.dp)
+//            .fillMaxWidth()
+//            .height(56.dp)
+//            .graphicsLayer {
+//                scaleX = scale
+//                scaleY = scale
+//            },
+//        shape = RoundedCornerShape(16.dp),
+//        colors = ButtonDefaults.buttonColors(
+//            containerColor = Color(0xFF2196F3)
+//        ),
+//        elevation = ButtonDefaults.buttonElevation(
+//            defaultElevation = 6.dp,
+//            pressedElevation = 2.dp
+//        )
+//    ) {
+//        Icon(
+//            painter = painterResource(id = R.drawable.addexperience),
+//            contentDescription = "Add",
+//            modifier = Modifier.size(24.dp)
+//        )
+//        Spacer(modifier = Modifier.width(12.dp))
+//        Text(
+//            text = text,
+//            fontSize = 18.sp,
+//            fontWeight = FontWeight.Bold
+//        )
+//    }
+//}
+
+@Composable
+fun ModernPortfolioDetailDialog(
+    portfolio: PortfolioModel,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(24.dp),
+        title = {
+            Text(
+                text = "Portfolio Details",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = Color(0xFF263238)
+            )
+        },
+        text = {
+            Column {
+                DetailItem(title = "Account Name", value = portfolio.accountName)
+                Spacer(modifier = Modifier.height(8.dp))
+                DetailItem(title = "URL", value = portfolio.accountLink)
+            }
+        },
+        confirmButton = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onEdit,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2196F3)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Edit", fontWeight = FontWeight.Bold)
+                }
+
+                Button(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF44336)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Delete", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun ModernPortfolioDeleteDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    portfolioName: String
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(24.dp),
+        icon = {
+            Surface(
+                modifier = Modifier.size(64.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0xFFF44336).copy(alpha = 0.1f)
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = Color(0xFFF44336),
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        },
+        title = {
+            Text(
+                text = "Delete Portfolio?",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = Color(0xFF263238),
+                textAlign = TextAlign.Center
+            )
+        },
+        text = {
+            Text(
+                text = "Are you sure you want to delete \"$portfolioName\"? This action cannot be undone.",
+                fontSize = 15.sp,
+                color = Color(0xFF78909C),
+                textAlign = TextAlign.Center
+            )
+        },
+        confirmButton = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF78909C)
+                    )
+                ) {
+                    Text("Cancel", fontWeight = FontWeight.Bold)
+                }
+
+                Button(
+                    onClick = onConfirm,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFF44336)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                ) {
+                    Text("Delete", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    )
+}
+
+//@Composable
+//fun DetailItem(title: String, value: String) {
+//    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+//        Text(
+//            text = title,
+//            fontWeight = FontWeight.Medium,
+//            fontSize = 14.sp,
+//            color = Color(0xFF78909C)
+//        )
+//        Spacer(modifier = Modifier.height(2.dp))
+//        Text(
+//            text = value,
+//            fontSize = 16.sp,
+//            color = Color(0xFF263238),
+//            modifier = Modifier.padding(top = 2.dp)
+//        )
+//    }
+//}
 
 @Preview
 @Composable

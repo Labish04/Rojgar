@@ -79,15 +79,14 @@ class CalendarActivity : ComponentActivity() {
 @Composable
 fun CalendarBody() {
     val context = LocalContext.current
-    val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl()) }
+    val calendarViewModel = remember { CalendarViewModel(CalendarRepoImpl(context)) }
     val events by calendarViewModel.events.observeAsState(emptyList())
-    val selectedDayEvents by calendarViewModel.selectedDayEvents.observeAsState(emptyList())
     val loading by calendarViewModel.loading.observeAsState(false)
     val message by calendarViewModel.message.observeAsState("")
 
-    var selectedDay by remember { mutableStateOf(Calendar.getInstance().get(Calendar.DAY_OF_MONTH)) }
     var currentMonth by remember { mutableStateOf(Calendar.getInstance().get(Calendar.MONTH)) }
     var currentYear by remember { mutableStateOf(Calendar.getInstance().get(Calendar.YEAR)) }
+    var selectedDay by remember { mutableStateOf(Calendar.getInstance().get(Calendar.DAY_OF_MONTH)) }
 
     // Dialog states
     var showAddEventDialog by remember { mutableStateOf(false) }
@@ -106,13 +105,6 @@ fun CalendarBody() {
         }
     }
 
-    // Observe events for selected day
-    LaunchedEffect(userId, selectedDay, currentMonth, currentYear) {
-        if (userId.isNotEmpty()) {
-            val (dayStart, dayEnd) = CalendarDateUtils.dayRangeMillis(currentYear, currentMonth, selectedDay)
-            calendarViewModel.observeEventsForUserInRange(userId, dayStart, dayEnd)
-        }
-    }
 
     // Show message as snackbar
     LaunchedEffect(message) {
@@ -165,8 +157,8 @@ fun CalendarBody() {
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFFAFCEFC),
-                            Color(0xFF5594FA)
+                            ModernLoginTheme.SurfaceLight,
+                            ModernLoginTheme.IceBlue
                         )
                     )
                 )
@@ -175,55 +167,63 @@ fun CalendarBody() {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(20.dp)
             ) {
-                Row(
+                // Enhanced Top Bar
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    color = Color(0xFF1976D2),
+                    shadowElevation = 4.dp
                 ) {
-                    IconButton(
-                        onClick = { (context as? ComponentActivity)?.finish() },
+                    Row(
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f))
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.outline_arrow_back_ios_24),
-                            contentDescription = "Back",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                        IconButton(
+                            onClick = { (context as? ComponentActivity)?.finish() },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f))
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                                contentDescription = "Back",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Text(
+                            "Calendar",
+                            style = TextStyle(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 24.sp,
+                                color = Color.White
+                            )
                         )
+                        
+                        Spacer(modifier = Modifier.weight(1f))
                     }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Text(
-                        "Calendar",
-                        style = TextStyle(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 28.sp,
-                            color = Color.White
-                        )
-                    )
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Calendar Card
-                Card(
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(24.dp),
-                            spotColor = Color.Black.copy(alpha = 0.25f)
-                        ),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White
-                    )
+                        .fillMaxSize()
+                        .padding(20.dp)
                 ) {
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Calendar Card
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                    ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -468,11 +468,11 @@ fun CalendarBody() {
                 Spacer(modifier = Modifier.height(28.dp))
 
                 // Events Section
-                val selectedDate = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(
-                    Calendar.getInstance().apply {
-                        set(currentYear, currentMonth, selectedDay)
-                    }.time
+                val monthNames = arrayOf(
+                    "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"
                 )
+                val currentMonthName = monthNames[currentMonth]
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -480,10 +480,10 @@ fun CalendarBody() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Events for $selectedDate",
+                        text = "Events for $currentMonthName $currentYear",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = Color(0xFF1976D2)
                     )
 
                     if (events.isNotEmpty()) {
@@ -497,8 +497,8 @@ fun CalendarBody() {
                                 )
                             },
                             colors = AssistChipDefaults.assistChipColors(
-                                containerColor = Color.White.copy(alpha = 0.2f),
-                                labelColor = Color.White
+                                containerColor = Color(0xFF1976D2).copy(alpha = 0.1f),
+                                labelColor = Color(0xFF1976D2)
                             )
                         )
                     }
@@ -513,9 +513,19 @@ fun CalendarBody() {
                         .weight(1f),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color.White.copy(alpha = 0.95f)
-                    )
+                        containerColor = Color.White
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
+                    // Filter events for current month
+                    val currentMonthEvents = events.filter { event ->
+                        val eventCalendar = Calendar.getInstance().apply {
+                            timeInMillis = event.startTimeMillis
+                        }
+                        eventCalendar.get(Calendar.YEAR) == currentYear &&
+                                eventCalendar.get(Calendar.MONTH) == currentMonth
+                    }
+
                     if (loading) {
                         Box(
                             modifier = Modifier
@@ -528,7 +538,7 @@ fun CalendarBody() {
                                 modifier = Modifier.size(32.dp)
                             )
                         }
-                    } else if (selectedDayEvents.isEmpty()) {
+                    } else if (currentMonthEvents.isEmpty()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -577,7 +587,7 @@ fun CalendarBody() {
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(selectedDayEvents.sortedBy { it.startTimeMillis }) { event ->
+                            items(currentMonthEvents.sortedBy { it.startTimeMillis }) { event ->
                                 EventCard(
                                     event = event,
                                     onEdit = { editingEvent = event },
@@ -587,6 +597,7 @@ fun CalendarBody() {
                         }
                     }
                 }
+            }
             }
         }
 
@@ -681,8 +692,8 @@ fun filterEventsByQuery(events: List<CalendarEventModel>, query: String): List<C
     val lowerQuery = query.lowercase()
     return events.filter { event ->
         event.title.lowercase().contains(lowerQuery) ||
-        event.description.lowercase().contains(lowerQuery) ||
-        event.location.lowercase().contains(lowerQuery)
+                event.description.lowercase().contains(lowerQuery) ||
+                event.location.lowercase().contains(lowerQuery)
     }
 }
 
@@ -810,7 +821,7 @@ fun AllEventsBottomSheet(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = if (searchQuery.isNotEmpty()) "No events match your search"
-                                   else "No events yet",
+                            else "No events yet",
                             color = Color(0xFF64748B),
                             fontSize = 16.sp,
                             textAlign = TextAlign.Center

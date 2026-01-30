@@ -1,4 +1,3 @@
-// File: ChatRepositoryImpl.kt
 package com.example.rojgar.repository
 
 import android.content.Context
@@ -11,28 +10,27 @@ import com.cloudinary.Cloudinary
 import com.cloudinary.utils.ObjectUtils
 import com.example.rojgar.model.ChatMessage
 import com.example.rojgar.model.ChatRoom
+import com.example.rojgar.utils.NotificationHelper // Add this import
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageReference
 import java.io.File
+import java.io.FileInputStream
 import java.io.InputStream
 import java.util.*
 import java.util.concurrent.Executors
 import kotlin.collections.HashMap
 
-class ChatRepositoryImpl : ChatRepository {
+class ChatRepositoryImpl(private val context: Context) : ChatRepository { // Added Context parameter
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val database: FirebaseDatabase = FirebaseDatabase.getInstance()
-    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
 
     private val chatRoomsRef: DatabaseReference = database.getReference("ChatRooms")
     private val messagesRef: DatabaseReference = database.getReference("ChatMessages")
     private val typingStatusRef: DatabaseReference = database.getReference("TypingStatus")
+    private val notificationSettingsRef: DatabaseReference = database.getReference("NotificationSettings")
 
-    private val storageRef: StorageReference = storage.reference
-
+    // Cloudinary configuration
     private val cloudinary = Cloudinary(
         mapOf(
             "cloud_name" to "dtmprduic",
@@ -88,7 +86,6 @@ class ChatRepositoryImpl : ChatRepository {
                         chatRoom?.let { chatRooms1.add(it) }
                     }
 
-                    // Get chat rooms where user is participant2
                     chatRoomsRef.orderByChild("participant2Id").equalTo(userId)
                         .addListenerForSingleValueEvent(object : ValueEventListener {
                             override fun onDataChange(snapshot2: DataSnapshot) {
@@ -120,6 +117,8 @@ class ChatRepositoryImpl : ChatRepository {
         participant2Id: String,
         participant1Name: String,
         participant2Name: String,
+        participant1Photo: String,
+        participant2Photo: String,
         callback: (Boolean, String, ChatRoom?) -> Unit
     ) {
         val chatId = generateChatId(participant1Id, participant2Id)
@@ -130,13 +129,14 @@ class ChatRepositoryImpl : ChatRepository {
                     val chatRoom = snapshot.getValue(ChatRoom::class.java)
                     callback(true, "Chat room found", chatRoom)
                 } else {
-                    // Create new chat room directly instead of calling createChatRoom recursively
                     val newChatRoom = ChatRoom(
                         chatId = chatId,
                         participant1Id = participant1Id,
                         participant2Id = participant2Id,
                         participant1Name = participant1Name,
                         participant2Name = participant2Name,
+                        participant1Photo = participant1Photo,
+                        participant2Photo = participant2Photo,
                         lastMessage = "",
                         lastMessageTime = System.currentTimeMillis(),
                         createdAt = System.currentTimeMillis()
@@ -170,12 +170,160 @@ class ChatRepositoryImpl : ChatRepository {
         messageRef.setValue(messageWithId)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    // Update chat room with last message
                     updateChatRoomLastMessage(chatId, messageWithId)
+
+                    // Send notification to receiver if notifications are enabled
+                    sendMessageNotification(messageWithId, chatId)
+
                     callback(true, "Message sent successfully")
                 } else {
                     callback(false, task.exception?.message ?: "Failed to send message")
                 }
+            }
+    }
+
+    // New function: Send message with notification
+    fun sendMessageWithNotification(
+        chatId: String,
+        message: ChatMessage,
+        callback: (Boolean, String) -> Unit
+    ) {
+        val messageRef = messagesRef.child(chatId).push()
+        val messageWithId = message.copy(messageId = messageRef.key ?: UUID.randomUUID().toString())
+
+        messageRef.setValue(messageWithId)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    updateChatRoomLastMessage(chatId, messageWithId)
+
+                    // Check if receiver has notifications enabled for this chat
+                    checkAndSendNotification(messageWithId, chatId) { shouldSend ->
+                        if (shouldSend) {
+                            sendMessageNotification(messageWithId, chatId)
+                        }
+                    }
+
+                    callback(true, "Message sent successfully")
+                } else {
+                    callback(false, task.exception?.message ?: "Failed to send message")
+                }
+            }
+    }
+
+    private fun sendMessageNotification(message: ChatMessage, chatId: String) {
+        val receiverId = message.receiverId
+        val senderId = message.senderId
+
+        // Get sender's name
+        getSenderName(senderId) { senderName ->
+            val notificationText = when (message.messageType) {
+                "voice" -> "🎤 Voice message"
+                "image" -> "📷 Photo"
+                "video" -> "🎥 Video"
+                "document" -> "📄 Document"
+                else -> message.messageText
+            }
+
+            // Send notification using NotificationHelper
+            NotificationHelper.sendMessageNotification(
+                context,
+                receiverId = receiverId,
+                senderId = senderId,
+                senderName = senderName,
+                messageText = notificationText,
+                chatType = "direct"
+            )
+
+            Log.d("ChatRepository", "Message notification sent to $receiverId")
+        }
+    }
+
+    private fun checkAndSendNotification(
+        message: ChatMessage,
+        chatId: String,
+        callback: (Boolean) -> Unit
+    ) {
+        val receiverId = message.receiverId
+
+        // Check global notification settings
+        notificationSettingsRef.child(receiverId).child("messageNotifications")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val globalEnabled = snapshot.getValue(Boolean::class.java) ?: true
+
+                if (!globalEnabled) {
+                    callback(false)
+                    return@addOnSuccessListener
+                }
+
+                // Check DND mode
+                notificationSettingsRef.child(receiverId).child("dndMode")
+                    .get()
+                    .addOnSuccessListener { dndSnapshot ->
+                        val isDND = dndSnapshot.getValue(Boolean::class.java) ?: false
+
+                        if (isDND) {
+                            callback(false)
+                            return@addOnSuccessListener
+                        }
+
+                        // Check if sender is blocked
+                        checkIfBlocked(receiverId, message.senderId) { isBlocked ->
+                            callback(!isBlocked && globalEnabled)
+                        }
+                    }
+                    .addOnFailureListener {
+                        callback(globalEnabled)
+                    }
+            }
+            .addOnFailureListener {
+                callback(true) // Default to sending if settings not found
+            }
+    }
+
+    private fun checkIfBlocked(receiverId: String, senderId: String, callback: (Boolean) -> Unit) {
+        database.getReference("BlockedUsers").child(receiverId).child(senderId)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                callback(snapshot.exists())
+            }
+            .addOnFailureListener {
+                callback(false)
+            }
+    }
+
+    private fun getSenderName(senderId: String, callback: (String) -> Unit) {
+        // Try JobSeeker first
+        database.getReference("JobSeekers").child(senderId).child("fullName")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val name = snapshot.getValue(String::class.java)
+                if (name != null) {
+                    callback(name)
+                } else {
+                    // Try Company
+                    database.getReference("Companys").child(senderId).child("companyName")
+                        .get()
+                        .addOnSuccessListener { companySnapshot ->
+                            val companyName = companySnapshot.getValue(String::class.java) ?: "Someone"
+                            callback(companyName)
+                        }
+                        .addOnFailureListener {
+                            callback("Someone")
+                        }
+                }
+            }
+            .addOnFailureListener {
+                // Try Company directly if JobSeeker fails
+                database.getReference("Companys").child(senderId).child("companyName")
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        val companyName = snapshot.getValue(String::class.java) ?: "Someone"
+                        callback(companyName)
+                    }
+                    .addOnFailureListener {
+                        callback("Someone")
+                    }
             }
     }
 
@@ -214,8 +362,43 @@ class ChatRepositoryImpl : ChatRepository {
                     message?.let { onNewMessage(it) }
                 }
 
+                override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
+                override fun onChildRemoved(snapshot: DataSnapshot) {}
+                override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+                override fun onCancelled(error: DatabaseError) {}
+            })
+    }
+
+    // New function to listen for new messages with notification support
+    fun listenFor3t24NpUrJMNunMMASmhAM953bFGeLXzN7(
+        chatId: String,
+        currentUserId: String,
+        onNewMessage: (ChatMessage) -> Unit
+    ) {
+        messagesRef.child(chatId)
+            .orderByChild("timestamp")
+            .addChildEventListener(object : ChildEventListener {
+                override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                    val message = snapshot.getValue(ChatMessage::class.java)
+                    message?.let {
+                        // Only process if message is for current user
+                        if (it.receiverId == currentUserId && !it.isRead) {
+                            onNewMessage(it)
+                            // Optionally mark as read automatically
+                            markMessageAsRead(it.messageId, chatId) { success, _ ->
+                                if (success) {
+                                    Log.d("ChatRepository", "Message marked as read automatically")
+                                }
+                            }
+                        } else if (it.senderId == currentUserId) {
+                            onNewMessage(it)
+                        }
+                    }
+                }
+
                 override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                    // Handle message updates (like read receipts)
+                    val message = snapshot.getValue(ChatMessage::class.java)
+                    message?.let { onNewMessage(it) }
                 }
 
                 override fun onChildRemoved(snapshot: DataSnapshot) {}
@@ -243,7 +426,6 @@ class ChatRepositoryImpl : ChatRepository {
                         messagesRef.child(chatId).updateChildren(updates)
                             .addOnCompleteListener { task ->
                                 if (task.isSuccessful) {
-                                    // Update chat room unread count
                                     updateChatRoomUnreadCount(chatId, userId, 0)
                                     callback(true, "Messages marked as read")
                                 } else {
@@ -259,6 +441,25 @@ class ChatRepositoryImpl : ChatRepository {
                     callback(false, error.message)
                 }
             })
+    }
+
+    // New function to mark single message as read
+    fun markMessageAsRead(
+        messageId: String,
+        chatId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        messagesRef.child(chatId).child(messageId).child("isRead")
+            .setValue(true)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Also decrement unread count in chat room
+                    decrementChatRoomUnreadCount(chatId)
+                    callback(true, "Message marked as read")
+                } else {
+                    callback(false, task.exception?.message ?: "Failed to mark message as read")
+                }
+            }
     }
 
     override fun deleteMessage(
@@ -284,7 +485,6 @@ class ChatRepositoryImpl : ChatRepository {
         chatRoomsRef.child(chatId).removeValue()
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    // Also delete all messages in this chat
                     messagesRef.child(chatId).removeValue()
                     callback(true, "Chat deleted")
                 } else {
@@ -328,92 +528,116 @@ class ChatRepositoryImpl : ChatRepository {
         })
     }
 
+    // Voice message upload function
     override fun uploadVoiceMessage(
         audioFile: File,
         onProgress: (Double) -> Unit,
         onSuccess: (String) -> Unit,
         onFailure: (String) -> Unit
     ) {
-        // Validate file exists
+        Log.d("VoiceUpload", "=== Starting Voice Upload ===")
+        Log.d("VoiceUpload", "File: ${audioFile.absolutePath}")
+        Log.d("VoiceUpload", "Size: ${audioFile.length()} bytes")
+
         if (!audioFile.exists()) {
-            Log.e("VoiceUpload", "File does not exist: ${audioFile.absolutePath}")
+            Log.e("VoiceUpload", "❌ File doesn't exist")
             onFailure("Audio file does not exist")
             return
         }
 
-        // Validate file is not empty
-        if (audioFile.length() == 0L) {
-            Log.e("VoiceUpload", "File is empty: ${audioFile.absolutePath}")
-            onFailure("Audio file is empty")
+        if (audioFile.length() < 2048) {
+            Log.e("VoiceUpload", "❌ File too small (likely invalid)")
+            onFailure("Audio file is too small or corrupted")
             return
         }
 
-        // Log file details
-        Log.d("VoiceUpload", "Starting upload...")
-        Log.d("VoiceUpload", "File path: ${audioFile.absolutePath}")
-        Log.d("VoiceUpload", "File exists: ${audioFile.exists()}")
-        Log.d("VoiceUpload", "File size: ${audioFile.length()} bytes")
-        Log.d("VoiceUpload", "Can read: ${audioFile.canRead()}")
+        if (!audioFile.canRead()) {
+            Log.e("VoiceUpload", "❌ Cannot read file")
+            onFailure("Cannot read audio file")
+            return
+        }
 
-        try {
-            // Generate unique filename with timestamp
-            val timestamp = System.currentTimeMillis()
-            val uniqueId = UUID.randomUUID().toString().substring(0, 8)
-            val fileName = "voice_messages/voice_${timestamp}_${uniqueId}.m4a"
-            val voiceMessageRef = storageRef.child(fileName)
+        val executor = Executors.newSingleThreadExecutor()
+        executor.execute {
+            var inputStream: InputStream? = null
 
-            Log.d("VoiceUpload", "Target path: $fileName")
+            try {
+                Handler(Looper.getMainLooper()).post { onProgress(10.0) }
 
-            // Use URI-based upload instead of byte array
-            val fileUri = Uri.fromFile(audioFile)
-            Log.d("VoiceUpload", "File URI: $fileUri")
+                val timestamp = System.currentTimeMillis()
+                val uniqueId = UUID.randomUUID().toString().substring(0, 8)
+                val publicId = "voice_${timestamp}_${uniqueId}"
 
-            // Upload using URI
-            val uploadTask = voiceMessageRef.putFile(fileUri)
+                Log.d("VoiceUpload", "Public ID: $publicId")
+                Log.d("VoiceUpload", "Extension: ${audioFile.extension}")
 
-            // Monitor progress
-            uploadTask.addOnProgressListener { taskSnapshot ->
-                val progress = (100.0 * taskSnapshot.bytesTransferred) / taskSnapshot.totalByteCount
-                Log.d("VoiceUpload", "Upload progress: $progress%")
-                onProgress(progress)
-            }
+                inputStream = FileInputStream(audioFile)
+                Handler(Looper.getMainLooper()).post { onProgress(30.0) }
 
-            // Handle successful upload
-            uploadTask.addOnSuccessListener { taskSnapshot ->
-                Log.d("VoiceUpload", "Upload successful!")
-                Log.d("VoiceUpload", "Bytes transferred: ${taskSnapshot.bytesTransferred}")
-                Log.d("VoiceUpload", "Getting download URL...")
+                val uploadParams = hashMapOf<String, Any>(
+                    "public_id" to publicId,
+                    "resource_type" to "video",
+                    "folder" to "voice_messages",
+                    "format" to "m4a",
+                    "tags" to arrayOf("voice_message", "android_app"),
+                    "quality" to "auto",
+                    "audio_codec" to "aac"
+                )
 
-                // Get download URL
-                voiceMessageRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                    val downloadUrl = downloadUri.toString()
-                    Log.d("VoiceUpload", "Download URL obtained: $downloadUrl")
-                    onSuccess(downloadUrl)
-                }.addOnFailureListener { exception ->
-                    Log.e("VoiceUpload", "Failed to get download URL", exception)
-                    onFailure("Failed to get download URL: ${exception.message}")
+                Log.d("VoiceUpload", "Upload params: $uploadParams")
+                Log.d("VoiceUpload", "Starting upload...")
+
+                val uploadResult = cloudinary.uploader().upload(inputStream, uploadParams)
+
+                Handler(Looper.getMainLooper()).post { onProgress(70.0) }
+
+                Log.d("VoiceUpload", "Upload completed")
+                Log.d("VoiceUpload", "Result keys: ${uploadResult.keys}")
+
+                var audioUrl = uploadResult["secure_url"] as? String
+
+                if (audioUrl == null) {
+                    val cloudName = "dtmprduic"
+                    val version = uploadResult["version"] ?: timestamp
+                    audioUrl = "https://res.cloudinary.com/$cloudName/video/upload/v$version/voice_messages/$publicId.m4a"
+                    Log.d("VoiceUpload", "Constructed URL: $audioUrl")
+                }
+
+                audioUrl = audioUrl?.replace("http://", "https://")
+
+                if (audioUrl.isNullOrBlank()) {
+                    Log.e("VoiceUpload", "❌ No URL from upload result")
+                    Handler(Looper.getMainLooper()).post {
+                        onFailure("Failed to get audio URL")
+                    }
+                    return@execute
+                }
+
+                Log.d("VoiceUpload", "Audio URL: $audioUrl")
+
+                Handler(Looper.getMainLooper()).post {
+                    onProgress(100.0)
+                    onSuccess(audioUrl)
+                }
+
+            } catch (e: Exception) {
+                Log.e("VoiceUpload", "❌ Upload failed", e)
+                Handler(Looper.getMainLooper()).post {
+                    onFailure("Upload failed: ${e.message}")
+                }
+            } finally {
+                try {
+                    inputStream?.close()
+                } catch (e: Exception) {
+                    Log.e("VoiceUpload", "Error closing stream", e)
                 }
             }
-
-            // Handle upload failure
-            uploadTask.addOnFailureListener { exception ->
-                Log.e("VoiceUpload", "Upload failed", exception)
-                Log.e("VoiceUpload", "Exception type: ${exception.javaClass.name}")
-                Log.e("VoiceUpload", "Exception message: ${exception.message}")
-                Log.e("VoiceUpload", "Exception cause: ${exception.cause?.message}")
-                onFailure("Upload failed: ${exception.message}")
-            }
-
-        } catch (e: Exception) {
-            Log.e("VoiceUpload", "Exception during upload preparation", e)
-            onFailure("Exception: ${e.message}")
         }
     }
 
     override fun getVoiceMessageDuration(audioFile: File): Long {
         return try {
             if (!audioFile.exists()) {
-                Log.e("VoiceDuration", "File does not exist")
                 return 0L
             }
 
@@ -422,12 +646,9 @@ class ChatRepositoryImpl : ChatRepository {
             mediaPlayer.prepare()
             val duration = mediaPlayer.duration.toLong()
             mediaPlayer.release()
-
-            Log.d("VoiceDuration", "Duration: $duration ms")
             duration
         } catch (e: Exception) {
-            Log.e("VoiceDuration", "Failed to get duration", e)
-            0L
+            15000L
         }
     }
 
@@ -442,7 +663,7 @@ class ChatRepositoryImpl : ChatRepository {
         val executor = Executors.newSingleThreadExecutor()
         executor.execute {
             try {
-                Log.d("MediaUpload", "Starting $mediaType upload")
+                Log.d("MediaUpload", "Starting $mediaType upload to Cloudinary")
                 Log.d("MediaUpload", "URI: $mediaUri")
 
                 val inputStream: InputStream? = context.contentResolver.openInputStream(mediaUri)
@@ -471,8 +692,8 @@ class ChatRepositoryImpl : ChatRepository {
 
                 val response = cloudinary.uploader().upload(
                     inputStream, ObjectUtils.asMap(
-                        "public_id" to publicId,
-                        "resource_type" to resourceType
+                        "public_id", publicId,
+                        "resource_type", resourceType
                     )
                 )
 
@@ -484,6 +705,8 @@ class ChatRepositoryImpl : ChatRepository {
                 mediaUrl = mediaUrl?.replace("http://", "https://")
 
                 Log.d("MediaUpload", "Upload successful: $mediaUrl")
+
+                inputStream.close()
 
                 Handler(Looper.getMainLooper()).post {
                     onProgress(100.0)
@@ -512,38 +735,29 @@ class ChatRepositoryImpl : ChatRepository {
     }
 
     private fun updateChatRoomLastMessage(chatId: String, message: ChatMessage) {
-        // First, get the chat room to know who the receiver is
         chatRoomsRef.child(chatId).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
                     val chatRoom = snapshot.getValue(ChatRoom::class.java)
                     chatRoom?.let { room ->
-                        // Determine if sender is participant1 or participant2
                         val isSenderParticipant1 = message.senderId == room.participant1Id
 
-                        // Update last message and time
                         val updates = HashMap<String, Any>()
 
-                        // For voice messages, show "Voice message" instead of duration
-                        val displayText = if (message.messageType == "voice") {
-                            "🎤 Voice message"
-                        } else {
-                            message.messageText
+                        val displayText = when (message.messageType) {
+                            "voice" -> "🎤 Voice message"
+                            "image" -> "📷 Photo"
+                            "video" -> "🎥 Video"
+                            "document" -> "📄 Document"
+                            else -> message.messageText
                         }
 
                         updates["lastMessage"] = displayText
                         updates["lastMessageTime"] = message.timestamp
 
-                        // Update unread count based on receiver
-                        if (isSenderParticipant1) {
-                            // Sender is participant1, so increment for participant2
-                            val newUnreadCount = room.unreadCount + 1
-                            updates["unreadCount"] = newUnreadCount
-                        } else {
-                            // Sender is participant2, so increment for participant1
-                            val newUnreadCount = room.unreadCount + 1
-                            updates["unreadCount"] = newUnreadCount
-                        }
+                        // Increment unread count for receiver
+                        val newUnreadCount = room.unreadCount + 1
+                        updates["unreadCount"] = newUnreadCount
 
                         chatRoomsRef.child(chatId).updateChildren(updates)
                             .addOnCompleteListener { task ->
@@ -566,8 +780,7 @@ class ChatRepositoryImpl : ChatRepository {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
                     val chatRoom = snapshot.getValue(ChatRoom::class.java)
-                    chatRoom?.let { room ->
-                        // Determine which participant's count to update
+                    chatRoom?.let {
                         val updates = HashMap<String, Any>()
                         updates["unreadCount"] = count
                         chatRoomsRef.child(chatId).updateChildren(updates)
@@ -581,8 +794,123 @@ class ChatRepositoryImpl : ChatRepository {
         })
     }
 
+    private fun decrementChatRoomUnreadCount(chatId: String) {
+        chatRoomsRef.child(chatId).addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    val chatRoom = snapshot.getValue(ChatRoom::class.java)
+                    chatRoom?.let {
+                        val currentCount = it.unreadCount
+                        if (currentCount > 0) {
+                            val updates = HashMap<String, Any>()
+                            updates["unreadCount"] = currentCount - 1
+                            chatRoomsRef.child(chatId).updateChildren(updates)
+                        }
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("ChatRepository", "Failed to decrement unread count: ${error.message}")
+            }
+        })
+    }
+
     private fun getFileNameFromUri(context: Context, uri: Uri): String? {
         return uri.lastPathSegment ?: "file_${System.currentTimeMillis()}"
     }
 
+    // New function to get notification settings for a user
+    fun getNotificationSettings(
+        userId: String,
+        callback: (Map<String, Any>?) -> Unit
+    ) {
+        notificationSettingsRef.child(userId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        val settings = snapshot.value as? Map<String, Any>
+                        callback(settings)
+                    } else {
+                        callback(null)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    callback(null)
+                }
+            })
+    }
+
+    // New function to update notification settings
+    fun updateNotificationSettings(
+        userId: String,
+        settings: Map<String, Any>,
+        callback: (Boolean, String) -> Unit
+    ) {
+        notificationSettingsRef.child(userId)
+            .updateChildren(settings)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    callback(true, "Notification settings updated")
+                } else {
+                    callback(false, task.exception?.message ?: "Failed to update settings")
+                }
+            }
+    }
+
+    // New function to mute a specific chat
+    fun muteChat(
+        userId: String,
+        chatId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        val updates = hashMapOf<String, Any>(
+            "mutedChats/$chatId" to true,
+            "mutedChats/$chatId/mutedAt" to System.currentTimeMillis()
+        )
+
+        notificationSettingsRef.child(userId)
+            .updateChildren(updates)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    callback(true, "Chat muted")
+                } else {
+                    callback(false, task.exception?.message ?: "Failed to mute chat")
+                }
+            }
+    }
+
+    // New function to unmute a chat
+    fun unmuteChat(
+        userId: String,
+        chatId: String,
+        callback: (Boolean, String) -> Unit
+    ) {
+        notificationSettingsRef.child(userId).child("mutedChats").child(chatId)
+            .removeValue()
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    callback(true, "Chat unmuted")
+                } else {
+                    callback(false, task.exception?.message ?: "Failed to unmute chat")
+                }
+            }
+    }
+
+    // New function to check if chat is muted
+    fun isChatMuted(
+        userId: String,
+        chatId: String,
+        callback: (Boolean) -> Unit
+    ) {
+        notificationSettingsRef.child(userId).child("mutedChats").child(chatId)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                callback(snapshot.exists())
+            }
+            .addOnFailureListener {
+                callback(false)
+            }
+    }
 }

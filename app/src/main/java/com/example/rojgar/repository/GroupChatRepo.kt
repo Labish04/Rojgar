@@ -3,6 +3,7 @@ package com.example.rojgar.repository
 import android.content.Context
 import android.net.Uri
 import com.example.rojgar.model.GroupChat
+import com.example.rojgar.model.GroupMember
 import com.example.rojgar.model.GroupMessage
 import java.io.File
 
@@ -102,5 +103,32 @@ interface GroupChatRepository {
         onProgress: (Double) -> Unit,
         onSuccess: (String) -> Unit,
         onFailure: (String) -> Unit
+    )
+
+    fun leaveGroup(
+        groupId: String,
+        userId: String,
+        callback: (Result<Unit>) -> Unit
+    )
+
+    fun updateGroupMemberRole(
+        groupId: String,
+        memberId: String,
+        role: String, // "admin", "member"
+        callback: (Result<Unit>) -> Unit
+    )
+
+    fun getGroupMembersDetails(
+        groupId: String,
+        callback: (Result<List<GroupMember>>) -> Unit
+    )
+
+    fun updateGroupMember(
+        groupId: String,
+        oldMemberId: String,
+        newMemberId: String,
+        newMemberName: String,
+        newMemberPhoto: String,
+        callback: (Result<Unit>) -> Unit
     )
 }

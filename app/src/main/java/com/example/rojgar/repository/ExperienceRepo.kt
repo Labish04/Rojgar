@@ -1,5 +1,7 @@
 package com.example.rojgar.repository
 
+import android.content.Context
+import android.net.Uri
 import com.example.rojgar.model.ExperienceModel
 
 interface ExperienceRepo {
@@ -28,4 +30,12 @@ interface ExperienceRepo {
         experienceId: String,
         callback: (Boolean, String, ExperienceModel?) -> Unit
     )
+
+    fun uploadExperienceLetterImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    )
+
+    fun getFileNameFromUri(context: Context, imageUri: Uri): String?
 }

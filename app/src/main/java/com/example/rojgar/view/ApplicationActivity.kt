@@ -81,13 +81,14 @@ fun ApplicationBody(
     companyId: String,
     onBack: () -> Unit
 ) {
-    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl()) }
+    val context = LocalContext.current
+    
+    val applicationViewModel = remember { ApplicationViewModel(ApplicationRepoImpl(context)) }
     val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
     val educationViewModel = remember { EducationViewModel(EducationRepoImpl()) }
     val experienceViewModel = remember { ExperienceViewModel(ExperienceRepoImpl()) }
     val skillViewModel = remember { SkillViewModel(SkillRepoImpl()) }
 
-    val context = LocalContext.current
     val applications by applicationViewModel.applications.observeAsState(emptyList())
     val isLoading by applicationViewModel.loading.observeAsState(false)
 
@@ -227,12 +228,13 @@ fun ApplicationBody(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
+                            color = Color.White,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "${finalFilteredApplications.size} of ${filteredApplications.size} Applications",
                             fontSize = 14.sp,
-                            color = Color.Gray
+                            color = Color.White
                         )
                     }
                 },
@@ -241,7 +243,7 @@ fun ApplicationBody(
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.Black
+                            tint = Color.White
                         )
                     }
                 },
@@ -266,13 +268,13 @@ fun ApplicationBody(
                             Icon(
                                 painter = painterResource(R.drawable.filter),
                                 contentDescription = "Filter",
-                                tint = if (activeFiltersCount > 0) DarkBlue2 else Color.Black
+                                tint = if (activeFiltersCount > 0) DarkBlue2 else Color.White
                             )
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Blue
+                    containerColor = Color(0xFF2196F3)
                 )
             )
         }
@@ -280,7 +282,15 @@ fun ApplicationBody(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Blue)
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFE3F2FD),
+                            Color(0xFFBBDEFB),
+                            Color(0xFF90CAF9)
+                        )
+                    )
+                )
                 .padding(paddingValues)
         ) {
             when {

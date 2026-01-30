@@ -131,94 +131,6 @@ fun JobSeekerDashboardBody() {
 
 
     Scaffold(
-
-        topBar = {
-            val showTopBar = selectedIndex in listOf(0)
-
-            if (showTopBar) {
-                CenterAlignedTopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        titleContentColor = Black,
-                        actionIconContentColor = Black,
-                        containerColor = Blue,
-                        navigationIconContentColor = Black
-                    ),
-                    title = {
-                        Text("")
-                    },
-                    navigationIcon = {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-
-                            Box(
-                                modifier = Modifier
-                                    .size(60.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF4CAF50)), // change color if you want
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AsyncImage(
-                                    model = jobSeeker.value?.profilePhoto,
-                                    contentDescription = "Profile Photo",
-                                    modifier = Modifier
-                                        .size(100.dp)
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Column {
-                                Text(
-                                    text = "Hi! ${jobSeeker.value?.fullName}",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = "Let's find your dream job.",
-                                    fontSize = 14.sp,
-                                    color = Color.Gray
-                                )
-                            }
-                        }
-
-                    },
-                    actions = {
-                        Row(
-                            modifier = Modifier
-                                .width(130.dp)
-                        ) {
-                            IconButton(onClick = {
-                                val intent = Intent(context, MessageActivity::class.java)
-                                context.startActivity(intent)                            }) {
-                                Icon(
-                                    painter = painterResource(R.drawable.chat),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(30.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(20.dp))
-                            IconButton(onClick = {}) {
-                                Icon(
-                                    painter = painterResource(R.drawable.notification),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(30.dp)
-                                )
-                            }
-                        }
-                    }
-                )
-            }
-
-        },
-
         bottomBar = {
             Surface (
                 modifier = Modifier
@@ -254,7 +166,7 @@ fun JobSeekerDashboardBody() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding()
         ) {
             when (selectedIndex) {
                 0 -> JobSeekerHomeScreenBody()

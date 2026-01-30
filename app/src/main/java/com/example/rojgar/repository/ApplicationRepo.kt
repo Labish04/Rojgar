@@ -28,4 +28,10 @@ interface ApplicationRepo {
         applicationId: String,
         callback: (Boolean, String) -> Unit
     )
+    fun checkIfApplied(
+        jobSeekerId: String,
+        postId: String,
+        callback: (Boolean) -> Unit
+    )
+
 }

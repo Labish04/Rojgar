@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -76,6 +77,8 @@ fun CvViewBody(
     jobSeekerId: String? = null,
     onBack: () -> Unit = {}
 ) {
+
+    val context = LocalContext.current
 
     val jobSeekerViewModel = remember { JobSeekerViewModel(JobSeekerRepoImpl()) }
     val objectiveViewModel = remember { ObjectiveViewModel(ObjectiveRepoImpl()) }
@@ -147,7 +150,9 @@ fun CvViewBody(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = {
+                        (context as? ComponentActivity)?.finish()
+                    }) {
                         Icon(
                             painter = painterResource(R.drawable.outline_arrow_back_ios_24),
                             contentDescription = null

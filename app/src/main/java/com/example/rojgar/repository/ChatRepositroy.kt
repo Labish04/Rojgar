@@ -29,6 +29,8 @@ interface ChatRepository {
         participant2Id: String,
         participant1Name: String,
         participant2Name: String,
+        participant1Photo: String = "",
+        participant2Photo: String = "",
         callback: (Boolean, String, ChatRoom?) -> Unit
     )
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
-    <!-- Permissions for ZEGOCLOUD messaging -->
+    xmlns:tools="http://schemas.android.com/tools" >
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -10,15 +10,22 @@
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> <!-- For Android 13+ -->
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
+
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
 
     <application
         android:allowBackup="true"
@@ -31,12 +38,109 @@
         android:theme="@style/Theme.Rojgar"
         android:usesCleartextTraffic="true"
         tools:replace="android:fullBackupContent"
-        tools:targetApi="31">
+        tools:targetApi="31" >
+        <activity
+            android:name=".view.CompanySearchActivity"
+            android:exported="true"
+            android:label="@string/title_activity_company_search"
+            android:theme="@style/Theme.Rojgar" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".view.BlockedUsersActivity"
+            android:exported="true"
+            android:label="@string/title_activity_company_search"
+            android:theme="@style/Theme.Rojgar" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".view.AdminReportsActivity"
+            android:exported="true"
+            android:label="@string/title_activity_admin_reports"
+            android:theme="@style/Theme.Rojgar" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".view.AdminHelpAndSupportActivity"
+            android:exported="true"
+            android:label="@string/title_activity_admin_help_and_support"
+            android:theme="@style/Theme.Rojgar" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".utils.MyFirebaseMessagingService"
+            android:exported="false" >
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <activity
+            android:name=".view.HelpAndSupportActivity"
+            android:exported="true"
+            android:label="@string/title_activity_help_and_support"
+            android:theme="@style/Theme.Rojgar" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".view.ActiveJob"
+            android:exported="true"
+            android:label="@string/title_activity_help_and_support"
+            android:theme="@style/Theme.Rojgar" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".view.GroupChatActivity"
+            android:exported="true"
+            android:label="@string/title_activity_group_chat"
+            android:theme="@style/Theme.Rojgar" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".view.FollowingListActivity"
+            android:exported="true"
+            android:label="@string/title_activity_chatbot"
+            android:theme="@style/Theme.Rojgar" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".view.ChatbotActivity"
             android:exported="true"
             android:label="@string/title_activity_chatbot"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -47,7 +151,7 @@
             android:name=".view.AdminVerificationActivity"
             android:exported="true"
             android:label="@string/title_activity_admin_verification"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -58,7 +162,7 @@
             android:name=".view.SavedJobsActivity"
             android:exported="true"
             android:label="@string/title_activity_company_verification"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -69,7 +173,7 @@
             android:name=".view.CompanyVerificationActivity"
             android:exported="true"
             android:label="@string/title_activity_company_verification"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -80,7 +184,7 @@
             android:name=".view.FeedbackActivity"
             android:exported="true"
             android:label="@string/title_activity_feedback"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -91,7 +195,7 @@
             android:name=".view.AdminDashboardActivity"
             android:exported="true"
             android:label="@string/title_activity_admin_dashboard"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -102,7 +206,18 @@
             android:name=".view.FollowersListActivity"
             android:exported="true"
             android:label="@string/title_activity_followers_list"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".view.NotificationActivity"
+            android:exported="true"
+            android:label="@string/title_activity_followers_list"
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -113,7 +228,7 @@
             android:name=".view.MapActivity"
             android:exported="true"
             android:label="@string/title_activity_map"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -131,21 +246,10 @@
             android:value="AIzaSyCX3_5f2eilotR-J9y7sC-7Q-zCFP98G7U" />
 
         <activity
-            android:name=".view.CompanyHelpAndSupportActivity"
-            android:exported="true"
-            android:label="@string/title_activity_chat"
-            android:theme="@style/Theme.Rojgar">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <activity
             android:name=".view.JobSeekerReviewActivity"
             android:exported="true"
             android:label="@string/title_activity_chat"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -156,7 +260,7 @@
             android:name=".view.ChatActivity"
             android:exported="true"
             android:label="@string/title_activity_chat"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -167,7 +271,7 @@
             android:name=".view.CreateGroupActivity"
             android:exported="true"
             android:label="@string/title_activity_chat"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -178,7 +282,7 @@
             android:name=".view.MessageActivity"
             android:exported="true"
             android:label="@string/title_activity_message"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -189,7 +293,7 @@
             android:name=".view.CompanyProfileActivity"
             android:exported="true"
             android:label="@string/title_activity_login"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -200,7 +304,7 @@
             android:name=".view.CalendarActivity"
             android:exported="true"
             android:label="@string/title_activity_login"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -211,7 +315,7 @@
             android:name=".view.JobApplyActivity"
             android:exported="true"
             android:label="@string/title_activity_job_apply"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -222,7 +326,7 @@
             android:name=".view.JobSeekerSearchActivity"
             android:exported="true"
             android:label="@string/title_activity_job_apply"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -233,7 +337,7 @@
             android:name=".view.ForgetPasswordActivity"
             android:exported="true"
             android:label="@string/title_activity_forget_password"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -244,7 +348,7 @@
             android:name=".view.CompanyUploadPost"
             android:exported="true"
             android:label="@string/title_activity_company_dashboard"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -255,7 +359,7 @@
             android:name=".view.CompanyDashboardActivity"
             android:exported="true"
             android:label="@string/title_activity_company_dashboard"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -266,7 +370,7 @@
             android:name=".view.CvViewActivity"
             android:exported="true"
             android:label="@string/title_activity_cv_view"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -277,7 +381,7 @@
             android:name=".view.DocumentCompanyActivity"
             android:exported="true"
             android:label="@string/title_activity_document_company"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -288,7 +392,7 @@
             android:name=".view.CodeVerificationCompanyActivity"
             android:exported="true"
             android:label="@string/title_activity_code_verification_company"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -299,7 +403,7 @@
             android:name=".view.SignUpCompanyActivity"
             android:exported="true"
             android:label="@string/title_activity_sign_up_company"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -310,7 +414,7 @@
             android:name=".view.LoginActivity"
             android:exported="true"
             android:label="@string/title_activity_login"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -321,7 +425,7 @@
             android:name=".view.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -332,7 +436,7 @@
             android:name=".view.JobSeekerProfileActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -343,7 +447,7 @@
             android:name=".view.RegisterAsActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -354,7 +458,7 @@
             android:name=".view.JobSeekerProfileDetailsActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -365,7 +469,7 @@
             android:name=".view.JobSeekerDashboardActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -376,7 +480,7 @@
             android:name=".view.JobSeekerPersonalInformationActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -387,7 +491,7 @@
             android:name=".view.SetPasswordActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -398,7 +502,7 @@
             android:name=".view.ConfirmPasswordActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -409,7 +513,7 @@
             android:name=".view.SplashActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -420,7 +524,7 @@
             android:name=".view.VerificationActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -431,7 +535,7 @@
             android:name=".view.JobseekerSignUpActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -442,7 +546,7 @@
             android:name=".view.UpdatePasswordActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -453,7 +557,7 @@
             android:name=".view.JobSeekerJobPreferenceActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -464,7 +568,7 @@
             android:name=".view.JobSeekerObjectiveActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -475,7 +579,7 @@
             android:name=".view.JobSeekerExperienceActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -486,7 +590,7 @@
             android:name=".view.JobSeekerSkillActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -497,7 +601,7 @@
             android:name=".view.JobSeekerEducationActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -508,7 +612,7 @@
             android:name=".view.JobSeekerTrainingActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -519,7 +623,7 @@
             android:name=".view.JobSeekerPortfolioAccountsActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -530,7 +634,7 @@
             android:name=".view.JobSeekerViewPost"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -541,7 +645,7 @@
             android:name=".view.JobSeekerLanguageActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -552,7 +656,7 @@
             android:name=".view.JobSeekerReferenceActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -563,7 +667,7 @@
             android:name=".view.ApplicationActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -574,7 +678,7 @@
             android:name=".view.CompanyReviewActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -585,7 +689,7 @@
             android:name=".view.AppliedJobsActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Rojgar">
+            android:theme="@style/Theme.Rojgar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

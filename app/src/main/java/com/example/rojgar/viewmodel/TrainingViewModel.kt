@@ -1,5 +1,7 @@
 package com.example.rojgar.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -13,6 +15,9 @@ class TrainingViewModel(private val trainingRepo: TrainingRepo) : ViewModel() {
 
     private val _allTrainings = MutableLiveData<List<TrainingModel>?>()
     val allTrainings : MutableLiveData<List<TrainingModel>?> get() = _allTrainings
+
+    private val _uploading = MutableLiveData(false)
+    val uploading: LiveData<Boolean> = _uploading
 
     fun addTraining(training: TrainingModel, callback: (Boolean, String) -> Unit) {
         trainingRepo.addTraining(training, callback)
@@ -53,4 +58,20 @@ class TrainingViewModel(private val trainingRepo: TrainingRepo) : ViewModel() {
             }
         }
     }
+
+    fun uploadCertificateImage(
+        context: Context,
+        imageUri: Uri,
+        callback: (String?) -> Unit
+    ) {
+        _uploading.value = true
+        trainingRepo.uploadCertificateImage(context, imageUri) { url ->
+            _uploading.value = false
+            callback(url)
+        }
+    }
+    fun getFileNameFromUri(context: Context, imageUri: Uri): String? {
+        return trainingRepo.getFileNameFromUri(context, imageUri)
+    }
+
 }

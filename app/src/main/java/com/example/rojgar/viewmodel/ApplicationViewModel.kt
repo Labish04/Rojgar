@@ -16,6 +16,9 @@ class ApplicationViewModel(private val repo: ApplicationRepo) : ViewModel() {
     private val _loading = MutableLiveData<Boolean>()
     val loading: MutableLiveData<Boolean> get() = _loading
 
+    private val _hasApplied = MutableLiveData<Boolean>()
+    val hasApplied: MutableLiveData<Boolean> get() = _hasApplied
+
     fun applyForJob(application: ApplicationModel) {
         _loading.value = true
         repo.applyForJob(application) { success, message ->
@@ -23,6 +26,19 @@ class ApplicationViewModel(private val repo: ApplicationRepo) : ViewModel() {
             _applyResult.value = Pair(success, message)
         }
     }
+
+    fun checkIfApplied(jobSeekerId: String, postId: String) {
+        _loading.value = true
+        repo.checkIfApplied(jobSeekerId, postId) { applied ->
+            _loading.value = false
+            _hasApplied.value = applied
+        }
+    }
+
+    fun resetApplyState() {
+        _hasApplied.value = false
+    }
+
 
     fun getApplicationsByJobSeeker(jobSeekerId: String) {
         _loading.value = true

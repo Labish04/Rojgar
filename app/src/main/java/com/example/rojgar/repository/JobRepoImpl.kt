@@ -10,6 +10,12 @@ import com.cloudinary.Cloudinary
 import com.cloudinary.utils.ObjectUtils
 import com.example.rojgar.model.JobModel
 import com.example.rojgar.model.PreferenceModel
+import com.example.rojgar.model.JobSeekerModel
+import com.example.rojgar.model.SkillModel
+import com.example.rojgar.model.ExperienceModel
+import com.example.rojgar.model.EducationModel
+import com.example.rojgar.recommendation.EnhancedJobRecommendationEngine
+import com.example.rojgar.utils.NotificationHelper
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -20,10 +26,12 @@ import java.io.InputStream
 import java.util.UUID
 import java.util.concurrent.Executors
 
-class JobRepoImpl : JobRepo {
+class JobRepoImpl(private val context: Context) : JobRepo {
     val auth: FirebaseAuth = FirebaseAuth.getInstance()
     val database: FirebaseDatabase = FirebaseDatabase.getInstance()
     val ref: DatabaseReference = database.getReference("Job")
+
+    private val recommendationEngine = EnhancedJobRecommendationEngine()
 
     private val cloudinary = Cloudinary(
         mapOf(
@@ -43,8 +51,22 @@ class JobRepoImpl : JobRepo {
 
         ref.child(postId).setValue(postWithId).addOnCompleteListener {
             if (it.isSuccessful) {
+                database.getReference("Companys").child(jobPost.companyId).child("companyName")
+                    .get().addOnSuccessListener { snapshot ->
+                        val companyName = snapshot.getValue(String::class.java) ?: "A Company"
+
+                        // ✅ Send notification to ALL job seekers
+                        NotificationHelper.sendJobPostNotificationToAll(
+                            context, // You need to add context to your repository
+                            postId,
+                            jobPost.title,
+                            companyName,
+                            jobPost.position
+                        )
+                    }
                 callback(true, "Job post created successfully")
-            } else {
+            }
+            else {
                 callback(false, "${it.exception?.message}")
             }
         }
@@ -87,7 +109,6 @@ class JobRepoImpl : JobRepo {
                     val list = mutableListOf<JobModel>()
 
                     if (!snapshot.exists()) {
-                        // No data found - return empty list
                         callback(true, "No job posts found", emptyList())
                         return
                     }
@@ -95,14 +116,11 @@ class JobRepoImpl : JobRepo {
                     for (child in snapshot.children) {
                         val job = child.getValue(JobModel::class.java)
                         if (job != null) {
-                            // IMPORTANT: Use the Firebase key as postId
                             list.add(job.copy(postId = child.key ?: job.postId))
                         }
                     }
 
-                    // Sort by timestamp (newest first)
                     list.sortByDescending { it.timestamp }
-
                     callback(true, "Fetched ${list.size} job posts", list)
                 }
 
@@ -121,7 +139,6 @@ class JobRepoImpl : JobRepo {
                 if (snapshot.exists()) {
                     val jobPost = snapshot.getValue(JobModel::class.java)
                     if (jobPost != null) {
-                        // Ensure postId is set correctly
                         callback(
                             true,
                             "Job post fetched",
@@ -156,14 +173,11 @@ class JobRepoImpl : JobRepo {
                 for (postSnapshot in snapshot.children) {
                     val job = postSnapshot.getValue(JobModel::class.java)
                     if (job != null) {
-                        // IMPORTANT: Use the Firebase key as postId
                         jobList.add(job.copy(postId = postSnapshot.key ?: job.postId))
                     }
                 }
 
-                // Sort by timestamp (newest first)
                 jobList.sortByDescending { it.timestamp }
-
                 callback(true, "Fetched ${jobList.size} jobs successfully", jobList)
             }
 
@@ -173,105 +187,191 @@ class JobRepoImpl : JobRepo {
         })
     }
 
+    /**
+     * ENHANCED RECOMMENDATION SYSTEM
+     * Uses the new EnhancedJobRecommendationEngine with comprehensive scoring
+     */
     override fun getRecommendedJobs(
         preference: PreferenceModel,
         callback: (Boolean, String, List<JobModel>?) -> Unit
     ) {
+        // First, get all jobs
         ref.addListenerForSingleValueEvent(object : ValueEventListener {
-
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (!snapshot.exists()) {
+            override fun onDataChange(jobSnapshot: DataSnapshot) {
+                if (!jobSnapshot.exists()) {
                     callback(true, "No jobs found", emptyList())
                     return
                 }
 
-                val scoredJobs = mutableListOf<Pair<JobModel, Int>>()
-
-                for (postSnapshot in snapshot.children) {
-                    val job = postSnapshot.getValue(JobModel::class.java) ?: continue
-
-                    val jobWithId = job.copy(
-                        postId = postSnapshot.key ?: job.postId
-                    )
-
-                    var score = 0
-
-                    /* ---------------- CATEGORY MATCH ---------------- */
-                    if (job.categories.any { jobCategory ->
-                            preference.categories.any { prefCategory ->
-                                jobCategory.equals(prefCategory, true)
-                            }
-                        }
-                    ) {
-                        score += 3
-                    }
-
-                    /* ---------------- INDUSTRY MATCH ---------------- */
-//                    if (preference.industries.any {
-//                            it.equals(job.industry, true)
-//                        }
-//                    ) {
-//                        score += 2
-//                    }
-
-                    /* ---------------- JOB TYPE / AVAILABILITY ---------------- */
-                    if (preference.availabilities.any {
-                            it.equals(job.jobType, true)
-                        }
-                    ) {
-                        score += 2
-                    }
-
-                    /* ---------------- TITLE / POSITION MATCH ---------------- */
-                    if (preference.titles.any { prefTitle ->
-                            job.title.contains(prefTitle, true) ||
-                                    job.position.contains(prefTitle, true)
-                        }
-                    ) {
-                        score += 3
-                    }
-
-                    /* ---------------- SKILLS MATCH ---------------- */
-                    val jobSkills = job.skills
-                        .split(",")
-                        .map { it.trim().lowercase() }
-
-                    val userSkills = preference.titles
-                        .flatMap { it.split(",") }
-                        .map { it.trim().lowercase() }
-
-                    if (jobSkills.any { it in userSkills }) {
-                        score += 3
-                    }
-
-                    /* ---------------- LOCATION MATCH ---------------- */
-//                    if (
-//                        preference.location.isNotBlank() &&
-//                        job.location.equals(preference.location, true)
-//                    ) {
-//                        score += 1
-//                    }
-
-                    if (score > 0) {
-                        scoredJobs.add(jobWithId to score)
+                val allJobs = mutableListOf<JobModel>()
+                for (postSnapshot in jobSnapshot.children) {
+                    val job = postSnapshot.getValue(JobModel::class.java)
+                    if (job != null) {
+                        allJobs.add(job.copy(postId = postSnapshot.key ?: job.postId))
                     }
                 }
 
-                val recommendedJobs = scoredJobs
-                    .sortedByDescending { it.second }
-                    .map { it.first }
+                // Get current user data for comprehensive recommendations
+                val currentUser = auth.currentUser
+                if (currentUser == null) {
+                    // If no user, use basic preference-only matching
+                    val basicRecommendations = getBasicRecommendations(allJobs, preference)
+                    callback(true, "Found ${basicRecommendations.size} recommended jobs", basicRecommendations)
+                    return
+                }
 
-                callback(
-                    true,
-                    "Found ${recommendedJobs.size} recommended jobs",
-                    recommendedJobs
-                )
+                // Fetch user profile data
+                fetchUserProfileData(currentUser.uid, allJobs, preference, callback)
             }
 
             override fun onCancelled(error: DatabaseError) {
                 callback(false, error.message, null)
             }
         })
+    }
+
+    /**
+     * Fetch comprehensive user profile data for advanced recommendations
+     */
+    private fun fetchUserProfileData(
+        userId: String,
+        allJobs: List<JobModel>,
+        preference: PreferenceModel,
+        callback: (Boolean, String, List<JobModel>?) -> Unit
+    ) {
+        val jobSeekerRef = database.getReference("JobSeekers").child(userId)
+        val skillsRef = database.getReference("Skills")
+        val experienceRef = database.getReference("Experience")
+        val educationRef = database.getReference("Education")
+
+        var jobSeeker: JobSeekerModel? = null
+        var skills: List<SkillModel>? = null
+        var experiences: List<ExperienceModel>? = null
+        var education: List<EducationModel>? = null
+        var fetchCount = 0
+
+        val checkComplete = {
+            fetchCount++
+            if (fetchCount == 4) {
+                // All data fetched, generate recommendations
+                val scoredJobs = recommendationEngine.getRecommendedJobs(
+                    allJobs = allJobs,
+                    jobSeeker = jobSeeker ?: JobSeekerModel(),
+                    preference = preference,
+                    skills = skills,
+                    experiences = experiences,
+                    education = education
+                )
+
+                val recommendedJobs = scoredJobs.map { it.job }
+                callback(
+                    true,
+                    "Found ${recommendedJobs.size} personalized recommendations",
+                    recommendedJobs
+                )
+            }
+        }
+
+        // Fetch JobSeeker
+        jobSeekerRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                jobSeeker = snapshot.getValue(JobSeekerModel::class.java)
+                checkComplete()
+            }
+            override fun onCancelled(error: DatabaseError) {
+                checkComplete()
+            }
+        })
+
+        // Fetch Skills
+        skillsRef.orderByChild("jobSeekerId").equalTo(userId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val skillList = mutableListOf<SkillModel>()
+                    for (child in snapshot.children) {
+                        child.getValue(SkillModel::class.java)?.let { skillList.add(it) }
+                    }
+                    skills = skillList
+                    checkComplete()
+                }
+                override fun onCancelled(error: DatabaseError) {
+                    checkComplete()
+                }
+            })
+
+        // Fetch Experience
+        experienceRef.orderByChild("jobSeekerId").equalTo(userId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val expList = mutableListOf<ExperienceModel>()
+                    for (child in snapshot.children) {
+                        child.getValue(ExperienceModel::class.java)?.let { expList.add(it) }
+                    }
+                    experiences = expList
+                    checkComplete()
+                }
+                override fun onCancelled(error: DatabaseError) {
+                    checkComplete()
+                }
+            })
+
+        // Fetch Education
+        educationRef.orderByChild("jobSeekerId").equalTo(userId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val eduList = mutableListOf<EducationModel>()
+                    for (child in snapshot.children) {
+                        child.getValue(EducationModel::class.java)?.let { eduList.add(it) }
+                    }
+                    education = eduList
+                    checkComplete()
+                }
+                override fun onCancelled(error: DatabaseError) {
+                    checkComplete()
+                }
+            })
+    }
+
+    /**
+     * Basic recommendation fallback (when user data is not available)
+     */
+    private fun getBasicRecommendations(
+        allJobs: List<JobModel>,
+        preference: PreferenceModel
+    ): List<JobModel> {
+        val scoredJobs = allJobs.mapNotNull { job ->
+            var score = 0
+
+            // Category match
+            if (job.categories.any { jobCategory ->
+                    preference.categories.any { prefCategory ->
+                        jobCategory.equals(prefCategory, true)
+                    }
+                }) {
+                score += 3
+            }
+
+            // Job type match
+            if (preference.availabilities.any {
+                    it.equals(job.jobType, true)
+                }) {
+                score += 2
+            }
+
+            // Title match
+            if (preference.titles.any { prefTitle ->
+                    job.title.contains(prefTitle, true) ||
+                            job.position.contains(prefTitle, true)
+                }) {
+                score += 3
+            }
+
+            if (score > 0) job to score else null
+        }
+
+        return scoredJobs
+            .sortedByDescending { it.second }
+            .map { it.first }
     }
 
     override fun uploadHiringBanner(
@@ -295,7 +395,6 @@ class JobRepoImpl : JobRepo {
                 )
 
                 var imageUrl = response["url"] as String?
-
                 imageUrl = imageUrl?.replace("http://", "https://")
 
                 Handler(Looper.getMainLooper()).post {
@@ -325,6 +424,6 @@ class JobRepoImpl : JobRepo {
                 }
             }
         }
-        return fileName    }
-
+        return fileName
+    }
 }

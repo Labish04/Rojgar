@@ -1,5 +1,6 @@
 package com.example.rojgar.view
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -74,7 +75,7 @@ class FollowingListActivity : ComponentActivity() {
 @Composable
 fun FollowingListBody() {
     val context = LocalContext.current
-    val followViewModel: FollowViewModel = viewModel(factory = FollowViewModelFactory(FollowRepoImpl()))
+    val followViewModel = remember { FollowViewModel(FollowRepoImpl(context)) }
     val jobSeekerRepo = remember { JobSeekerRepoImpl() }
     val companyRepo = remember { CompanyRepoImpl() }
     val userRepo = remember { UserRepo() }
@@ -94,7 +95,9 @@ fun FollowingListBody() {
     // Get intent extras
     val activity = context as? ComponentActivity
     val userId = activity?.intent?.getStringExtra("USER_ID") ?: ""
+    val userType = activity?.intent?.getStringExtra("User_Type") ?: ""
     val isOwnProfile = activity?.intent?.getBooleanExtra("IS_OWN_PROFILE", false) ?: false
+
 
     // Current user info
     var currentUserId by remember { mutableStateOf("") }
@@ -114,6 +117,21 @@ fun FollowingListBody() {
                 currentUserType = type
                 isLoadingUserType = false
                 reloadUserTypeTrigger++
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        // If we have userType from intent, use it directly
+        if (userType.isNotEmpty()) {
+            currentUserType = userType
+        } else {
+            // Fallback to repository only if not passed
+            currentUserId = userRepo.getCurrentUserId()
+            if (currentUserId.isNotEmpty()) {
+                userRepo.getUserType { type ->
+                    currentUserType = type
+                }
             }
         }
     }
@@ -462,7 +480,8 @@ fun FollowingListBody() {
                                 currentUserId = currentUserId,
                                 currentUserType = currentUserType,
                                 userRepo = userRepo,
-                                onReloadUserType = reloadUserType
+                                onReloadUserType = reloadUserType,
+                                isOwnProfile = isOwnProfile
                             )
                         }
                     }
@@ -560,6 +579,7 @@ fun FollowingEmptyState() {
 
 @Composable
 fun FollowingCard(
+    isOwnProfile: Boolean,
     following: FollowingUi,
     index: Int,
     primaryBlue: Color,
@@ -672,6 +692,7 @@ fun FollowingCard(
                     Spacer(modifier = Modifier.width(12.dp))
 
                     // Show different button based on status
+                    if (isOwnProfile){
                     if (isLoadingUserType) {
                         // Show loading button
                         Button(
@@ -703,7 +724,11 @@ fun FollowingCard(
                         // User is logged in but we couldn't determine type
                         Button(
                             onClick = {
-                                Toast.makeText(context, "Reloading user type...", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "Reloading user type...",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                                 onReloadUserType()
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
@@ -711,6 +736,7 @@ fun FollowingCard(
                         ) {
                             Text("Retry")
                         }
+                    }
                     } else {
                         // User is not logged in
                         Button(

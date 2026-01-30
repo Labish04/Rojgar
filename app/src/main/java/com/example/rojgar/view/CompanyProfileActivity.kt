@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -31,7 +32,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -52,11 +52,21 @@ import com.example.rojgar.viewmodel.CompanyViewModel
 import com.example.rojgar.viewmodel.FollowViewModel
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rojgar.repository.UserRepo
-import com.example.rojgar.viewmodel.AuthViewModel
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.ui.draw.scale
+import com.example.rojgar.model.ReportCategories
+import com.example.rojgar.model.ReportModel
+import com.example.rojgar.repository.JobRepoImpl
+import com.example.rojgar.repository.ReportRepoImpl
+import com.example.rojgar.viewmodel.JobViewModel
+import kotlinx.coroutines.launch
+import java.util.Date
 
 class CompanyProfileActivity : ComponentActivity() {
     lateinit var imageUtils: ImageUtils
@@ -132,19 +142,16 @@ fun CompanyProfileBody(
     val authRepo = remember { UserRepo() }
 
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
-    val followViewModel = remember { FollowViewModel(FollowRepoImpl()) }
+    val followViewModel = remember { FollowViewModel(FollowRepoImpl(context)) }
 
     var currentUserRole by remember { mutableStateOf<String?>(null) }
     val currentUserId = remember { authRepo.getCurrentUserId() }
-
-
+    var currentUserName by remember { mutableStateOf("") }
 
     val company = companyViewModel.companyDetails.observeAsState(initial = null)
     val isFollowingState by followViewModel.isFollowing.observeAsState(initial = false)
     val followersCountState by followViewModel.followersCount.observeAsState(initial = 0)
     val followingCountState by followViewModel.followingCount.observeAsState(initial = 0)
-
-    val actualCompanyId = if (isOwnProfile) company.value?.companyId ?: "" else companyId
 
     var isUploadingCover by remember { mutableStateOf(false) }
     var isUploadingProfile by remember { mutableStateOf(false) }
@@ -157,6 +164,19 @@ fun CompanyProfileBody(
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showConfirmPasswordDialog by remember { mutableStateOf(false) }
     var showEditProfileDialog by remember { mutableStateOf(false) }
+    val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
+    val actualCompanyId = if (isOwnProfile) company.value?.companyId ?: "" else companyId
+    val jobPosts by jobViewModel.company.observeAsState(emptyList())
+
+    var showReportDialog by remember { mutableStateOf(false) }
+    var selectedReportCategory by remember { mutableStateOf("") }
+    var reportReason by remember { mutableStateOf("") }
+    var reportDescription by remember { mutableStateOf("") }
+    var isSubmittingReport by remember { mutableStateOf(false) }
+    var selectedEvidenceUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var isUploadingEvidence by remember { mutableStateOf(false) }
+    val reportCategories = ReportCategories.CATEGORIES
+    val reportRepository = remember { ReportRepoImpl() }
 
     fun shareCompanyProfile(context: Context, company: CompanyModel?) {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -174,6 +194,16 @@ fun CompanyProfileBody(
             putExtra(Intent.EXTRA_TEXT, shareText)
         }
         context.startActivity(Intent.createChooser(shareIntent, "Share Company Profile via"))
+    }
+
+    LaunchedEffect(companyId) {
+        if (companyId.isNotEmpty()) {
+            jobViewModel.getJobPostsByCompanyId(companyId)
+        }
+    }
+
+    val activeJobCount = remember(jobPosts) {
+        jobPosts.count { isJobActive(it.deadline) }
     }
 
     LaunchedEffect(Unit) {
@@ -253,391 +283,904 @@ fun CompanyProfileBody(
         }
     }
 
-    Scaffold(containerColor = Color(0xFFF8FAFC)) { padding ->
-        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            Box(modifier = Modifier.fillMaxWidth().height(240.dp)) {
-                if (selectedCoverUri != null || displayedCoverUrl.isNotEmpty()) {
-                    Image(
-                        painter = rememberAsyncImagePainter(selectedCoverUri ?: displayedCoverUrl),
-                        contentDescription = "Background Image",
-                        modifier = Modifier.fillMaxSize().then(if (isOwnProfile) Modifier.clickable { onPickCoverImage() } else Modifier),
-                        contentScale = ContentScale.Crop
-                    )
-                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)))
-                    if (isUploadingCover) {
-                        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = Color.White)
-                        }
-                    }
-                } else {
-                    Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2), Color(0xFFF093FB)))).then(if (isOwnProfile) Modifier.clickable { onPickCoverImage() } else Modifier)) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = "Add Background", modifier = Modifier.size(56.dp).align(Alignment.Center), tint = Color.White.copy(alpha = 0.7f))
-                    }
-                }
-
-                Row(modifier = Modifier.fillMaxWidth().padding(16.dp).align(Alignment.TopCenter), horizontalArrangement = Arrangement.SpaceBetween) {
-                    IconButton(onClick = { activity.finish() }, modifier = Modifier.shadow(8.dp, CircleShape).background(Color.White.copy(alpha = 0.95f), CircleShape).size(44.dp)) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = Color(0xFF1F2937))
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        IconButton(onClick = { shareCompanyProfile(context, company.value) }, modifier = Modifier.shadow(8.dp, CircleShape).background(Color.White.copy(alpha = 0.95f), CircleShape).size(44.dp)) {
-                            Icon(imageVector = Icons.Default.Share, contentDescription = "Share", tint = Color(0xFF1F2937))
-                        }
-                        if (isOwnProfile) {
-                            IconButton(onClick = { isDrawerOpen = true }, modifier = Modifier.shadow(8.dp, CircleShape).background(Color.White.copy(alpha = 0.95f), CircleShape).size(44.dp)) {
-                                Icon(painter = painterResource(id = R.drawable.outline_more_vert_24), contentDescription = "More", tint = Color(0xFF1F2937))
-                            }
-                        }
-                    }
-                }
-            }
-
-            Column(modifier = Modifier.fillMaxWidth().offset(y = (-70).dp).padding(horizontal = 20.dp)) {
-                Box(modifier = Modifier.align(Alignment.Start)) {
-                    Box(modifier = Modifier.size(140.dp).shadow(16.dp, CircleShape).background(Brush.linearGradient(colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2))), CircleShape).padding(4.dp)) {
-                        Box(modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.White).padding(5.dp).then(if (isOwnProfile) Modifier.clickable { onPickProfileImage() } else Modifier), contentAlignment = Alignment.Center) {
-                            if (selectedProfileUri != null || displayedProfileUrl.isNotEmpty()) {
-                                Image(painter = rememberAsyncImagePainter(selectedProfileUri ?: displayedProfileUrl), contentDescription = "Profile Image", modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
-                            } else {
-                                Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2))), CircleShape), contentAlignment = Alignment.Center) {
-                                    Text(text = company.value?.companyName?.firstOrNull()?.toString() ?: "L", fontSize = 52.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                }
-                            }
-                            if (isUploadingProfile) {
-                                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f), CircleShape), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator(color = Color.White, strokeWidth = 3.dp, modifier = Modifier.size(30.dp))
-                                }
-                            }
-                        }
-                    }
-                    if (isOwnProfile) {
-                        Box(modifier = Modifier.size(40.dp).shadow(8.dp, CircleShape).clip(CircleShape).background(Brush.linearGradient(colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2)))).border(4.dp, Color.White, CircleShape).align(Alignment.BottomEnd).clickable { onPickProfileImage() }, contentAlignment = Alignment.Center) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = "Change Photo", tint = Color.White, modifier = Modifier.size(20.dp))
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(text = company.value?.companyName ?: "Loading...", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF111827), letterSpacing = (-0.5).sp)
-                    if (company.value?.isVerified == true) {
-                        Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFFEF3C7), shadowElevation = 2.dp)
-                        {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = Color(0xFFF59E0B),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text(
-                                    text = "Verified",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFD97706)
-                                )
-                            }
-                        }
-                    }else{
-                        Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFFEF3C7), shadowElevation = 2.dp)
-                        {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = Color(0xFFB91010),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text(
-                                    text = "Not Verified",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF5F0606)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(text = company.value?.companyTagline ?: "Loading...", fontSize = 15.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium, letterSpacing = 0.2.sp)
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    EnhancedStatCard(label = "Active Jobs", value = "42", icon = Icons.Default.Email, modifier = Modifier.weight(1f))
-                    EnhancedStatCard(
-                        label = "Followers",
-                        value = formatNumber(followersCountState),
-                        icon = Icons.Default.Face,
-                        modifier = Modifier.weight(1f).clickable {
-                            val intent = Intent(context, FollowersListActivity::class.java)
-                            intent.putExtra("USER_ID", if (isOwnProfile) company.value?.companyId ?: "" else companyId)
-                            intent.putExtra("USER_TYPE", "Company")
-                            intent.putExtra("IS_OWN_PROFILE", isOwnProfile)
-                            context.startActivity(intent)
-                        }
-                    )
-                    EnhancedStatCard(
-                        label = "Following",
-                        value = formatNumber(followingCountState),
-                        icon = Icons.Default.Person,
-                        modifier = Modifier.weight(1f).clickable {
-                            val intent = Intent(context, FollowingListActivity::class.java)
-                            intent.putExtra("USER_ID", if (isOwnProfile) company.value?.companyId ?: "" else companyId)
-                            intent.putExtra("USER_TYPE", "Company")
-                            intent.putExtra("IS_OWN_PROFILE", isOwnProfile)
-                            context.startActivity(intent)
-                        }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                if (!isOwnProfile) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(
-                            onClick = {
-                                if (currentUserId.isNotEmpty() && currentUserRole != null) {
-                                    if (isFollowingState) {
-                                        followViewModel.unfollow(currentUserId, currentUserRole!!, companyId, "Company") { success, message ->
-                                            if (success) {
-                                                followViewModel.getFollowersCount(companyId)
-                                                Toast.makeText(context, "Unfollowed!", Toast.LENGTH_SHORT).show()
-                                            } else Toast.makeText(context, "Failed: $message", Toast.LENGTH_SHORT).show()
-                                        }
-                                    } else {
-                                        followViewModel.follow(currentUserId, currentUserRole!!, companyId, "Company") { success, message ->
-                                            if (success) {
-                                                followViewModel.getFollowersCount(companyId)
-                                                Toast.makeText(context, "Followed!", Toast.LENGTH_SHORT).show()
-                                            } else Toast.makeText(context, "Failed: $message", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                } else Toast.makeText(context, "Please login to follow", Toast.LENGTH_SHORT).show()
-                            },
-                            modifier = Modifier.weight(1f).height(52.dp).shadow(8.dp, RoundedCornerShape(16.dp)),
-                            colors = ButtonDefaults.buttonColors(containerColor = if (isFollowingState) Color(0xFF10B981) else Color(0xFF6366F1)),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Icon(imageVector = if (isFollowingState) Icons.Default.Check else Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = if (isFollowingState) "Following" else "Follow", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        }
-
-                        OutlinedButton(onClick = { Toast.makeText(context, "Message feature coming soon!", Toast.LENGTH_SHORT).show() }, modifier = Modifier.weight(1f).height(52.dp).shadow(4.dp, RoundedCornerShape(16.dp)), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF6366F1), containerColor = Color.White), border = BorderStroke(2.dp, Color(0xFF6366F1))) {
-                            Icon(imageVector = Icons.Default.Send, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "Message", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(28.dp))
-
-                // Review Panel
-                ReviewPanel(
-                    companyId = actualCompanyId,
-                    context = context,
-                    onClick = {
-                        if (isOwnProfile) {
-                            val intent = Intent(context, CompanyReviewActivity::class.java)
-                            intent.putExtra("COMPANY_ID", actualCompanyId)  // Use the same ID!
-                            intent.putExtra("COMPANY_NAME", company.value?.companyName ?: "Company")
-                            context.startActivity(intent)
-                        } else {
-                            val intent = Intent(context, JobSeekerReviewActivity::class.java)
-                            intent.putExtra("COMPANY_ID", actualCompanyId)  // Use the same ID!
-                            intent.putExtra("COMPANY_NAME", company.value?.companyName ?: "Company")
-                            context.startActivity(intent)
-                        }
-                    }
-                )
-
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                EnhancedInfoSection(title = "About Company") {
-                    Text(text = company.value?.companyInformation?:"", fontSize = 15.sp, color = Color(0xFF374151), lineHeight = 24.sp, letterSpacing = 0.2.sp)
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                EnhancedInfoSection(title = "Company Information") {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        EnhancedDetailRow(icon = Icons.Default.Email, label = "Industry", value = company.value?.companyIndustry?:"", gradient = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6)))
-                        EnhancedDetailRow(icon = Icons.Default.LocationOn, label = "Headquarter", value = company.value?.companyLocation ?: "", gradient = listOf(Color(0xFFEC4899), Color(0xFFF43F5E)))
-                        EnhancedDetailRow(icon = Icons.Default.Phone, label = "Phone", value = company.value?.companyContactNumber ?: "", gradient = listOf(Color(0xFF10B981), Color(0xFF059669)))
-                        EnhancedDetailRow(icon = Icons.Default.Email, label = "Email", value = company.value?.companyEmail ?: "", gradient = listOf(Color(0xFFF59E0B), Color(0xFFEAB308)))
-                        EnhancedDetailRow(icon = Icons.Default.PlayArrow, label = "Founded", value = company.value?.companyEstablishedDate?.take(4) ?: "2015", gradient = listOf(Color(0xFF05C2B2), Color(0xFF25E4EB)))
-                        EnhancedDetailRow(icon = Icons.Default.PlayArrow, label = "Website", value = company.value?.companyWebsite ?: "", gradient = listOf(Color(0xFF3B82F6), Color(0xFF2563EB)))
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                EnhancedInfoSection(title = "Core Specialties") {
-                    val specialties = company.value?.companySpecialties ?: emptyList()
-                    if (specialties.isEmpty()) {
-                        Text(text = "No specialties added yet", fontSize = 14.sp, color = Color(0xFF9CA3AF), fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, modifier = Modifier.padding(vertical = 8.dp))
-                    } else {
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            val gradientColors = listOf(listOf(Color(0xFF6366F1), Color(0xFF8B5CF6)), listOf(Color(0xFF3B82F6), Color(0xFF2563EB)), listOf(Color(0xFFEC4899), Color(0xFFF43F5E)), listOf(Color(0xFF10B981), Color(0xFF059669)), listOf(Color(0xFFF59E0B), Color(0xFFEAB308)), listOf(Color(0xFF8B5CF6), Color(0xFFA855F7)), listOf(Color(0xFF06B6D4), Color(0xFF0891B2)), listOf(Color(0xFFEF4444), Color(0xFFDC2626)), listOf(Color(0xFF14B8A6), Color(0xFF0D9488)), listOf(Color(0xFFF97316), Color(0xFFEA580C)))
-                            specialties.forEachIndexed { index, specialty ->
-                                GradientSpecialtyChip(text = specialty, gradient = gradientColors[index % gradientColors.size])
-                            }
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(32.dp))
-            }
-        }
-
-        AnimatedVisibility(
-            visible = isDrawerOpen,
-            enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(350, easing = FastOutSlowInEasing)) + fadeIn(),
-            exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(350, easing = FastOutSlowInEasing)) + fadeOut(),
-            modifier = Modifier.fillMaxSize().zIndex(10f)
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f)).clickable { isDrawerOpen = false })
-                Box(modifier = Modifier.fillMaxHeight().width(340.dp).align(Alignment.CenterEnd).shadow(24.dp).background(Brush.verticalGradient(colors = listOf(Color(0xFFFAFAFA), Color.White)))) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        Box(modifier = Modifier.fillMaxWidth().height(140.dp).background(Brush.horizontalGradient(colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2))))) {
-                            Surface(modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).size(36.dp), shape = CircleShape, color = Color.White.copy(alpha = 0.2f)) {
-                                Icon(painter = painterResource(R.drawable.outline_arrow_back_ios_24), contentDescription = "Close", tint = Color.White, modifier = Modifier.graphicsLayer(rotationZ = 180f).clickable { isDrawerOpen = false }.padding(8.dp))
-                            }
-                            Row(modifier = Modifier.fillMaxWidth().align(Alignment.CenterStart).padding(start = 20.dp, end = 20.dp, bottom = 16.dp, top = 56.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Card(modifier = Modifier.size(70.dp).border(3.dp, Color.White, CircleShape), shape = CircleShape, elevation = CardDefaults.cardElevation(8.dp)) {
-                                    if (displayedProfileUrl.isNotEmpty()) {
-                                        AsyncImage(model = displayedProfileUrl, contentDescription = "Company Logo", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                                    } else {
-                                        Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2)))), contentAlignment = Alignment.Center) {
-                                            Text(text = company.value?.companyName?.firstOrNull()?.toString() ?: "C", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                        }
-                                    }
-                                }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = company.value?.companyName ?: "Company", style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White), maxLines = 1)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(text = "Information Technology", style = TextStyle(fontSize = 13.sp, color = Color.White.copy(alpha = 0.9f), fontWeight = FontWeight.Medium), maxLines = 1)
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                            CompanyDrawerMenuItem(icon = R.drawable.outline_edit_24, text = "Edit Profile", subtitle = "Update company information", iconColor = Color(0xFF2196F3), onClick = { isDrawerOpen = false; showEditProfileDialog = true })
-                            CompanyDrawerMenuItem(icon = R.drawable.feedback, text = "Help & Support", subtitle = "Get help or send feedback", iconColor = Color(0xFF2196F3), onClick = { isDrawerOpen = false; Toast.makeText(context, "Support clicked", Toast.LENGTH_SHORT).show() })
-                            CompanyDrawerMenuItem(icon = R.drawable.settings, text = "Settings", subtitle = "Manage preferences", iconColor = Color(0xFF9C27B0), onClick = { isDrawerOpen = false; showSettingsDialog = true })
-                            CompanyDrawerMenuItem(
-                                icon = R.drawable.verified_badge,
-                                text = "Company Verification",
-                                subtitle = if (company.value?.isVerified == true) "Verified" else "Get verified",
-                                iconColor = Color(0xFF10B981),
-                                onClick = {
-                                    isDrawerOpen = false
-                                    val intent = Intent(context, CompanyVerificationActivity::class.java)
-                                    intent.putExtra("COMPANY_ID", company.value?.companyId ?: "")
-                                    context.startActivity(intent)
-                                }
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color.Gray.copy(alpha = 0.2f))
-                            Spacer(modifier = Modifier.height(12.dp))
-                        }
-                        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp).clickable {
-                            isDrawerOpen = false
-                            repository.logout(currentUserId) { success, message ->
-                                if (success) {
-                                    Toast.makeText(context, "Logged out successfully", Toast.LENGTH_SHORT).show()
-                                    val intent = Intent(context, LoginActivity::class.java)
-                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                    context.startActivity(intent)
-                                    (context as? ComponentActivity)?.finish()
-                                } else Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                            }
-                        }, shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)), elevation = CardDefaults.cardElevation(4.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                                Icon(painter = painterResource(id = R.drawable.baseline_logout_24), contentDescription = "Logout", tint = Color(0xFFD32F2F), modifier = Modifier.size(26.dp))
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(text = "Logout", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F)))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (showSettingsDialog) {
-            CompanySettingsDialog(onDismiss = { showSettingsDialog = false }, onChangePasswordClick = { showSettingsDialog = false; showChangePasswordDialog = true }, onDeactivateClick = { showSettingsDialog = false; showConfirmPasswordDialog = true }, onDeleteAccountClick = { showSettingsDialog = false; showDeleteAccountDialog = true }, context = context)
-        }
-        if (showChangePasswordDialog) {
-            ChangePasswordDialog(onDismiss = { showChangePasswordDialog = false }, repository = jobSeekerRepository, context = context)
-        }
-        if (showDeleteAccountDialog) {
-            DeleteAccountConfirmationDialog(onDismiss = { showDeleteAccountDialog = false }, onConfirm = { password ->
-                val currentUser = repository.getCurrentCompany()
-                if (currentUser != null && currentUser.email != null) {
-                    val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(currentUser.email!!, password)
-                    currentUser.reauthenticate(credential).addOnSuccessListener {
-                        companyViewModel.deleteAccount(currentUserId) { success, message ->
-                            if (success) {
-                                Toast.makeText(context, "Account deleted permanently", Toast.LENGTH_LONG).show()
-                                val intent = Intent(context, LoginActivity::class.java)
-                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                context.startActivity(intent)
-                                activity.finish()
-                            } else Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                            showDeleteAccountDialog = false
-                        }
-                    }.addOnFailureListener { Toast.makeText(context, "Incorrect password. Please try again.", Toast.LENGTH_SHORT).show() }
-                } else Toast.makeText(context, "Unable to verify user. Please try again.", Toast.LENGTH_SHORT).show()
-            }, context = context)
-        }
-        if (showConfirmPasswordDialog) {
-            ConfirmPasswordForDeactivateDialog(onDismiss = { showConfirmPasswordDialog = false }, onConfirm = { password ->
-                val currentUser = repository.getCurrentCompany()
-                if (currentUser != null && currentUser.email != null) {
-                    val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(currentUser.email!!, password)
-                    currentUser.reauthenticate(credential).addOnSuccessListener {
-                        companyViewModel.deactivateAccount(currentUserId) { success, message ->
-                            if (success) {
-                                Toast.makeText(context, "Account deactivated successfully", Toast.LENGTH_LONG).show()
-                                val intent = Intent(context, LoginActivity::class.java)
-                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                context.startActivity(intent)
-                                activity.finish()
-                            } else Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                            showConfirmPasswordDialog = false
-                        }
-                    }.addOnFailureListener { Toast.makeText(context, "Incorrect password. Please try again.", Toast.LENGTH_SHORT).show() }
-                } else Toast.makeText(context, "Unable to verify user. Please try again.", Toast.LENGTH_SHORT).show()
-            }, context = context)
-        }
-        if (showEditProfileDialog) {
-            EditCompanyProfileDialog(company = company.value, onDismiss = { showEditProfileDialog = false }, onSave = { updatedCompany ->
-                companyViewModel.addCompanyToDatabase(updatedCompany.companyId, updatedCompany) { success, message ->
-                    showEditProfileDialog = false
-                    if (success) {
-                        Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
-                        companyViewModel.fetchCurrentCompany()
-                    } else Toast.makeText(context, "Failed to update: $message", Toast.LENGTH_SHORT).show()
-                }
-            }, context = context)
+    fun refreshFollowStatus() {
+        if (!isOwnProfile && currentUserId.isNotEmpty() && currentUserRole != null && actualCompanyId.isNotEmpty()) {
+            followViewModel.checkFollowStatus(currentUserId, actualCompanyId)  // Use actualCompanyId
         }
     }
+
+    LaunchedEffect(Unit) {
+        refreshFollowStatus()
+    }
+
+    Scaffold(
+        containerColor = Color.Transparent
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFE3F2FD),
+                            Color(0xFFBBDEFB),
+                            Color(0xFF90CAF9)
+                        )
+                    )
+                )
+        ) {
+            Column(modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
+                Box(modifier = Modifier.fillMaxWidth().height(240.dp)) {
+                    if (selectedCoverUri != null || displayedCoverUrl.isNotEmpty()) {
+                        Image(
+                            painter = rememberAsyncImagePainter(selectedCoverUri ?: displayedCoverUrl),
+                            contentDescription = "Background Image",
+                            modifier = Modifier.fillMaxSize().then(if (isOwnProfile) Modifier.clickable { onPickCoverImage() } else Modifier),
+                            contentScale = ContentScale.Crop
+                        )
+                        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)))
+                        if (isUploadingCover) {
+                            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = Color.White)
+                            }
+                        }
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2), Color(0xFFF093FB)))).then(if (isOwnProfile) Modifier.clickable { onPickCoverImage() } else Modifier)) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = "Add Background", modifier = Modifier.size(56.dp).align(Alignment.Center), tint = Color.White.copy(alpha = 0.7f))
+                        }
+                    }
+
+                    Row(modifier = Modifier.fillMaxWidth().padding(16.dp).align(Alignment.TopCenter), horizontalArrangement = Arrangement.SpaceBetween) {
+                        IconButton(onClick = { activity.finish() }, modifier = Modifier.shadow(8.dp, CircleShape).background(Color.White.copy(alpha = 0.95f), CircleShape).size(44.dp)) {
+                            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = Color(0xFF1F2937))
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            IconButton(onClick = { shareCompanyProfile(context, company.value) }, modifier = Modifier.shadow(8.dp, CircleShape).background(Color.White.copy(alpha = 0.95f), CircleShape).size(44.dp)) {
+                                Icon(imageVector = Icons.Default.Share, contentDescription = "Share", tint = Color(0xFF1F2937))
+                            }
+                            if (isOwnProfile) {
+                                IconButton(onClick = { isDrawerOpen = true }, modifier = Modifier.shadow(8.dp, CircleShape).background(Color.White.copy(alpha = 0.95f), CircleShape).size(44.dp)) {
+                                    Icon(painter = painterResource(id = R.drawable.outline_more_vert_24), contentDescription = "More", tint = Color(0xFF1F2937))
+                                }
+                            }
+                        }
+                    }
+
+                    // NEW: Report Button - positioned below cover photo on the right
+                    if (!isOwnProfile) {
+                        AnimatedReportButton(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 16.dp, bottom = 16.dp),
+                            onClick = {
+                                showReportDialog = true                            }
+                        )
+                    }
+                }
+
+                Column(modifier = Modifier.fillMaxWidth().offset(y = (-70).dp).padding(horizontal = 20.dp)) {
+                    Box(modifier = Modifier.align(Alignment.Start)) {
+                        Box(modifier = Modifier.size(140.dp).shadow(16.dp, CircleShape).background(Brush.linearGradient(colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2))), CircleShape).padding(4.dp)) {
+                            Box(modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.White).padding(5.dp).then(if (isOwnProfile) Modifier.clickable { onPickProfileImage() } else Modifier), contentAlignment = Alignment.Center) {
+                                if (selectedProfileUri != null || displayedProfileUrl.isNotEmpty()) {
+                                    Image(painter = rememberAsyncImagePainter(selectedProfileUri ?: displayedProfileUrl), contentDescription = "Profile Image", modifier = Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
+                                } else {
+                                    Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2))), CircleShape), contentAlignment = Alignment.Center) {
+                                        Text(text = company.value?.companyName?.firstOrNull()?.toString() ?: "L", fontSize = 52.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                }
+                                if (isUploadingProfile) {
+                                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f), CircleShape), contentAlignment = Alignment.Center) {
+                                        CircularProgressIndicator(color = Color.White, strokeWidth = 3.dp, modifier = Modifier.size(30.dp))
+                                    }
+                                }
+                            }
+                        }
+                        if (isOwnProfile) {
+                            Box(modifier = Modifier.size(40.dp).shadow(8.dp, CircleShape).clip(CircleShape).background(Brush.linearGradient(colors = listOf(Color(0xFF667EEA), Color(0xFF764BA2)))).border(4.dp, Color.White, CircleShape).align(Alignment.BottomEnd).clickable { onPickProfileImage() }, contentAlignment = Alignment.Center) {
+                                Icon(imageVector = Icons.Default.Add, contentDescription = "Change Photo", tint = Color.White, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(text = company.value?.companyName ?: "Loading...", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF111827), letterSpacing = (-0.5).sp)
+                        if (company.value?.verificationStatus == "approved") {
+                            Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFFEF3C7), shadowElevation = 2.dp)
+                            {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFFF59E0B),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "Verified",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFD97706)
+                                    )
+                                }
+                            }
+                        }else{
+                            Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFFEF3C7), shadowElevation = 2.dp)
+                            {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = Color(0xFFB91010),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "Not Verified",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF5F0606)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = company.value?.companyTagline ?: "Loading...",
+                        fontSize = 15.sp,
+                        color = Color(0xFF6B7280),
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.2.sp
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        EnhancedStatCard(
+                            label = "Active Jobs",
+                            value = activeJobCount.toString(),
+                            icon = R.drawable.jobtype,
+                            modifier = Modifier.weight(1f).clickable {
+                                val intent = Intent(context, ActiveJob::class.java)
+                                intent.putExtra(
+                                    "USER_ID",
+                                    if (isOwnProfile) company.value?.companyId ?: "" else companyId
+                                )
+                                intent.putExtra("USER_TYPE", "Company")
+                                intent.putExtra("IS_OWN_PROFILE", isOwnProfile)
+                                context.startActivity(intent)
+                            }
+                        )
+                        EnhancedStatCard(
+                            label = "Followers",
+                            value = formatNumber(followersCountState),
+                            icon = R.drawable.followers,
+                            modifier = Modifier.weight(1f).clickable {
+                                val intent = Intent(context, FollowersListActivity::class.java)
+                                intent.putExtra(
+                                    "USER_ID",
+                                    if (isOwnProfile) company.value?.companyId ?: "" else companyId
+                                )
+                                intent.putExtra("USER_TYPE", "Company")
+                                intent.putExtra("IS_OWN_PROFILE", isOwnProfile)
+                                context.startActivity(intent)
+                            }
+                        )
+                        EnhancedStatCard(
+                            label = "Following",
+                            value = formatNumber(followingCountState),
+                            icon = R.drawable.followers,
+                            modifier = Modifier.weight(1f).clickable {
+                                val intent = Intent(context, FollowingListActivity::class.java)
+                                intent.putExtra(
+                                    "USER_ID",
+                                    if (isOwnProfile) company.value?.companyId ?: "" else companyId
+                                )
+                                intent.putExtra("USER_TYPE", "Company")
+                                intent.putExtra("IS_OWN_PROFILE", isOwnProfile)
+                                context.startActivity(intent)
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    if (!isOwnProfile) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    if (currentUserId.isNotEmpty() && currentUserRole != null) {
+                                        if (isFollowingState) {
+                                            followViewModel.unfollow(
+                                                currentUserId,
+                                                currentUserRole!!,
+                                                actualCompanyId,  // FIXED: Use actualCompanyId instead of companyId
+                                                "Company"
+                                            ) { success, message ->
+                                                if (success) {
+                                                    followViewModel.getFollowersCount(companyId)
+                                                    followViewModel.getFollowingCount(currentUserId)
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Unfollowed!",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                    // REMOVED redundant count refreshes - ViewModel handles this automatically
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Failed: $message",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+                                        } else {
+                                            followViewModel.follow(
+                                                currentUserId,
+                                                currentUserRole!!,
+                                                actualCompanyId,  // FIXED: Use actualCompanyId instead of companyId
+                                                "Company"
+                                            ) { success, message ->
+                                                if (success) {
+                                                    followViewModel.getFollowersCount(companyId)
+                                                    followViewModel.getFollowingCount(currentUserId)
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Followed!",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                    // REMOVED redundant count refreshes - ViewModel handles this automatically
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Failed: $message",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Please login to follow",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                },
+                                modifier = Modifier.weight(1f).height(52.dp)
+                                    .shadow(8.dp, RoundedCornerShape(16.dp)),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isFollowingState) Color(0xFF10B981) else Color(0xFF6366F1)
+                                ),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isFollowingState) Icons.Default.Check else Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (isFollowingState) "Following" else "Follow",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    Toast.makeText(
+                                        context,
+                                        "Message feature coming soon!",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                modifier = Modifier.weight(1f).height(52.dp)
+                                    .shadow(4.dp, RoundedCornerShape(16.dp)),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFF6366F1), containerColor = Color.White
+                                ),
+                                border = BorderStroke(2.dp, Color(0xFF6366F1))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Send,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Message",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    // Review Panel
+                    ReviewPanel(
+                        companyId = actualCompanyId,
+                        context = context,
+                        onClick = {
+                            if (isOwnProfile) {
+                                val intent = Intent(context, CompanyReviewActivity::class.java)
+                                intent.putExtra("COMPANY_ID", actualCompanyId)  // Use the same ID!
+                                intent.putExtra(
+                                    "COMPANY_NAME",
+                                    company.value?.companyName ?: "Company"
+                                )
+                                context.startActivity(intent)
+                            } else {
+                                val intent = Intent(context, JobSeekerReviewActivity::class.java)
+                                intent.putExtra("COMPANY_ID", actualCompanyId)  // Use the same ID!
+                                intent.putExtra(
+                                    "COMPANY_NAME",
+                                    company.value?.companyName ?: "Company"
+                                )
+                                context.startActivity(intent)
+                            }
+                        }
+                    )
+
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    EnhancedInfoSection(title = "About Company") {
+                        Text(
+                            text = company.value?.companyInformation ?: "",
+                            fontSize = 15.sp,
+                            color = Color(0xFF374151),
+                            lineHeight = 24.sp,
+                            letterSpacing = 0.2.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    EnhancedInfoSection(title = "Company Information") {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            EnhancedDetailRow(
+                                icon = R.drawable.office,
+                                label = "Industry",
+                                value = company.value?.companyIndustry ?: "",
+                                gradient = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
+                            )
+                            EnhancedDetailRow(
+                                icon = R.drawable.map_filled,
+                                label = "Headquarter",
+                                value = company.value?.companyLocation ?: "",
+                                gradient = listOf(Color(0xFFEC4899), Color(0xFFF43F5E))
+                            )
+                            EnhancedDetailRow(
+                                icon = R.drawable.call,
+                                label = "Phone",
+                                value = company.value?.companyContactNumber ?: "",
+                                gradient = listOf(Color(0xFF10B981), Color(0xFF059669))
+                            )
+                            EnhancedDetailRow(
+                                icon = R.drawable.emailicon,
+                                label = "Email",
+                                value = company.value?.companyEmail ?: "",
+                                gradient = listOf(Color(0xFFF59E0B), Color(0xFFEAB308))
+                            )
+                            EnhancedDetailRow(
+                                icon = R.drawable.founded,
+                                label = "Founded",
+                                value = company.value?.companyEstablishedDate?.take(4) ?: "2015",
+                                gradient = listOf(Color(0xFF05C2B2), Color(0xFF25E4EB))
+                            )
+                            EnhancedDetailRow(
+                                icon = R.drawable.web,
+                                label = "Website",
+                                value = company.value?.companyWebsite ?: "",
+                                gradient = listOf(Color(0xFF3B82F6), Color(0xFF2563EB))
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    EnhancedInfoSection(title = "Core Specialties") {
+                        val specialties = company.value?.companySpecialties ?: emptyList()
+                        if (specialties.isEmpty()) {
+                            Text(
+                                text = "No specialties added yet",
+                                fontSize = 14.sp,
+                                color = Color(0xFF9CA3AF),
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        } else {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                val gradientColors = listOf(
+                                    listOf(Color(0xFF6366F1), Color(0xFF8B5CF6)),
+                                    listOf(Color(0xFF3B82F6), Color(0xFF2563EB)),
+                                    listOf(Color(0xFFEC4899), Color(0xFFF43F5E)),
+                                    listOf(Color(0xFF10B981), Color(0xFF059669)),
+                                    listOf(Color(0xFFF59E0B), Color(0xFFEAB308)),
+                                    listOf(Color(0xFF8B5CF6), Color(0xFFA855F7)),
+                                    listOf(Color(0xFF06B6D4), Color(0xFF0891B2)),
+                                    listOf(Color(0xFFEF4444), Color(0xFFDC2626)),
+                                    listOf(Color(0xFF14B8A6), Color(0xFF0D9488)),
+                                    listOf(Color(0xFFF97316), Color(0xFFEA580C))
+                                )
+                                specialties.forEachIndexed { index, specialty ->
+                                    GradientSpecialtyChip(
+                                        text = specialty,
+                                        gradient = gradientColors[index % gradientColors.size]
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
+            }
+
+            AnimatedVisibility(
+                visible = isDrawerOpen,
+                enter = slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(350, easing = FastOutSlowInEasing)
+                ) + fadeIn(),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(350, easing = FastOutSlowInEasing)
+                ) + fadeOut(),
+                modifier = Modifier.fillMaxSize().zIndex(10f)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f))
+                            .clickable { isDrawerOpen = false })
+                    Box(
+                        modifier = Modifier.fillMaxHeight().width(340.dp).align(Alignment.CenterEnd)
+                            .shadow(24.dp).background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFFFAFAFA),
+                                    Color.White
+                                )
+                            )
+                        )
+                    ) {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Spacer(modifier = Modifier.height(50.dp))
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(140.dp).background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color(0xFF667EEA), Color(0xFF764BA2)
+                                        )
+                                    )
+                                )
+                            ) {
+                                Surface(
+                                    modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+                                        .size(36.dp),
+                                    shape = CircleShape,
+                                    color = Color.White.copy(alpha = 0.2f)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.outline_arrow_back_ios_24),
+                                        contentDescription = "Close",
+                                        tint = Color.White,
+                                        modifier = Modifier.graphicsLayer(rotationZ = 180f)
+                                            .clickable { isDrawerOpen = false }.padding(8.dp)
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().align(Alignment.CenterStart)
+                                        .padding(
+                                            start = 20.dp,
+                                            end = 20.dp,
+                                            bottom = 16.dp,
+                                            top = 56.dp
+                                        ), verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Card(
+                                        modifier = Modifier.size(70.dp)
+                                            .border(3.dp, Color.White, CircleShape),
+                                        shape = CircleShape,
+                                        elevation = CardDefaults.cardElevation(8.dp)
+                                    ) {
+                                        if (displayedProfileUrl.isNotEmpty()) {
+                                            AsyncImage(
+                                                model = displayedProfileUrl,
+                                                contentDescription = "Company Logo",
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                        } else {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize().background(
+                                                    Brush.linearGradient(
+                                                        colors = listOf(
+                                                            Color(0xFF667EEA),
+                                                            Color(0xFF764BA2)
+                                                        )
+                                                    )
+                                                ), contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = company.value?.companyName?.firstOrNull()
+                                                        ?.toString() ?: "C",
+                                                    fontSize = 32.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = company.value?.companyName ?: "Company",
+                                            style = TextStyle(
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color.White
+                                            ),
+                                            maxLines = 1
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Information Technology",
+                                            style = TextStyle(
+                                                fontSize = 13.sp,
+                                                color = Color.White.copy(alpha = 0.9f),
+                                                fontWeight = FontWeight.Medium
+                                            ),
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(20.dp))
+                            Column(
+                                modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())
+                            ) {
+                                CompanyDrawerMenuItem(
+                                    icon = R.drawable.outline_edit_24,
+                                    text = "Edit Profile",
+                                    subtitle = "Update company information",
+                                    iconColor = Color(0xFF2196F3),
+                                    onClick = {
+                                        isDrawerOpen = false;
+                                        showEditProfileDialog = true
+                                    }
+                                )
+
+                                CompanyDrawerMenuItem(
+                                    icon = R.drawable.feedback,
+                                    text = "Help & Support",
+                                    subtitle = "Get help or send feedback",
+                                    iconColor = Color(0xFF2196F3),
+                                    onClick = {
+                                        isDrawerOpen = false
+                                        val intent =
+                                            Intent(context, HelpAndSupportActivity::class.java)
+                                        context.startActivity(intent)
+                                    }
+                                )
+
+                                CompanyDrawerMenuItem(
+                                    icon = R.drawable.settings,
+                                    text = "Settings",
+                                    subtitle = "Manage preferences",
+                                    iconColor = Color(0xFF9C27B0),
+                                    onClick = {
+                                        isDrawerOpen = false; showSettingsDialog = true
+                                    }
+                                )
+
+                                CompanyDrawerMenuItem(
+                                    icon = R.drawable.verified_badge,
+                                    text = "Company Verification",
+                                    subtitle = if (company.value?.isVerified == true) "Verified" else "Get verified",
+                                    iconColor = Color(0xFF10B981),
+                                    onClick = {
+                                        isDrawerOpen = false
+                                        val intent =
+                                            Intent(context, CompanyVerificationActivity::class.java)
+                                        intent.putExtra(
+                                            "COMPANY_ID",
+                                            company.value?.companyId ?: ""
+                                        )
+                                        context.startActivity(intent)
+                                    }
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 20.dp),
+                                    color = Color.Gray.copy(alpha = 0.2f)
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                            Card(
+                                modifier = Modifier.fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 24.dp).clickable {
+                                    isDrawerOpen = false
+                                    repository.logout(currentUserId) { success, message ->
+                                        if (success) {
+                                            Toast.makeText(
+                                                context,
+                                                "Logged out successfully",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            val intent = Intent(context, LoginActivity::class.java)
+                                            intent.flags =
+                                                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                            context.startActivity(intent)
+                                            (context as? ComponentActivity)?.finish()
+                                        } else Toast.makeText(context, message, Toast.LENGTH_SHORT)
+                                            .show()
+                                    }
+                                },
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
+                                elevation = CardDefaults.cardElevation(4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(18.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.baseline_logout_24),
+                                        contentDescription = "Logout",
+                                        tint = Color(0xFFD32F2F),
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "Logout",
+                                        style = TextStyle(
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFFD32F2F)
+                                        )
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(100.dp))
+                        }
+                    }
+                }
+            }
+
+            if (showSettingsDialog) {
+                CompanySettingsDialog(
+                    onDismiss = { showSettingsDialog = false },
+                    onChangePasswordClick = {
+                        showSettingsDialog = false; showChangePasswordDialog = true
+                    },
+                    onDeactivateClick = {
+                        showSettingsDialog = false; showConfirmPasswordDialog = true
+                    },
+                    onDeleteAccountClick = {
+                        showSettingsDialog = false; showDeleteAccountDialog = true
+                    },
+                    context = context
+                )
+            }
+            if (showChangePasswordDialog) {
+                ChangePasswordDialog(
+                    onDismiss = { showChangePasswordDialog = false },
+                    repository = jobSeekerRepository,
+                    context = context
+                )
+            }
+            if (showDeleteAccountDialog) {
+                DeleteAccountConfirmationDialog(
+                    onDismiss = { showDeleteAccountDialog = false },
+                    onConfirm = { password ->
+                        val currentUser = repository.getCurrentCompany()
+                        if (currentUser != null && currentUser.email != null) {
+                            val credential =
+                                com.google.firebase.auth.EmailAuthProvider.getCredential(
+                                    currentUser.email!!,
+                                    password
+                                )
+                            currentUser.reauthenticate(credential).addOnSuccessListener {
+                                companyViewModel.deleteAccount(currentUserId) { success, message ->
+                                    if (success) {
+                                        Toast.makeText(
+                                            context,
+                                            "Account deleted permanently",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                        val intent = Intent(context, LoginActivity::class.java)
+                                        intent.flags =
+                                            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        context.startActivity(intent)
+                                        activity.finish()
+                                    } else Toast.makeText(context, message, Toast.LENGTH_SHORT)
+                                        .show()
+                                    showDeleteAccountDialog = false
+                                }
+                            }.addOnFailureListener {
+                                Toast.makeText(
+                                    context,
+                                    "Incorrect password. Please try again.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        } else Toast.makeText(
+                            context,
+                            "Unable to verify user. Please try again.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    context = context
+                )
+            }
+            if (showConfirmPasswordDialog) {
+                ConfirmPasswordForDeactivateDialog(onDismiss = {
+                    showConfirmPasswordDialog = false
+                }, onConfirm = { password ->
+                    val currentUser = repository.getCurrentCompany()
+                    if (currentUser != null && currentUser.email != null) {
+                        val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(
+                            currentUser.email!!,
+                            password
+                        )
+                        currentUser.reauthenticate(credential).addOnSuccessListener {
+                            companyViewModel.deactivateAccount(currentUserId) { success, message ->
+                                if (success) {
+                                    Toast.makeText(
+                                        context,
+                                        "Account deactivated successfully",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    val intent = Intent(context, LoginActivity::class.java)
+                                    intent.flags =
+                                        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    context.startActivity(intent)
+                                    activity.finish()
+                                } else Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                showConfirmPasswordDialog = false
+                            }
+                        }.addOnFailureListener {
+                            Toast.makeText(
+                                context,
+                                "Incorrect password. Please try again.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else Toast.makeText(
+                        context,
+                        "Unable to verify user. Please try again.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }, context = context)
+            }
+            if (showEditProfileDialog) {
+                EditCompanyProfileDialog(
+                    company = company.value,
+                    onDismiss = { showEditProfileDialog = false },
+                    onSave = { updatedCompany ->
+                        companyViewModel.addCompanyToDatabase(
+                            updatedCompany.companyId,
+                            updatedCompany
+                        ) { success, message ->
+                            showEditProfileDialog = false
+                            if (success) {
+                                Toast.makeText(
+                                    context,
+                                    "Profile updated successfully!",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                companyViewModel.fetchCurrentCompany()
+                            } else Toast.makeText(
+                                context,
+                                "Failed to update: $message",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    },
+                    context = context
+                )
+            }
+
+            fun submitReport(report: ReportModel) {
+                reportRepository.submitReport(report) { success, message ->
+                    isSubmittingReport = false
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                    if (success) {
+                        showReportDialog = false
+                        // Reset form
+                        selectedReportCategory = ""
+                        reportReason = ""
+                        reportDescription = ""
+                        selectedEvidenceUris = emptyList()
+                    }
+                }
+            }
+
+            if (showReportDialog) {
+                ReportCompanyDialog(
+                    company = company.value,
+                    currentUserId = currentUserId,
+                    currentUserRole = currentUserRole,
+                    currentUserName = currentUserName, // You need to get this from your user data
+                    onDismiss = { showReportDialog = false },
+                    onSubmit = { report ->
+                        isSubmittingReport = true
+
+                        // First upload evidence if any
+                        if (selectedEvidenceUris.isNotEmpty()) {
+                            val uploadedUrls = mutableListOf<String>()
+                            var completedUploads = 0
+
+                            selectedEvidenceUris.forEachIndexed { index, uri ->
+                                reportRepository.uploadEvidenceImage(context, uri) { url ->
+                                    if (url != null) {
+                                        uploadedUrls.add(url)
+                                    }
+                                    completedUploads++
+
+                                    // When all uploads are done
+                                    if (completedUploads == selectedEvidenceUris.size) {
+                                        val reportWithEvidence = report.copy(evidenceUrls = uploadedUrls)
+                                        submitReport(reportWithEvidence)
+                                    }
+                                }
+                            }
+                        } else {
+                            submitReport(report)
+                        }
+                    },
+                    activity = activity,
+                    selectedCategory = selectedReportCategory,
+                    onCategoryChange = { selectedReportCategory = it },
+                    reportReason = reportReason,
+                    onReasonChange = { reportReason = it },
+                    reportDescription = reportDescription,
+                    onDescriptionChange = { reportDescription = it },
+                    selectedEvidenceUris = selectedEvidenceUris,
+                    onEvidenceUrisChange = { selectedEvidenceUris = it },
+                    isSubmitting = isSubmittingReport,
+                    onUploadEvidence = { uri, callback ->
+                        isUploadingEvidence = true
+                        reportRepository.uploadEvidenceImage(context, uri) { url ->
+                            isUploadingEvidence = false
+                            callback(url)
+                        }
+                    },
+                    isUploadingEvidence = isUploadingEvidence
+                )
+            }
+        }
+    }
+
 }
 
 @Composable
 fun EnhancedStatCard(
     label: String,
     value: String,
-    icon: ImageVector,
+    icon: Int,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -669,7 +1212,7 @@ fun EnhancedStatCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(id = icon),
                     contentDescription = null,
                     tint = Color(0xFF6366F1),
                     modifier = Modifier.size(22.dp)
@@ -745,7 +1288,7 @@ fun EnhancedInfoSection(
 
 @Composable
 fun EnhancedDetailRow(
-    icon: ImageVector,
+    icon: Int,
     label: String,
     value: String,
     gradient: List<Color>
@@ -763,7 +1306,7 @@ fun EnhancedDetailRow(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = icon,
+                painter = painterResource(id = icon),
                 contentDescription = label,
                 tint = Color.White,
                 modifier = Modifier.size(24.dp)
@@ -893,9 +1436,6 @@ fun CompanySettingsDialog(
     onDeleteAccountClick: () -> Unit,
     context: Context
 ) {
-
-    var isDarkMode by remember { mutableStateOf(false) }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -963,15 +1503,6 @@ fun CompanySettingsDialog(
                     subtitle = "Update your password",
                     iconColor = Color(0xFF4CAF50),
                     onClick = onChangePasswordClick
-                )
-
-                CompanySettingsOptionWithSwitch(
-                    icon = R.drawable.darkmode,
-                    title = "Dark Mode",
-                    subtitle = if (isDarkMode) "Dark theme enabled" else "Light theme enabled",
-                    iconColor = Color(0xFF9C27B0),
-                    isChecked = isDarkMode,
-                    onCheckedChange = { isDarkMode = it }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -1247,7 +1778,7 @@ fun EditCompanyProfileDialog(
                         label = "Company Name",
                         value = companyName,
                         onValueChange = { companyName = it },
-                        icon = Icons.Default.Face
+                        icon = R.drawable.office
                     )
 
                     // Tagline
@@ -1255,7 +1786,7 @@ fun EditCompanyProfileDialog(
                         label = "Tagline",
                         value = tagline,
                         onValueChange = { tagline = it },
-                        icon = Icons.Default.Edit
+                        icon = R.drawable.baseline_password_24
                     )
 
                     // About Company
@@ -1263,7 +1794,7 @@ fun EditCompanyProfileDialog(
                         label = "About Company",
                         value = aboutCompany,
                         onValueChange = { aboutCompany = it },
-                        icon = Icons.Default.Info
+                        icon = R.drawable.editmessage
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -1280,7 +1811,7 @@ fun EditCompanyProfileDialog(
                         label = "Industry",
                         value = industry,
                         onValueChange = { industry = it },
-                        icon = Icons.Default.Email
+                        icon = R.drawable.company
                     )
 
                     // Location
@@ -1288,7 +1819,7 @@ fun EditCompanyProfileDialog(
                         label = "Location",
                         value = location,
                         onValueChange = { location = it },
-                        icon = Icons.Default.LocationOn
+                        icon = R.drawable.map_filled
                     )
 
                     // Phone
@@ -1296,7 +1827,7 @@ fun EditCompanyProfileDialog(
                         label = "Phone",
                         value = phone,
                         onValueChange = { phone = it },
-                        icon = Icons.Default.Phone
+                        icon = R.drawable.call
                     )
 
                     // Email
@@ -1304,7 +1835,7 @@ fun EditCompanyProfileDialog(
                         label = "Email",
                         value = email,
                         onValueChange = { email = it },
-                        icon = Icons.Default.Email,
+                        icon = R.drawable.emailicon,
                         enabled = true
                     )
 
@@ -1313,7 +1844,7 @@ fun EditCompanyProfileDialog(
                         label = "Founded",
                         value = founded,
                         onValueChange = { founded = it },
-                        icon = Icons.Default.Done,
+                        icon = R.drawable.founded,
                         enabled = true
                     )
 
@@ -1322,7 +1853,7 @@ fun EditCompanyProfileDialog(
                         label = "Website",
                         value = website,
                         onValueChange = { website = it },
-                        icon = Icons.Default.PlayArrow
+                        icon = R.drawable.web
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -1489,7 +2020,7 @@ fun EditTextField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    icon: ImageVector,
+    icon: Int,
     enabled: Boolean = true
 ) {
     Column {
@@ -1507,9 +2038,10 @@ fun EditTextField(
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(id = icon),
                     contentDescription = label,
-                    tint = Color(0xFF667EEA)
+                    tint = Color(0xFF667EEA),
+                    modifier = Modifier.size(22.dp)
                 )
             },
             colors = OutlinedTextFieldDefaults.colors(
@@ -1530,7 +2062,7 @@ fun EditTextFieldMultiline(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    icon: ImageVector
+    icon: Int
 ) {
     Column {
         Text(
@@ -1549,10 +2081,10 @@ fun EditTextFieldMultiline(
                 .height(120.dp),
             leadingIcon = {
                 Icon(
-                    imageVector = icon,
+                    painter = painterResource(id = icon),
                     contentDescription = label,
                     tint = Color(0xFF667EEA),
-                    modifier = Modifier.padding(bottom = 80.dp)
+                    modifier = Modifier.padding(bottom = 80.dp).size(22.dp)
                 )
             },
             colors = OutlinedTextFieldDefaults.colors(
@@ -1707,6 +2239,623 @@ fun ReviewPanel(
                     contentDescription = "Navigate to Reviews",
                     tint = Color(0xFF6366F1),
                     modifier = Modifier.size(24.dp)
+                )
+            }
+
+        }
+    }
+}
+
+@Composable
+fun AnimatedReportButton(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    var isPressed by remember { mutableStateOf(false) }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.9f else 1f,
+        animationSpec = tween(durationMillis = 100)
+    )
+
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isPressed) Color(0xFFEF4444) else Color(0xFFFEE2E2),
+        animationSpec = tween(durationMillis = 200)
+    )
+
+    val iconColor by animateColorAsState(
+        targetValue = if (isPressed) Color.White else Color(0xFFEF4444),
+        animationSpec = tween(durationMillis = 200)
+    )
+
+    Box(
+        modifier = modifier
+            .scale(scale)
+            .shadow(
+                elevation = if (isPressed) 4.dp else 8.dp,
+                shape = RoundedCornerShape(16.dp)
+            )
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        backgroundColor,
+                        backgroundColor.copy(alpha = 0.8f)
+                    )
+                ),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .border(
+                width = 2.dp,
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color(0xFFEF4444).copy(alpha = 0.3f),
+                        Color(0xFFDC2626).copy(alpha = 0.3f)
+                    )
+                ),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {
+                    isPressed = true
+                    onClick()
+                    // Reset after animation
+                    kotlinx.coroutines.GlobalScope.launch {
+                        kotlinx.coroutines.delay(200)
+                        isPressed = false
+                    }
+                }
+            )
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                iconColor.copy(alpha = 0.2f),
+                                Color.Transparent
+                            )
+                        ),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Report",
+                    tint = iconColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Text(
+                text = "Report",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = iconColor,
+                letterSpacing = 0.3.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun ReportCompanyDialog(
+    company: CompanyModel?,
+    currentUserId: String,
+    currentUserRole: String?,
+    currentUserName: String,
+    onDismiss: () -> Unit,
+    onSubmit: (ReportModel) -> Unit,
+    activity: Activity, // Change from Context to Activity
+    selectedCategory: String,
+    onCategoryChange: (String) -> Unit,
+    reportReason: String,
+    onReasonChange: (String) -> Unit,
+    reportDescription: String,
+    onDescriptionChange: (String) -> Unit,
+    selectedEvidenceUris: List<Uri>,
+    onEvidenceUrisChange: (List<Uri>) -> Unit,
+    isSubmitting: Boolean,
+    onUploadEvidence: (Uri, (String?) -> Unit) -> Unit,
+    isUploadingEvidence: Boolean
+) {
+    var showImagePicker by remember { mutableStateOf(false) }
+
+    val reportCategories = ReportCategories.CATEGORIES
+
+    // Create ImageUtils instance using the activity
+    val imageUtils = remember(activity) {
+        ImageUtils(activity, activity as ActivityResultRegistryOwner)
+    }
+
+    // Initialize the launchers
+    LaunchedEffect(imageUtils) {
+        imageUtils.registerLaunchers { uri ->
+            if (uri != null) {
+                onEvidenceUrisChange(selectedEvidenceUris + uri)
+            }
+        }
+    }
+
+    // Launch image picker when showImagePicker is true
+    LaunchedEffect(showImagePicker) {
+        if (showImagePicker) {
+            imageUtils.launchImagePicker()
+            showImagePicker = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        imageUtils.registerLaunchers { uri ->
+            if (uri != null) {
+                onEvidenceUrisChange(selectedEvidenceUris + uri)
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(30f)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable { if (!isSubmitting) onDismiss() }
+        )
+
+        Card(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.9f),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                // Header
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFFEF4444),
+                                    Color(0xFFDC2626)
+                                )
+                            )
+                        )
+                        .padding(20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Report Company",
+                            style = TextStyle(
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        )
+
+                        Surface(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clickable { if (!isSubmitting) onDismiss() },
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.2f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color.White,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Scrollable Content
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Company being reported
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFEF2F2)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (company?.companyProfileImage?.isNotEmpty() == true) {
+                                AsyncImage(
+                                    model = company.companyProfileImage,
+                                    contentDescription = "Company Logo",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            Brush.linearGradient(
+                                                colors = listOf(
+                                                    Color(0xFF667EEA),
+                                                    Color(0xFF764BA2)
+                                                )
+                                            )
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = company?.companyName?.firstOrNull()?.toString() ?: "C",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column {
+                                Text(
+                                    text = "Reporting:",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF6B7280)
+                                )
+                                Text(
+                                    text = company?.companyName ?: "Company",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF111827)
+                                )
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = "Please select the reason for reporting this company. Your report will be reviewed by our team within 24 hours.",
+                        fontSize = 14.sp,
+                        color = Color(0xFF6B7280),
+                        lineHeight = 20.sp
+                    )
+
+                    // Report Category Selection
+                    Text(
+                        text = "Report Category *",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF374151)
+                    )
+
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        reportCategories.forEach { category ->
+                            ReportCategoryItem(
+                                category = category,
+                                isSelected = selectedCategory == category.id,
+                                onClick = { onCategoryChange(category.id) }
+                            )
+                        }
+                    }
+
+                    // Report Reason
+                    Text(
+                        text = "Brief Reason *",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF374151)
+                    )
+
+                    OutlinedTextField(
+                        value = reportReason,
+                        onValueChange = onReasonChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("e.g., Fake job postings, Harassing messages, etc.") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFEF4444),
+                            unfocusedBorderColor = Color(0xFFE0E0E0)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    // Detailed Description
+                    Text(
+                        text = "Detailed Description *",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF374151)
+                    )
+
+                    OutlinedTextField(
+                        value = reportDescription,
+                        onValueChange = onDescriptionChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        placeholder = { Text("Please provide specific details about the issue...") },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFEF4444),
+                            unfocusedBorderColor = Color(0xFFE0E0E0)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        maxLines = 5
+                    )
+
+                    // Evidence Upload
+                    Text(
+                        text = "Evidence (Optional)",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF374151)
+                    )
+
+                    Text(
+                        text = "Upload screenshots or other evidence to support your report (max 5 images)",
+                        fontSize = 12.sp,
+                        color = Color(0xFF6B7280)
+                    )
+
+                    if (selectedEvidenceUris.size < 5) {
+                        OutlinedButton(
+                            onClick = {
+                                showImagePicker = true
+                                imageUtils.launchImagePicker()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFFEF4444),
+                                containerColor = Color.White
+                            ),
+                            border = BorderStroke(1.dp, Color(0xFFEF4444))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add Evidence",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Add Screenshot",
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    // Display selected evidence
+                    if (selectedEvidenceUris.isNotEmpty()) {
+                        LazyRow (
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(selectedEvidenceUris.size) { index ->
+                                Box(
+                                    modifier = Modifier.size(80.dp)
+                                ) {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(selectedEvidenceUris[index]),
+                                        contentDescription = "Evidence",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(8.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+
+                                    // Remove button
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.Black.copy(alpha = 0.7f))
+                                            .clickable {
+                                                val newList = selectedEvidenceUris.toMutableList()
+                                                newList.removeAt(index)
+                                                onEvidenceUrisChange(newList)
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Remove",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (isUploadingEvidence) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                color = Color(0xFFEF4444),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Uploading evidence...",
+                                fontSize = 14.sp,
+                                color = Color(0xFF6B7280)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(40.dp))
+                }
+
+                // Submit Button
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shadowElevation = 8.dp,
+                    color = Color.White
+                ) {
+                    Button(
+                        onClick = {
+                            if (selectedCategory.isEmpty()) {
+                                Toast.makeText(activity, "Please select a report category", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            if (reportReason.isEmpty()) {
+                                Toast.makeText(activity, "Please provide a reason", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            if (reportDescription.isEmpty()) {
+                                Toast.makeText(activity, "Please provide detailed description", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+
+                            // Create report model
+                            val report = ReportModel(
+                                reporterId = currentUserId,
+                                reporterType = currentUserRole ?: "JobSeeker",
+                                reporterName = currentUserName,
+                                reportedCompanyId = company?.companyId ?: "",
+                                reportedCompanyName = company?.companyName ?: "",
+                                reportCategory = selectedCategory,
+                                reportReason = reportReason,
+                                description = reportDescription,
+                                status = "pending",
+                                createdAt = Date().time,
+                                updatedAt = Date().time
+                            )
+
+                            onSubmit(report)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFEF4444)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        enabled = !isSubmitting && !isUploadingEvidence
+                    ) {
+                        if (isSubmitting) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Submit Report",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Submit Report",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ReportCategoryItem(
+    category: ReportCategories.ReportCategory,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) Color(0xFFFEE2E2) else Color(0xFFF9FAFB),
+        border = BorderStroke(
+            1.dp,
+            if (isSelected) Color(0xFFEF4444) else Color(0xFFE5E7EB)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isSelected) Color(0xFFEF4444) else Color(0xFFE5E7EB)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Selected",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = category.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isSelected) Color(0xFF111827) else Color(0xFF374151)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = category.description,
+                    fontSize = 12.sp,
+                    color = Color(0xFF6B7280),
+                    lineHeight = 16.sp
                 )
             }
         }

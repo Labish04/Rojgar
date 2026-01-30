@@ -74,7 +74,7 @@ class FollowersListActivity : ComponentActivity() {
 @Composable
 fun FollowersListBody() {
     val context = LocalContext.current
-    val followViewModel: FollowViewModel = viewModel(factory = FollowViewModelFactory(FollowRepoImpl()))
+    val followViewModel = remember { FollowViewModel(FollowRepoImpl(context)) }
     val jobSeekerRepo = remember { JobSeekerRepoImpl() }
     val companyRepo = remember { CompanyRepoImpl() }
     val userRepo = remember { UserRepo() }
@@ -547,7 +547,8 @@ fun FollowersListBody() {
                                 currentUserId = currentUserId,
                                 currentUserType = currentUserType,
                                 userRepo = userRepo,
-                                onReloadUserType = reloadUserType
+                                onReloadUserType = reloadUserType,
+                                isOwnProfile = isOwnProfile
                             )
                         }
                     }
@@ -645,6 +646,7 @@ fun FollowersEmptyState() {
 
 @Composable
 fun FollowerCard(
+    isOwnProfile: Boolean,
     follower: FollowerUi,
     index: Int,
     primaryBlue: Color,
@@ -759,6 +761,7 @@ fun FollowerCard(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
+                    if (isOwnProfile){
                     // Show different button based on follow status and ownership
                     if (isLoadingUserType) {
                         // Show loading button
@@ -791,7 +794,11 @@ fun FollowerCard(
                         // User is logged in but we couldn't determine type
                         Button(
                             onClick = {
-                                Toast.makeText(context, "Reloading user type...", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "Reloading user type...",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                                 onReloadUserType()
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
@@ -799,7 +806,7 @@ fun FollowerCard(
                         ) {
                             Text("Retry")
                         }
-
+                    }
                     } else {
                         // User is not logged in
                         Button(

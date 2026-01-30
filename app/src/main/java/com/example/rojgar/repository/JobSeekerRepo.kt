@@ -28,6 +28,19 @@ interface JobSeekerRepo {
         callback: (Boolean, String) -> Unit
     )
 
+    fun signInWithGoogle(
+        idToken: String,
+        fullName: String,
+        email: String,
+        photoUrl: String,
+        callback: (Boolean, String, String?) -> Unit // success, message, jobSeekerId
+    )
+
+    fun getJobSeekerByEmail(
+        email: String,
+        callback: (Boolean, String, JobSeekerModel?) -> Unit
+    )
+
     fun getCurrentJobSeeker(): FirebaseUser?
 
     fun getJobSeekerById(
@@ -80,24 +93,6 @@ interface JobSeekerRepo {
         callback: (Boolean, String) -> Unit
     )
 
-    fun followJobSeeker(
-        currentUserId: String,
-        targetJobSeekerId: String,
-        callback: (Boolean, String) -> Unit
-    )
-
-    fun unfollowJobSeeker(
-        currentUserId: String,
-        targetJobSeekerId: String,
-        callback: (Boolean, String) -> Unit
-    )
-
-    fun isFollowing(
-        currentUserId: String,
-        targetJobSeekerId: String,
-        callback: (Boolean) -> Unit
-    )
-
     fun uploadProfileImage(
         context: Context,
         imageUri: Uri,
@@ -105,6 +100,14 @@ interface JobSeekerRepo {
     )
 
     fun getFileNameFromUri(context: Context, imageUri: Uri): String?
+
+    fun uploadVideo(
+        context: Context,
+        videoUri: Uri,
+        callback: (String?) -> Unit
+    )
+
+    fun getVideoThumbnailUrl(videoUrl: String): String
 
     fun updateJobSeekerProfile(
         model: JobSeekerModel,
@@ -116,9 +119,9 @@ interface JobSeekerRepo {
         callback: (Boolean, String, JobSeekerModel?) -> Unit
     )
 
-    // NEW METHOD: Get job seeker by email
-    fun getJobSeekerByEmail(
-        email: String,
-        callback: (Boolean, String, JobSeekerModel?) -> Unit
+    fun incrementProfileView(
+        jobSeekerId: String,
+        callback: (Boolean, String) -> Unit
     )
+
 }

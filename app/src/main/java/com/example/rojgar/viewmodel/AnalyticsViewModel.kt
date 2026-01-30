@@ -1,5 +1,7 @@
 package com.example.rojgar.viewmodel
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -17,11 +19,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class AnalyticsViewModel : ViewModel() {
+class AnalyticsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repo: AnalyticsRepoImpl = AnalyticsRepoImpl()
-    private val followRepo: FollowRepoImpl = FollowRepoImpl()
-    private val applicationRepo: ApplicationRepoImpl = ApplicationRepoImpl()
+    private val followRepo: FollowRepoImpl = FollowRepoImpl(getApplication())
+    private val applicationRepo: ApplicationRepoImpl = ApplicationRepoImpl(context = getApplication())
     private var currentCompanyId: String = ""
     private val viewModelJob = Job()
     private val viewModelScope = CoroutineScope(Dispatchers.Main + viewModelJob)

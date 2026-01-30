@@ -1,187 +1,255 @@
 package com.example.rojgar.repository
 
+import android.util.Log
 import com.example.rojgar.model.NotificationModel
 import com.example.rojgar.model.NotificationType
 import com.example.rojgar.model.UserType
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 
 class NotificationRepoImpl : NotificationRepo {
 
-    private val notifications = MutableStateFlow(generateMockNotifications())
+    private val database = FirebaseDatabase.getInstance()
+    private val notificationsRef = database.getReference("Notifications")
+    private val auth = FirebaseAuth.getInstance()
 
-    override fun getAllNotifications(userType: UserType): Flow<List<NotificationModel>> {
-        return notifications.map { list ->
-            list.filter { notification ->
-                notification.userType == userType || notification.userType == UserType.ALL
+    companion object {
+        private const val TAG = "NotificationRepoImpl"
+    }
+
+    override fun getAllNotifications(userType: UserType): Flow<List<NotificationModel>> = callbackFlow {
+        val userId = auth.currentUser?.uid
+
+        if (userId == null) {
+            Log.w(TAG, "User not logged in")
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+
+        Log.d(TAG, "Fetching notifications for user: $userId")
+
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val notifications = mutableListOf<NotificationModel>()
+
+                if (snapshot.exists()) {
+                    Log.d(TAG, "Found ${snapshot.childrenCount} notifications")
+
+                    for (notificationSnapshot in snapshot.children) {
+                        try {
+                            val id = notificationSnapshot.key ?: continue
+                            val title = notificationSnapshot.child("title").getValue(String::class.java) ?: "Notification"
+                            val message = notificationSnapshot.child("message").getValue(String::class.java) ?: ""
+                            val timestamp = notificationSnapshot.child("timestamp").getValue(Long::class.java) ?: System.currentTimeMillis()
+                            val isRead = notificationSnapshot.child("isRead").getValue(Boolean::class.java) ?: false
+                            val typeString = notificationSnapshot.child("type").getValue(String::class.java) ?: "general"
+
+                            // Parse data map
+                            val data = mutableMapOf<String, String>()
+                            val dataSnapshot = notificationSnapshot.child("data")
+                            for (child in dataSnapshot.children) {
+                                val key = child.key
+                                val value = child.getValue(String::class.java)
+                                if (key != null && value != null) {
+                                    data[key] = value
+                                }
+                            }
+
+                            // Map notification type from string to enum
+                            val type = mapStringToNotificationType(typeString)
+
+                            // Map notification to user type
+                            val mappedUserType = when (typeString) {
+                                "follow" -> UserType.ALL // Both can receive follow notifications
+                                "job" -> UserType.JOBSEEKER // Job notifications go to job seekers
+                                "verification" -> UserType.COMPANY // Verification notifications go to companies
+                                "candidate_alert" -> UserType.COMPANY
+                                "application_update" -> UserType.JOBSEEKER
+                                "events", "event" -> UserType.ALL
+                                "message" -> UserType.ALL
+                                else -> UserType.ALL
+                            }
+
+                            // Only add notifications that match the current user type or are for all
+                            if (mappedUserType == userType || mappedUserType == UserType.ALL) {
+                                val notification = NotificationModel(
+                                    id = id,
+                                    title = title,
+                                    message = message,
+                                    timestamp = timestamp,
+                                    isRead = isRead,
+                                    type = type,
+                                    userType = mappedUserType
+                                )
+                                notifications.add(notification)
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error parsing notification: ${e.message}")
+                        }
+                    }
+
+                    // Sort by timestamp (newest first)
+                    notifications.sortByDescending { it.timestamp }
+                    Log.d(TAG, "Sending ${notifications.size} filtered notifications")
+                } else {
+                    Log.d(TAG, "No notifications found for user")
+                }
+
+                trySend(notifications)
             }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Error fetching notifications: ${error.message}")
+                trySend(emptyList())
+            }
+        }
+
+        notificationsRef.child(userId).addValueEventListener(listener)
+
+        awaitClose {
+            notificationsRef.child(userId).removeEventListener(listener)
         }
     }
 
     override suspend fun markAsRead(notificationId: String) {
-        notifications.value = notifications.value.map { notification ->
-            if (notification.id == notificationId) {
-                notification.copy(isRead = true)
-            } else {
-                notification
-            }
+        val userId = auth.currentUser?.uid ?: return
+
+        try {
+            notificationsRef
+                .child(userId)
+                .child(notificationId)
+                .child("isRead")
+                .setValue(true)
+                .await()
+
+            Log.d(TAG, "Marked notification as read: $notificationId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error marking notification as read: ${e.message}")
         }
     }
 
     override suspend fun markAsUnread(notificationId: String) {
-        notifications.value = notifications.value.map { notification ->
-            if (notification.id == notificationId) {
-                notification.copy(isRead = false)
-            } else {
-                notification
-            }
+        val userId = auth.currentUser?.uid ?: return
+
+        try {
+            notificationsRef
+                .child(userId)
+                .child(notificationId)
+                .child("isRead")
+                .setValue(false)
+                .await()
+
+            Log.d(TAG, "Marked notification as unread: $notificationId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error marking notification as unread: ${e.message}")
         }
     }
 
     override suspend fun deleteNotification(notificationId: String) {
-        notifications.value = notifications.value.filter { it.id != notificationId }
+        val userId = auth.currentUser?.uid ?: return
+
+        try {
+            notificationsRef
+                .child(userId)
+                .child(notificationId)
+                .removeValue()
+                .await()
+
+            Log.d(TAG, "Deleted notification: $notificationId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting notification: ${e.message}")
+        }
     }
 
     override suspend fun clearAllNotifications(userType: UserType) {
-        notifications.value = notifications.value.filter {
-            it.userType != userType && it.userType != UserType.ALL
+        val userId = auth.currentUser?.uid ?: return
+
+        try {
+            notificationsRef
+                .child(userId)
+                .removeValue()
+                .await()
+
+            Log.d(TAG, "Cleared all notifications for user: $userId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error clearing notifications: ${e.message}")
         }
     }
 
-    override fun getUnreadCount(userType: UserType): Flow<Int> {
-        return notifications.map { list ->
-            list.count {
-                !it.isRead && (it.userType == userType || it.userType == UserType.ALL)
+    override fun getUnreadCount(userType: UserType): Flow<Int> = callbackFlow {
+        val userId = auth.currentUser?.uid
+
+        if (userId == null) {
+            trySend(0)
+            close()
+            return@callbackFlow
+        }
+
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var unreadCount = 0
+
+                if (snapshot.exists()) {
+                    for (notificationSnapshot in snapshot.children) {
+                        val isRead = notificationSnapshot.child("isRead").getValue(Boolean::class.java) ?: false
+                        val typeString = notificationSnapshot.child("type").getValue(String::class.java) ?: "general"
+
+                        // Map notification to user type
+                        val mappedUserType = when (typeString) {
+                            "follow" -> UserType.ALL
+                            "job" -> UserType.JOBSEEKER
+                            "verification" -> UserType.COMPANY
+                            "candidate_alert" -> UserType.COMPANY
+                            "application_update" -> UserType.JOBSEEKER
+                            else -> UserType.ALL
+                        }
+
+                        // Only count unread notifications that match user type
+                        if (!isRead && (mappedUserType == userType || mappedUserType == UserType.ALL)) {
+                            unreadCount++
+                        }
+                    }
+                }
+
+                Log.d(TAG, "Unread count for user $userId: $unreadCount")
+                trySend(unreadCount)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Error fetching unread count: ${error.message}")
+                trySend(0)
             }
         }
+
+        notificationsRef.child(userId).addValueEventListener(listener)
+
+        awaitClose {
+            notificationsRef.child(userId).removeEventListener(listener)
+        }
     }
 
-    private fun generateMockNotifications(): List<NotificationModel> {
-        val currentTime = System.currentTimeMillis()
-        return listOf(
-            // Jobseeker Notifications
-            NotificationModel(
-                id = "js1",
-                title = "New Job Alert: Android Developer",
-                message = "Google is hiring for Senior Android Developer position in your area. Apply now!",
-                timestamp = currentTime - 5 * 60 * 1000,
-                isRead = false,
-                type = NotificationType.JOB_ALERT,
-                userType = UserType.JOBSEEKER
-            ),
-            NotificationModel(
-                id = "js2",
-                title = "Application Update",
-                message = "Your application for Frontend Developer at Meta has been viewed by the recruiter.",
-                timestamp = currentTime - 2 * 60 * 60 * 1000,
-                isRead = false,
-                type = NotificationType.APPLICATION_UPDATE,
-                userType = UserType.JOBSEEKER
-            ),
-            NotificationModel(
-                id = "js3",
-                title = "Profile Boost",
-                message = "Complete your profile to increase visibility by 60%. Add your work experience now!",
-                timestamp = currentTime - 5 * 60 * 60 * 1000,
-                isRead = true,
-                type = NotificationType.SYSTEM,
-                userType = UserType.JOBSEEKER
-            ),
-            NotificationModel(
-                id = "js4",
-                title = "New Message from Recruiter",
-                message = "Sarah from Amazon wants to discuss an opportunity with you. Check your messages.",
-                timestamp = currentTime - 24 * 60 * 60 * 1000,
-                isRead = false,
-                type = NotificationType.MESSAGE,
-                userType = UserType.JOBSEEKER
-            ),
-            NotificationModel(
-                id = "js5",
-                title = "Job Match: 95% Compatible",
-                message = "UI/UX Designer role at Adobe matches your skills perfectly. Don't miss out!",
-                timestamp = currentTime - 2 * 24 * 60 * 60 * 1000,
-                isRead = true,
-                type = NotificationType.JOB_ALERT,
-                userType = UserType.JOBSEEKER
-            ),
-            NotificationModel(
-                id = "js6",
-                title = "Interview Scheduled",
-                message = "Your interview with Microsoft is scheduled for tomorrow at 2:00 PM. Prepare well!",
-                timestamp = currentTime - 3 * 24 * 60 * 60 * 1000,
-                isRead = true,
-                type = NotificationType.INTERVIEW_SCHEDULED,
-                userType = UserType.JOBSEEKER
-            ),
-
-            // Company Notifications
-            NotificationModel(
-                id = "c1",
-                title = "New Application Received",
-                message = "John Doe has applied for Senior Android Developer position. Review application now.",
-                timestamp = currentTime - 10 * 60 * 1000,
-                isRead = false,
-                type = NotificationType.CANDIDATE_ALERT,
-                userType = UserType.COMPANY
-            ),
-            NotificationModel(
-                id = "c2",
-                title = "Candidate Accepted Interview",
-                message = "Sarah Johnson has accepted your interview invitation for Frontend Developer role.",
-                timestamp = currentTime - 3 * 60 * 60 * 1000,
-                isRead = false,
-                type = NotificationType.INTERVIEW_SCHEDULED,
-                userType = UserType.COMPANY
-            ),
-            NotificationModel(
-                id = "c3",
-                title = "Job Post Expiring Soon",
-                message = "Your job posting 'UI/UX Designer' will expire in 3 days. Renew to keep receiving applications.",
-                timestamp = currentTime - 6 * 60 * 60 * 1000,
-                isRead = true,
-                type = NotificationType.SYSTEM,
-                userType = UserType.COMPANY
-            ),
-            NotificationModel(
-                id = "c4",
-                title = "New Message from Candidate",
-                message = "Michael Brown sent you a message regarding the Backend Developer position.",
-                timestamp = currentTime - 12 * 60 * 60 * 1000,
-                isRead = false,
-                type = NotificationType.MESSAGE,
-                userType = UserType.COMPANY
-            ),
-            NotificationModel(
-                id = "c5",
-                title = "Premium Features Activated",
-                message = "Your company account has been upgraded to Premium. Enjoy unlimited job posts!",
-                timestamp = currentTime - 2 * 24 * 60 * 60 * 1000,
-                isRead = true,
-                type = NotificationType.SYSTEM,
-                userType = UserType.COMPANY
-            ),
-            NotificationModel(
-                id = "c6",
-                title = "Matching Candidates Available",
-                message = "5 highly qualified candidates match your Data Scientist position. View profiles now.",
-                timestamp = currentTime - 4 * 24 * 60 * 60 * 1000,
-                isRead = false,
-                type = NotificationType.CANDIDATE_ALERT,
-                userType = UserType.COMPANY
-            ),
-
-            // Notifications visible to both
-            NotificationModel(
-                id = "all1",
-                title = "Platform Maintenance Scheduled",
-                message = "The platform will undergo maintenance on Saturday, 2 AM - 4 AM. Services may be limited.",
-                timestamp = currentTime - 8 * 60 * 60 * 1000,
-                isRead = false,
-                type = NotificationType.SYSTEM,
-                userType = UserType.ALL
-            )
-        )
+    /**
+     * Map string notification type to NotificationType enum
+     */
+    private fun mapStringToNotificationType(typeString: String): NotificationType {
+        return when (typeString.lowercase()) {
+            "job", "job_alert" -> NotificationType.JOB_ALERT
+            "follow" -> NotificationType.PROFILE_UPDATE // Using PROFILE_UPDATE for follow notifications
+            "verification" -> NotificationType.SYSTEM
+            "message" -> NotificationType.MESSAGE
+            "application_update" -> NotificationType.APPLICATION_STATUS
+            "candidate_alert", "job_application" -> NotificationType.CANDIDATE_ALERT
+            "events", "event" -> NotificationType.EVENTS
+            "system" -> NotificationType.SYSTEM
+            else -> NotificationType.GENERAL
+        }
     }
 }

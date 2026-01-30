@@ -291,7 +291,6 @@ fun MapScreen(viewModel: CompanyViewModel, context: Context) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModernTopBar() {
-    // Animated gradient background
     val infiniteTransition = rememberInfiniteTransition(label = "gradient")
     val animatedOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -302,36 +301,35 @@ fun ModernTopBar() {
         ),
         label = "offset"
     )
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
             .background(
                 Brush.horizontalGradient(
                     colors = listOf(
-                        Color(0xFF1E88E5),
+                        Color(0xFF1976D2),
                         Color(0xFF2196F3),
-                        Color(0xFF42A5F5),
-                        Color(0xFF1E88E5)
+                        Color(0xFF42A5F5)
                     ),
                     startX = animatedOffset,
                     endX = animatedOffset + 1000f
                 )
             )
+            .padding(top = 40.dp)
     ) {
         Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
+
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Start
             ) {
-                // Animated location icon
+                Spacer(modifier = Modifier.width(8.dp))
                 val scale by infiniteTransition.animateFloat(
                     initialValue = 1f,
                     targetValue = 1.2f,
@@ -367,6 +365,7 @@ fun ModernTopBar() {
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Normal
                     )
+
                 }
             }
         }
@@ -958,6 +957,7 @@ fun ModernCompanyInfoCard(
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(60.dp))
             }
         }
     }

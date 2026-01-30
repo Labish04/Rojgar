@@ -22,6 +22,7 @@ data class CompanyModel(
     val verificationStatus: String = "", // pending, approved, rejected
     val verificationReviewedDate: String = "",
     val verificationRejectionReason: String = "", // Add this field
+    val fcmToken: String = "",
     val latitude: Double = 0.0,
     val longitude: Double = 0.0
 ) {
@@ -48,6 +49,7 @@ data class CompanyModel(
             "verificationStatus" to verificationStatus,
             "verificationReviewedDate" to verificationReviewedDate,
             "verificationRejectionReason" to verificationRejectionReason, // Add this
+            "fcmToken" to fcmToken,
             "latitude" to latitude,
             "longitude" to longitude
         )

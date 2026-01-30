@@ -7,10 +7,11 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,6 +31,10 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -37,6 +42,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
@@ -85,11 +91,11 @@ fun CompanyUploadPostScreen(
     selectedProfileUri: Uri?,
     onPickProfileImage: () -> Unit
 ) {
-    // Create ViewModels at the top level and remember them
-    val jobViewModel = remember { JobViewModel(JobRepoImpl()) }
+    val context = LocalContext.current
+
+    val jobViewModel = remember { JobViewModel(JobRepoImpl(context)) }
     val companyViewModel = remember { CompanyViewModel(CompanyRepoImpl()) }
 
-    val context = LocalContext.current
     val currentUser = companyViewModel.getCurrentCompany()
     val companyId = currentUser?.uid ?: ""
 
@@ -100,14 +106,12 @@ fun CompanyUploadPostScreen(
     val jobPosts by jobViewModel.company.observeAsState(emptyList())
     val isLoading by jobViewModel.loading.observeAsState(false)
 
-    // IMPORTANT: Load job posts immediately when screen opens
     LaunchedEffect(Unit) {
         if (companyId.isNotEmpty()) {
             jobViewModel.getJobPostsByCompanyId(companyId)
         }
     }
 
-    // Refresh when returning from create/edit mode
     LaunchedEffect(showCreate) {
         if (!showCreate && companyId.isNotEmpty()) {
             jobViewModel.getJobPostsByCompanyId(companyId)
@@ -124,7 +128,6 @@ fun CompanyUploadPostScreen(
             onPostCreated = {
                 showCreate = false
                 editingPost = null
-                // Reload posts after creation/update
                 jobViewModel.getJobPostsByCompanyId(companyId)
             },
             onCancel = {
@@ -145,7 +148,6 @@ fun CompanyUploadPostScreen(
         )
     }
 
-    // Delete Confirmation Dialog
     showDeleteDialog?.let { post ->
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
@@ -187,102 +189,173 @@ fun JobPostListScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Blue)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFE3F2FD),
+                        Color(0xFFBBDEFB),
+                        Color(0xFF90CAF9)
+                    )
+                )
+            )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
         ) {
-            Spacer(modifier = Modifier.height(40.dp))
-
-            Text(
-                text = "My Job Posts",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            Text(
-                text = "${jobPosts.size} ${if (jobPosts.size == 1) "post" else "posts"}",
-                fontSize = 14.sp,
-                color = Color.Gray,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            when {
-                isLoading -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = DarkBlue2)
-                    }
-                }
-                jobPosts.isEmpty() -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "No job posts yet",
-                                fontSize = 18.sp,
-                                color = Color.Gray,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Create your first job post",
-                                fontSize = 14.sp,
-                                color = Color.Gray
-                            )
-                        }
-                    }
-                }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(jobPosts, key = { it.postId }) { post ->
-                            JobPostCard(
-                                jobPost = post,
-                                onEdit = { onEdit(post) },
-                                onDelete = { onDelete(post) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Create Post Button - Always at Bottom
-            Button(
-                onClick = onCreatePost,
-                shape = RoundedCornerShape(25.dp),
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(45.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DarkBlue2,
-                    contentColor = Color.White
-                )
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF1976D2),
+                                Color(0xFF2196F3),
+                                Color(0xFF42A5F5)
+                            )
+                        )
+                    )
+                    .padding(top = 40.dp)
             ) {
-                Text(
-                    text = "Create Job Post",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "My Job Posts",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+
+                        AnimatedVisibility(visible = !isLoading) {
+                            Text(
+                                text = "${jobPosts.size} ${if (jobPosts.size == 1) "post" else "posts"} available",
+                                fontSize = 14.sp,
+                                color = Color.White.copy(alpha = 0.9f)
+                            )
+                        }
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Rest of the content with updated padding
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Color.White)
+                        }
+                    }
+                    jobPosts.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.jobpost_filled),
+                                    contentDescription = "No Jobs",
+                                    modifier = Modifier.size(60.dp),
+                                    tint = Color.Black
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "No job posts yet",
+                                    fontSize = 20.sp,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Create your first job post",
+                                    fontSize = 14.sp,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(jobPosts, key = { it.postId }) { post ->
+                                JobPostCard(
+                                    jobPost = post,
+                                    onEdit = { onEdit(post) },
+                                    onDelete = { onDelete(post) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // NEW: Updated Stylish Create Job Post Button
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF1976D2),
+                                    Color(0xFF2196F3),
+                                    Color(0xFF42A5F5)
+                                )
+                            )
+                        )
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(28.dp),
+                            clip = true
+                        )
+                        .clickable { onCreatePost() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.addexperience),
+                            contentDescription = "Create",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Create Job Post",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(100.dp))
+            }
         }
     }
 }
@@ -307,15 +380,13 @@ fun JobPostCard(
                 context.startActivity(intent)
             },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            // LEFT SIDE - Image
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -334,7 +405,7 @@ fun JobPostCard(
                     Icon(
                         painter = painterResource(id = R.drawable.jobpost_filled),
                         contentDescription = "No Image",
-                        tint = Color.Gray,
+                        tint = Color(0xFF2196F3),
                         modifier = Modifier.size(40.dp)
                     )
                 }
@@ -342,7 +413,6 @@ fun JobPostCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // RIGHT SIDE - Content
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -367,7 +437,6 @@ fun JobPostCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Job Type Badge
                 if (jobPost.jobType.isNotEmpty()) {
                     Surface(
                         color = Color(0xFFE3F2FD),
@@ -384,11 +453,9 @@ fun JobPostCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Action Buttons Row with Icons
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Edit Button with Icon
                     IconButton(
                         onClick = onEdit,
                         modifier = Modifier
@@ -401,12 +468,12 @@ fun JobPostCard(
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Edit",
-                            tint = DarkBlue2,
+                            tint = Color(0xFF2196F3),
                             modifier = Modifier.size(20.dp)
                         )
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                    // Delete Button with Icon
                     IconButton(
                         onClick = onDelete,
                         modifier = Modifier
@@ -458,9 +525,9 @@ fun CompanyUploadPostBody(
     var displayedBannerUrl by remember { mutableStateOf(existingPost?.hiringBanner ?: existingPost?.imageUrl ?: "") }
 
     var showCategoryBottomSheet by remember { mutableStateOf(false) }
+    var showJobTypeBottomSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // Auto-upload banner when selected
     LaunchedEffect(selectedBannerUri) {
         if (selectedBannerUri != null && !isUploadingBanner) {
             isUploadingBanner = true
@@ -501,7 +568,15 @@ fun CompanyUploadPostBody(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Blue)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFE3F2FD),
+                        Color(0xFFBBDEFB),
+                        Color(0xFF90CAF9)
+                    )
+                )
+            )
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
@@ -514,7 +589,6 @@ fun CompanyUploadPostBody(
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
-        // Hiring Banner
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
@@ -549,7 +623,7 @@ fun CompanyUploadPostBody(
                             Icon(
                                 painter = painterResource(id = R.drawable.baseline_upload_24),
                                 contentDescription = "Upload",
-                                tint = Color.Gray,
+                                tint = Color(0xFF2196F3),
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
@@ -558,7 +632,6 @@ fun CompanyUploadPostBody(
                     }
                 }
 
-                // Show loading indicator while uploading
                 if (isUploadingBanner) {
                     Box(
                         modifier = Modifier
@@ -574,111 +647,121 @@ fun CompanyUploadPostBody(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Form Fields
-        JobPostTextField(value = title, onValueChange = { title = it }, label = "Job Title*", icon = R.drawable.jobtitleicon)
+        JobPostTextField(
+            value = title,
+            onValueChange = { title = it },
+            label = "Job Title*",
+            icon = R.drawable.jobtitleicon,
+            tint = Color(0xFF2196F3)
+        )
         Spacer(modifier = Modifier.height(16.dp))
 
-        JobPostTextField(value = position, onValueChange = { position = it }, label = "Position*", icon = R.drawable.jobpost_filled)
+        JobPostTextField(
+            value = position,
+            onValueChange = { position = it },
+            label = "Position*",
+            icon = R.drawable.jobpost_filled,
+            tint = Color(0xFF2196F3)
+        )
         Spacer(modifier = Modifier.height(16.dp))
 
         // Category Selector
-        Card(
+        AnimatedDropdownButton(
+            selectedText = if (selectedCategories.isEmpty()) "Select Category" else selectedCategories.joinToString(", "),
+            icon = R.drawable.jobcategoryicon,
+            tint = Color(0xFF2196F3),
+            onClick = { showCategoryBottomSheet = true },
+            hasSelection = selectedCategories.isNotEmpty(),
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Job Type Dropdown
+        AnimatedDropdownButton(
+            selectedText = jobType.ifEmpty { "Select Job Type" },
+            icon = R.drawable.jobtype,
+            tint = Color(0xFF2196F3),
+            onClick = { showJobTypeBottomSheet = true },
+            hasSelection = jobType.isNotEmpty()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        JobPostTextField(
+            value = experience,
+            onValueChange = { experience = it },
+            label = "Experience Required",
+            icon = R.drawable.experience_filled,
+            tint = Color(0xFF2196F3)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        JobPostTextField(
+            value = education,
+            onValueChange = { education = it },
+            label = "Education",
+            icon = R.drawable.educationboardicon,
+            tint = Color(0xFF2196F3)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        JobPostTextField(
+            value = skills,
+            onValueChange = { skills = it },
+            label = "Required Skills",
+            icon = R.drawable.skills_filledicon,
+            tint = Color(0xFF2196F3)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        JobPostTextField(
+            value = salary,
+            onValueChange = { salary = it },
+            label = "Salary",
+            icon = R.drawable.salaryicon,
+            tint = Color(0xFF2196F3)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { showCategoryBottomSheet = true },
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Blue),
-            border = ButtonDefaults.outlinedButtonBorder
+                .clickable { datePickerDialog.show() }
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            OutlinedTextField(
+                value = deadline,
+                onValueChange = {},
+                readOnly = true,
+                enabled = false,
+                leadingIcon = {
                     Icon(
-                        painter = painterResource(id = R.drawable.jobcategoryicon),
-                        contentDescription = "Category",
-                        tint = Color.Black,
+                        painter = painterResource(id = R.drawable.deadlineicon),
+                        contentDescription = "Deadline",
+                        tint = Color(0xFF2196F3),
                         modifier = Modifier.size(24.dp)
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    if (selectedCategories.isEmpty()) {
-                        Text("Select Category", color = Color.Gray, fontSize = 16.sp)
-                    } else {
-                        Text(
-                            text = selectedCategories.joinToString(", "),
-                            color = Color.Black,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-                Icon(
-                    painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
-                    contentDescription = "Dropdown",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        JobPostTextField(value = jobType, onValueChange = { jobType = it }, label = "Job Type", icon = R.drawable.jobtype)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        JobPostTextField(value = experience, onValueChange = { experience = it }, label = "Experience Required", icon = R.drawable.experience_filled)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        JobPostTextField(value = education, onValueChange = { education = it }, label = "Education", icon = R.drawable.educationboardicon)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        JobPostTextField(value = skills, onValueChange = { skills = it }, label = "Required Skills", icon = R.drawable.skills_filledicon)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        JobPostTextField(value = salary, onValueChange = { salary = it }, label = "Salary", icon = R.drawable.salaryicon)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Deadline
-        OutlinedTextField(
-            value = deadline,
-            onValueChange = {},
-            readOnly = true,
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(id = R.drawable.deadlineicon),
-                    contentDescription = "Deadline",
-                    tint = Color.Black,
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            trailingIcon = {
-                IconButton(onClick = { datePickerDialog.show() }) {
+                },
+                trailingIcon = {
                     Icon(
                         painter = painterResource(id = R.drawable.datetimeicon),
                         contentDescription = "Select Date",
-                        tint = Color.Black,
+                        tint = Color(0xFF2196F3),
                         modifier = Modifier.size(24.dp)
                     )
-                }
-            },
-            label = { Text("Application Deadline") },
-            placeholder = { Text("Select date and time") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = TextFieldDefaults.colors(
-                disabledIndicatorColor = Color.Transparent,
-                focusedContainerColor = Blue,
-                unfocusedContainerColor = Blue,
-                focusedIndicatorColor = Purple,
-                unfocusedIndicatorColor = Color.Black
+                },
+                label = { Text("Application Deadline") },
+                placeholder = { Text("Select date and time") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledBorderColor = DarkBlue2,
+                    disabledContainerColor = Color.White.copy(alpha = 0.7f),
+                    disabledTextColor = Color.Black,
+                    disabledLabelColor = Color.Gray
+                )
             )
-        )
+        }
+
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -687,7 +770,8 @@ fun CompanyUploadPostBody(
             onValueChange = { responsibilities = it },
             label = "Key Responsibilities",
             icon = R.drawable.responsibilityicon,
-            minHeight = 100.dp
+            minHeight = 100.dp,
+            tint = Color(0xFF2196F3)
         )
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -696,12 +780,12 @@ fun CompanyUploadPostBody(
             onValueChange = { jobDescription = it },
             label = "Job Description",
             icon = R.drawable.jobdescriptionicon,
-            minHeight = 100.dp
+            minHeight = 100.dp,
+            tint = Color(0xFF2196F3)
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Action Buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -743,7 +827,7 @@ fun CompanyUploadPostBody(
                         responsibilities = responsibilities,
                         jobDescription = jobDescription,
                         hiringBanner = displayedBannerUrl,
-                        imageUrl = displayedBannerUrl, // For backward compatibility
+                        imageUrl = displayedBannerUrl,
                         timestamp = existingPost?.timestamp ?: System.currentTimeMillis()
                     )
 
@@ -793,6 +877,102 @@ fun CompanyUploadPostBody(
             )
         }
     }
+
+    if (showJobTypeBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showJobTypeBottomSheet = false },
+            sheetState = sheetState,
+            containerColor = Color.White
+        ) {
+            JobTypeBottomSheet(
+                onDismiss = { showJobTypeBottomSheet = false },
+                onSelect = { type ->
+                    jobType = type
+                    showJobTypeBottomSheet = false
+                },
+                initialSelection = jobType
+            )
+        }
+    }
+}
+
+@Composable
+fun AnimatedDropdownButton(
+    selectedText: String,
+    icon: Int,
+    onClick: () -> Unit,
+    hasSelection: Boolean,
+    tint: Color
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        )
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .clickable {
+                isPressed = true
+                onClick()
+            },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.7f)),
+        border = ButtonDefaults.outlinedButtonBorder
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = null,
+                    tint = if (hasSelection) tint else tint,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = selectedText,
+                    color = if (hasSelection) Color.Black else Color.Gray,
+                    fontSize = if (hasSelection) 14.sp else 16.sp,
+                    fontWeight = if (hasSelection) FontWeight.Medium else FontWeight.Normal
+                )
+            }
+
+            val rotation by animateFloatAsState(
+                targetValue = if (isPressed) 180f else 0f,
+                animationSpec = tween(durationMillis = 300)
+            )
+
+            Icon(
+                painter = painterResource(id = R.drawable.outline_keyboard_arrow_down_24),
+                contentDescription = "Dropdown",
+                tint = Color(0xFF2196F3),
+                modifier = Modifier
+                    .size(24.dp)
+                    .rotate(rotation)
+            )
+        }
+    }
+
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            kotlinx.coroutines.delay(100)
+            isPressed = false
+        }
+    }
 }
 
 @Composable
@@ -801,7 +981,8 @@ fun JobPostTextField(
     onValueChange: (String) -> Unit,
     label: String,
     icon: Int,
-    minHeight: androidx.compose.ui.unit.Dp = 56.dp
+    minHeight: Dp = 56.dp,
+    tint: Color
 ) {
     OutlinedTextField(
         value = value,
@@ -810,7 +991,7 @@ fun JobPostTextField(
             Icon(
                 painter = painterResource(id = icon),
                 contentDescription = label,
-                tint = Color.Black,
+                tint = Color(0xFF2196F3),
                 modifier = Modifier.size(24.dp)
             )
         },
@@ -821,12 +1002,315 @@ fun JobPostTextField(
         shape = RoundedCornerShape(16.dp),
         colors = TextFieldDefaults.colors(
             disabledIndicatorColor = Color.Transparent,
-            focusedContainerColor = Blue,
-            unfocusedContainerColor = Blue,
-            focusedIndicatorColor = Purple,
-            unfocusedIndicatorColor = Color.Black
+            focusedContainerColor = Color.White.copy(alpha = 0.7f),
+            unfocusedContainerColor = Color.White.copy(alpha = 0.7f),
+            focusedIndicatorColor = tint,
+            unfocusedIndicatorColor = tint.copy(alpha = 0.5f)
         )
     )
+}
+
+@Composable
+fun JobTypeBottomSheet(
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+    initialSelection: String
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedType by remember { mutableStateOf(initialSelection) }
+
+    val jobTypes = listOf(
+        "Full-time",
+        "Part-time",
+        "Contract",
+        "Temporary",
+        "Internship",
+        "Freelance",
+        "Apprenticeship",
+        "Traineeship",
+        "Seasonal",
+        "Project-based",
+        "Shift-based",
+        "On-call",
+        "Fixed-term",
+        "Commission-based",
+        "Entry-level"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.75f)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFE3F2FD),
+                        Color(0xFFBBDEFB),
+                        Color(0xFF90CAF9)
+                    )
+                )
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+        ) {
+            // Header with animation
+            var isVisible by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                isVisible = true
+            }
+
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInVertically(
+                    initialOffsetY = { -40 },
+                    animationSpec = tween(400, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(400))
+            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.jobtype),
+                            contentDescription = null,
+                            tint = Color(0xFF2196F3),
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            "Select Job Type",
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1565C0)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        "Choose the employment type for this position",
+                        fontSize = 14.sp,
+                        color = Color(0xFF424242)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Animated Search Field
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInVertically(
+                    initialOffsetY = { 40 },
+                    animationSpec = tween(400, delayMillis = 100, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(400, delayMillis = 100))
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search job types...", color = Color.Gray) },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.jobtype),
+                            contentDescription = "Search",
+                            tint = Color(0xFF2196F3),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.White.copy(alpha = 0.9f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.7f),
+                        focusedIndicatorColor = Color(0xFF2196F3),
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Animated List
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                val filteredTypes = jobTypes.filter {
+                    it.contains(searchQuery, ignoreCase = true)
+                }
+
+                items(filteredTypes.size) { index ->
+                    var itemVisible by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        kotlinx.coroutines.delay(index * 30L)
+                        itemVisible = true
+                    }
+
+                    AnimatedVisibility(
+                        visible = itemVisible,
+                        enter = slideInHorizontally(
+                            initialOffsetX = { 100 },
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
+                        ) + fadeIn()
+                    ) {
+                        JobTypeItem(
+                            name = filteredTypes[index],
+                            isSelected = selectedType == filteredTypes[index],
+                            onClick = { selectedType = filteredTypes[index] }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Animated Buttons
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInVertically(
+                    initialOffsetY = { 60 },
+                    animationSpec = tween(400, delayMillis = 200, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(400, delayMillis = 200))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(2.dp, Color(0xFF2196F3)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.White.copy(alpha = 0.8f)
+                        )
+                    ) {
+                        Text(
+                            "Cancel",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF2191F3)
+                        )
+                    }
+
+                    Button(
+                        onClick = { onSelect(selectedType) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2196F3),
+                            disabledContainerColor = Color(0xFF2196F3).copy(alpha = 0.5f)
+                        ),
+                        enabled = selectedType.isNotEmpty(),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 4.dp,
+                            pressedElevation = 8.dp
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Select", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun JobTypeItem(
+    name: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.03f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+    )
+
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f),
+        animationSpec = tween(300)
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        shape = RoundedCornerShape(14.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 6.dp else 2.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                if (isSelected) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(Color(0xFF2196F3), shape = RoundedCornerShape(3.dp))
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                }
+                Text(
+                    name,
+                    fontSize = 16.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isSelected) Color(0xFF1565C0) else Color(0xFF424242)
+                )
+            }
+
+            AnimatedVisibility(
+                visible = isSelected,
+                enter = scaleIn(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                ) + fadeIn(),
+                exit = scaleOut() + fadeOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(Color(0xFF2196F3), shape = RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Selected",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -839,94 +1323,283 @@ fun CategoryBottomSheet(
 
     val categoryList = remember {
         mutableStateListOf(
-            JobCategory("Accounting / Finance", initialCategories.contains("Accounting / Finance")),
-            JobCategory("Architecture / Interior Designing", initialCategories.contains("Architecture / Interior Designing")),
-            JobCategory("Banking / Insurance / Financial Services", initialCategories.contains("Banking / Insurance / Financial Services")),
-            JobCategory("Commercial / Logistics / Supply Chain", initialCategories.contains("Commercial / Logistics / Supply Chain")),
-            JobCategory("Construction / Engineering / Architects", initialCategories.contains("Construction / Engineering / Architects")),
+            JobCategory("Creative / Graphics / Designing", initialCategories.contains("Creative / Graphics / Designing")),
+            JobCategory("UI / UX Design", initialCategories.contains("UI / UX Design")),
+            JobCategory("Animation / VFX", initialCategories.contains("Animation / VFX")),
+            JobCategory("Photography / Videography", initialCategories.contains("Photography / Videography")),
             JobCategory("Fashion / Textile Designing", initialCategories.contains("Fashion / Textile Designing")),
+            JobCategory("Architecture / Interior Designing", initialCategories.contains("Architecture / Interior Designing")),
+            JobCategory("IT & Telecommunication", initialCategories.contains("IT & Telecommunication")),
+            JobCategory("Software Development", initialCategories.contains("Software Development")),
+            JobCategory("Web Development", initialCategories.contains("Web Development")),
+            JobCategory("Mobile App Development", initialCategories.contains("Mobile App Development")),
+            JobCategory("Data Science / AI / ML", initialCategories.contains("Data Science / AI / ML")),
+            JobCategory("Cyber Security", initialCategories.contains("Cyber Security")),
+            JobCategory("Network / System Administration", initialCategories.contains("Network / System Administration")),
+            JobCategory("DevOps / Cloud Computing", initialCategories.contains("DevOps / Cloud Computing")),
+            JobCategory("QA / Software Testing", initialCategories.contains("QA / Software Testing")),
             JobCategory("General Management", initialCategories.contains("General Management")),
-            JobCategory("IT & Software", initialCategories.contains("IT & Software")),
-            JobCategory("Marketing & Sales", initialCategories.contains("Marketing & Sales")),
-            JobCategory("Human Resources", initialCategories.contains("Human Resources"))
+            JobCategory("Project Management", initialCategories.contains("Project Management")),
+            JobCategory("Operations Management", initialCategories.contains("Operations Management")),
+            JobCategory("Business Development", initialCategories.contains("Business Development")),
+            JobCategory("Human Resource / HR", initialCategories.contains("Human Resource / HR")),
+            JobCategory("Administration / Office Support", initialCategories.contains("Administration / Office Support")),
+            JobCategory("Accounting / Finance", initialCategories.contains("Accounting / Finance")),
+            JobCategory("Banking / Insurance / Financial Services", initialCategories.contains("Banking / Insurance / Financial Services")),
+            JobCategory("Audit / Tax / Compliance", initialCategories.contains("Audit / Tax / Compliance")),
+            JobCategory("Investment / Wealth Management", initialCategories.contains("Investment / Wealth Management")),
+            JobCategory("Sales / Public Relations", initialCategories.contains("Sales / Public Relations")),
+            JobCategory("Marketing / Advertising", initialCategories.contains("Marketing / Advertising")),
+            JobCategory("Digital Marketing", initialCategories.contains("Digital Marketing")),
+            JobCategory("Content Writing / Copywriting", initialCategories.contains("Content Writing / Copywriting")),
+            JobCategory("Media / Journalism", initialCategories.contains("Media / Journalism")),
+            JobCategory("Customer Service / Call Center", initialCategories.contains("Customer Service / Call Center")),
+            JobCategory("Construction / Engineering / Architects", initialCategories.contains("Construction / Engineering / Architects")),
+            JobCategory("Civil Engineering", initialCategories.contains("Civil Engineering")),
+            JobCategory("Mechanical Engineering", initialCategories.contains("Mechanical Engineering")),
+            JobCategory("Electrical / Electronics Engineering", initialCategories.contains("Electrical / Electronics Engineering")),
+            JobCategory("Manufacturing / Production", initialCategories.contains("Manufacturing / Production")),
+            JobCategory("Maintenance / Technician", initialCategories.contains("Maintenance / Technician")),
+            JobCategory("Commercial / Logistics / Supply Chain", initialCategories.contains("Commercial / Logistics / Supply Chain")),
+            JobCategory("Procurement / Purchasing", initialCategories.contains("Procurement / Purchasing")),
+            JobCategory("Warehouse / Distribution", initialCategories.contains("Warehouse / Distribution")),
+            JobCategory("Drivers / Delivery", initialCategories.contains("Drivers / Delivery")),
+            JobCategory("Healthcare / Medical", initialCategories.contains("Healthcare / Medical")),
+            JobCategory("Nursing / Caregiving", initialCategories.contains("Nursing / Caregiving")),
+            JobCategory("Pharmacy", initialCategories.contains("Pharmacy")),
+            JobCategory("Laboratory / Research", initialCategories.contains("Laboratory / Research")),
+            JobCategory("Public Health", initialCategories.contains("Public Health")),
+            JobCategory("Teaching / Education", initialCategories.contains("Teaching / Education")),
+            JobCategory("Training / Coaching", initialCategories.contains("Training / Coaching")),
+            JobCategory("Academic Research", initialCategories.contains("Academic Research")),
+            JobCategory("Hotel / Hospitality", initialCategories.contains("Hotel / Hospitality")),
+            JobCategory("Travel / Tourism", initialCategories.contains("Travel / Tourism")),
+            JobCategory("Food & Beverage", initialCategories.contains("Food & Beverage")),
+            JobCategory("Event Management", initialCategories.contains("Event Management")),
+            JobCategory("Government Jobs", initialCategories.contains("Government Jobs")),
+            JobCategory("Legal / Law / Compliance", initialCategories.contains("Legal / Law / Compliance")),
+            JobCategory("NGO / INGO / Social Work", initialCategories.contains("NGO / INGO / Social Work")),
+            JobCategory("Public Administration / Policy", initialCategories.contains("Public Administration / Policy")),
+            JobCategory("Skilled Labor / Trades", initialCategories.contains("Skilled Labor / Trades")),
+            JobCategory("Security Services", initialCategories.contains("Security Services")),
+            JobCategory("Cleaning / Housekeeping", initialCategories.contains("Cleaning / Housekeeping")),
+            JobCategory("Agriculture / Farming", initialCategories.contains("Agriculture / Farming"))
         )
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight(0.7f)
-            .padding(20.dp)
+            .fillMaxHeight(0.75f)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFE3F2FD),
+                        Color(0xFFBBDEFB),
+                        Color(0xFF90CAF9)
+                    )
+                )
+            )
     ) {
-        Text("Select Job Categories", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(4.dp))
-        Text("You can select up to 5 categories", fontSize = 14.sp, color = Color.Gray)
-
-        val selectedCount = categoryList.count { it.isSelected }
-        Text(
-            "$selectedCount/5 selected",
-            fontSize = 14.sp,
-            color = if (selectedCount >= 5) Color.Red else DarkBlue2,
-            fontWeight = FontWeight.Medium
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            placeholder = { Text("Search categories") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        LazyColumn(modifier = Modifier.weight(1f)) {
-            val filteredList = categoryList.filter {
-                it.name.contains(searchQuery, ignoreCase = true)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+        ) {
+            // Animated Header
+            var isVisible by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                isVisible = true
             }
 
-            items(filteredList, key = { it.name }) { category ->
-                val index = categoryList.indexOf(category)
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInVertically(
+                    initialOffsetY = { -40 },
+                    animationSpec = tween(400, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(400))
+            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.jobcategoryicon),
+                            contentDescription = null,
+                            tint = Color(0xFF2196F3),
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            "Select Categories",
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1565C0)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        "You can select up to 5 categories",
+                        fontSize = 14.sp,
+                        color = Color(0xFF424242)
+                    )
 
-                SelectableCategoryItem(
-                    name = category.name,
-                    isSelected = category.isSelected
-                ) {
-                    val currentSelected = categoryList.count { it.isSelected }
-                    if (!category.isSelected && currentSelected >= 5) return@SelectableCategoryItem
-                    categoryList[index] = category.copy(isSelected = !category.isSelected)
+                    val selectedCount = categoryList.count { it.isSelected }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(
+                                    if (selectedCount >= 5) Color(0xFFE57373) else Color(0xFF2196F3),
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "$selectedCount/5 selected",
+                            fontSize = 15.sp,
+                            color = if (selectedCount >= 5) Color(0xFFC62828) else Color(0xFF1565C0),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OutlinedButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp),
-                shape = RoundedCornerShape(12.dp)
+            // Animated Search Field
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInVertically(
+                    initialOffsetY = { 40 },
+                    animationSpec = tween(400, delayMillis = 100, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(400, delayMillis = 100))
             ) {
-                Text("Cancel", fontSize = 16.sp)
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search categories...", color = Color.Gray) },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.jobcategoryicon),
+                            contentDescription = "Search",
+                            tint = Color(0xFF2196F3),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.White.copy(alpha = 0.9f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.7f),
+                        focusedIndicatorColor = Color(0xFF2196F3),
+                        unfocusedIndicatorColor = Color.Transparent
+                    )
+                )
             }
 
-            Button(
-                onClick = { onSave(categoryList.filter { it.isSelected }.map { it.name }) },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = DarkBlue2)
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Animated List
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text("Done", fontSize = 16.sp)
+                val filteredList = categoryList.filter {
+                    it.name.contains(searchQuery, ignoreCase = true)
+                }
+
+                items(filteredList.size, key = { filteredList[it].name }) { index ->
+                    val category = filteredList[index]
+                    val categoryIndex = categoryList.indexOf(category)
+
+                    var itemVisible by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        kotlinx.coroutines.delay(index * 20L)
+                        itemVisible = true
+                    }
+
+                    AnimatedVisibility(
+                        visible = itemVisible,
+                        enter = slideInHorizontally(
+                            initialOffsetX = { 100 },
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
+                        ) + fadeIn()
+                    ) {
+                        SelectableCategoryItem(
+                            name = category.name,
+                            isSelected = category.isSelected
+                        ) {
+                            val currentSelected = categoryList.count { it.isSelected }
+                            if (!category.isSelected && currentSelected >= 5) return@SelectableCategoryItem
+                            categoryList[categoryIndex] = category.copy(isSelected = !category.isSelected)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Animated Buttons
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInVertically(
+                    initialOffsetY = { 60 },
+                    animationSpec = tween(400, delayMillis = 200, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(400, delayMillis = 200))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(2.dp, Color(0xFF2196F3)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.White.copy(alpha = 0.8f)
+                        )
+                    ) {
+                        Text(
+                            "Cancel",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF2196F3)
+                        )
+                    }
+
+                    Button(
+                        onClick = { onSave(categoryList.filter { it.isSelected }.map { it.name }) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 4.dp,
+                            pressedElevation = 8.dp
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Done", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
             }
         }
     }
@@ -938,28 +1611,77 @@ fun SelectableCategoryItem(
     isSelected: Boolean,
     onToggle: () -> Unit
 ) {
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.03f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+    )
+
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) Color.White else Color.White.copy(alpha = 0.7f),
+        animationSpec = tween(300)
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .scale(scale)
             .clickable { onToggle() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFFE3F2FD) else Color.White
-        ),
-        shape = RoundedCornerShape(8.dp)
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        shape = RoundedCornerShape(14.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 6.dp else 2.dp
+        )
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(name, fontSize = 16.sp)
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Selected",
-                    tint = DarkBlue2
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                if (isSelected) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(Color(0xFF2196F3), shape = RoundedCornerShape(3.dp))
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                }
+                Text(
+                    name,
+                    fontSize = 16.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isSelected) Color(0xFF1565C0) else Color(0xFF424242)
                 )
+            }
+
+            AnimatedVisibility(
+                visible = isSelected,
+                enter = scaleIn(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                ) + fadeIn(),
+                exit = scaleOut() + fadeOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(Color(0xFF2196F3), shape = RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Selected",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
@@ -967,5 +1689,4 @@ fun SelectableCategoryItem(
 
 @Preview
 @Composable
-fun CompanyUploadPostPreview(){
-}
+fun CompanyUploadPostPreview(){}

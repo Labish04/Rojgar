@@ -51,7 +51,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.tooling.preview.Preview
+import coil.compose.AsyncImage
+import com.example.rojgar.repository.GroupChatRepositoryImpl
 import com.example.rojgar.repository.UserRepo
+import com.example.rojgar.ui.theme.White
+import com.example.rojgar.utils.ChatItem
 
 // Premium Light Blue Color Scheme
 private val LightBlue50 = Color(0xFFE3F2FD)
@@ -65,11 +69,12 @@ private val LightBlue700 = Color(0xFF1976D2)
 private val AccentCyan = Color(0xFF00BCD4)
 private val SoftWhite = Color(0xFFFAFBFF)
 
-// Additional colors for GlowingChatbotFAB
-private val PurpleGradientStart = Color(0xFF667EEA)
-private val PurpleGradientEnd = Color(0xFF764BA2)
-private val CyanGradient = Color(0xFF00D4FF)
-private val PinkGradient = Color(0xFFFF00FF)
+// Data class for mutual follow users with photo
+data class MutualFollowUser(
+    val userId: String,
+    val userName: String,
+    val userPhoto: String
+)
 
 class MessageActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,23 +89,32 @@ class MessageActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun MessageBody(
-    chatViewModel: ChatViewModel = viewModel(factory = ChatViewModelFactory(ChatRepositoryImpl()))
+    chatViewModel: ChatViewModel = viewModel(factory = ChatViewModelFactory(ChatRepositoryImpl(context = LocalContext.current),
+        groupChatRepository = GroupChatRepositoryImpl()))
 ) {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var showMutualFollows by remember { mutableStateOf(false) }
-    var mutualFollows by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var mutualFollows by remember { mutableStateOf<List<MutualFollowUser>>(emptyList()) }
     var loadingMutualFollows by remember { mutableStateOf(false) }
 
     val chatRooms by chatViewModel.chatRooms.observeAsState(emptyList())
+    val allChats by chatViewModel.allChats.observeAsState(emptyList())
     val loading by chatViewModel.loading.observeAsState(false)
 
     val userRepo = remember { UserRepo() }
     val currentUserId = userRepo.getCurrentUserId()
     var currentUserName by remember { mutableStateOf("") }
+    var currentUserPhotoUrl by remember { mutableStateOf("") }
     var currentUserType by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isNotEmpty()) {
+            chatViewModel.loadAllChats(currentUserId)
+        }
+    }
 
     LaunchedEffect(Unit) {
         userRepo.getUserType { userType ->
@@ -110,6 +124,7 @@ fun MessageBody(
                 companyRepo.getCompanyById(currentUserId) { success, message, company ->
                     if (success && company != null) {
                         currentUserName = company.companyName
+                        currentUserPhotoUrl = company.companyProfileImage ?: ""
                     }
                 }
             } else if (userType == "JobSeeker") {
@@ -117,6 +132,7 @@ fun MessageBody(
                 jobSeekerRepo.getJobSeekerById(currentUserId) { success, message, jobSeeker ->
                     if (success && jobSeeker != null) {
                         currentUserName = jobSeeker.fullName
+                        currentUserPhotoUrl = jobSeeker.profilePhoto ?: ""
                     }
                 }
             }
@@ -129,17 +145,17 @@ fun MessageBody(
         }
     }
 
-    LaunchedEffect(currentUserId, currentUserType) {
+    LaunchedEffect(currentUserId, currentUserType, chatRooms) {
         if (currentUserId.isNotEmpty() && currentUserType != null) {
             loadingMutualFollows = true
             scope.launch {
                 try {
-                    val helper = MutualFollowHelper(FollowRepoImpl())
+                    val helper = MutualFollowHelper(FollowRepoImpl(context))
                     val mutualFollowIds = helper.getMutualFollowers(currentUserId)
 
                     val companyRepo = CompanyRepoImpl()
                     val jobSeekerRepo = JobSeekerRepoImpl()
-                    val mutualFollowsWithDetails = mutableListOf<Pair<String, String>>()
+                    val mutualFollowsWithDetails = mutableListOf<MutualFollowUser>()
 
                     val usersInChats = chatRooms.flatMap { listOf(it.participant1Id, it.participant2Id) }
 
@@ -148,20 +164,35 @@ fun MessageBody(
                             continue
                         }
 
+                        // Try to get company details first
                         companyRepo.getCompanyDetails(userId) { success, message, company ->
                             if (success && company != null) {
-                                mutualFollowsWithDetails.add(Pair(userId, company.companyName))
+                                mutualFollowsWithDetails.add(
+                                    MutualFollowUser(
+                                        userId = userId,
+                                        userName = company.companyName,
+                                        userPhoto = company.companyProfileImage ?: ""
+                                    )
+                                )
                             } else {
+                                // If not a company, try job seeker
                                 jobSeekerRepo.getJobSeekerDetails(userId) { success2, message2, jobSeeker ->
                                     if (success2 && jobSeeker != null) {
-                                        mutualFollowsWithDetails.add(Pair(userId, jobSeeker.fullName))
+                                        mutualFollowsWithDetails.add(
+                                            MutualFollowUser(
+                                                userId = userId,
+                                                userName = jobSeeker.fullName,
+                                                userPhoto = jobSeeker.profilePhoto ?: ""
+                                            )
+                                        )
                                     }
                                 }
                             }
                         }
                     }
 
-                    kotlinx.coroutines.delay(1000)
+                    // Add a small delay to allow all callbacks to complete
+                    kotlinx.coroutines.delay(1500)
                     mutualFollows = mutualFollowsWithDetails
                     showMutualFollows = mutualFollowsWithDetails.isNotEmpty()
                     loadingMutualFollows = false
@@ -217,8 +248,10 @@ fun MessageBody(
                 // Premium Top Bar with Glassmorphism Effect
                 AnimatedTopBar(
                     onBackClick = { (context as? ComponentActivity)?.finish() },
-                    onClick = {val intent = Intent(context, CreateGroupActivity::class.java)
-                        context.startActivity(intent)}
+                    onClick = {
+                        val intent = Intent(context, CreateGroupActivity::class.java)
+                        context.startActivity(intent)
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -260,6 +293,7 @@ fun MessageBody(
                         mutualFollows = mutualFollows,
                         currentUserId = currentUserId,
                         currentUserName = currentUserName,
+                        currentUserPhotoUrl = currentUserPhotoUrl,
                         chatViewModel = chatViewModel
                     )
                 }
@@ -277,21 +311,25 @@ fun MessageBody(
                             strokeWidth = 3.dp
                         )
                     }
-                } else if (chatRooms.isEmpty()) {
+                } else if (chatRooms.isEmpty() && allChats.isEmpty()) {
                     EmptyStateView(showMutualFollows = showMutualFollows && mutualFollows.isNotEmpty())
                 } else {
-                    val filteredChatRooms = if (searchQuery.isNotEmpty()) {
-                        chatRooms.filter { chatRoom ->
-                            val otherParticipantName = if (chatRoom.participant1Id == currentUserId) {
-                                chatRoom.participant2Name
-                            } else {
-                                chatRoom.participant1Name
+                    val filteredChats = if (searchQuery.isNotEmpty()) {
+                        allChats.filter { chatItem ->
+                            when (chatItem) {
+                                is ChatItem.Private -> {
+                                    val otherParticipantName = chatItem.name
+                                    otherParticipantName.contains(searchQuery, ignoreCase = true) ||
+                                            chatItem.lastMessage.contains(searchQuery, ignoreCase = true)
+                                }
+                                is ChatItem.Group -> {
+                                    chatItem.name.contains(searchQuery, ignoreCase = true) ||
+                                            chatItem.lastMessage.contains(searchQuery, ignoreCase = true)
+                                }
                             }
-                            otherParticipantName.contains(searchQuery, ignoreCase = true) ||
-                                    chatRoom.lastMessage.contains(searchQuery, ignoreCase = true)
                         }
                     } else {
-                        chatRooms
+                        allChats
                     }
 
                     LazyColumn(
@@ -300,39 +338,44 @@ fun MessageBody(
                             .padding(horizontal = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(
-                            items = filteredChatRooms,
-                            key = { it.chatId }
-                        ) { chatRoom ->
-                            val otherParticipantId = if (chatRoom.participant1Id == currentUserId) {
-                                chatRoom.participant2Id
-                            } else {
-                                chatRoom.participant1Id
-                            }
-
-                            val otherParticipantName = if (chatRoom.participant1Id == currentUserId) {
-                                chatRoom.participant2Name
-                            } else {
-                                chatRoom.participant1Name
-                            }
-
-                            AnimatedChatUserItem(
-                                chatRoom = chatRoom,
-                                currentUserId = currentUserId,
-                                onClick = {
-                                    val intent = Intent(context, ChatActivity::class.java).apply {
-                                        putExtra("receiverId", otherParticipantId)
-                                        putExtra("receiverName", otherParticipantName)
-                                        putExtra("currentUserId", currentUserId)
-                                        putExtra("currentUserName", currentUserName)
-                                    }
-                                    context.startActivity(intent)
+                        items(filteredChats, key = { it.id }) { item ->
+                            when (item) {
+                                is ChatItem.Private -> {
+                                    AnimatedChatUserItem(
+                                        name = item.name,
+                                        message = item.lastMessage,
+                                        timestamp = item.lastMessageTime,
+                                        unreadCount = item.unreadCount,
+                                        imageUrl = item.image,
+                                        onClick = {
+                                            val intent = Intent(context, ChatActivity::class.java).apply {
+                                                putExtra("receiverId", item.otherUserId)
+                                                putExtra("receiverName", item.name)
+                                                putExtra("currentUserId", currentUserId)
+                                                putExtra("receiverImage", item.image)
+                                            }
+                                            context.startActivity(intent)
+                                        }
+                                    )
                                 }
-                            )
-                        }
-
-                        item {
-                            Spacer(modifier = Modifier.height(16.dp))
+                                is ChatItem.Group -> {
+                                    AnimatedChatUserItem(
+                                        name = item.name,
+                                        message = "${item.lastMessage}",
+                                        timestamp = item.lastMessageTime,
+                                        unreadCount = item.unreadCount,
+                                        imageUrl = item.image,
+                                        onClick = {
+                                            val intent = Intent(context, GroupChatActivity::class.java).apply {
+                                                putExtra("groupId", item.id)
+                                                putExtra("groupName", item.name)
+                                                putExtra("currentUserId", currentUserId)
+                                            }
+                                            context.startActivity(intent)
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -380,7 +423,6 @@ fun GlowingChatbotFAB(
                     .background(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                // Using the app's light blue theme colors
                                 LightBlue400.copy(alpha = glowAlpha / (index + 1)),
                                 Color.Transparent
                             )
@@ -502,7 +544,7 @@ fun AnimatedTopBar(onBackClick: () -> Unit, onClick: () -> Unit) {
                                 colors = listOf(AccentCyan, LightBlue500)
                             )
                         )
-                        .clickable { onClick()},
+                        .clickable { onClick() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -592,16 +634,18 @@ fun PremiumSearchBar(
 
 @Composable
 fun MutualFollowsSection(
-    mutualFollows: List<Pair<String, String>>,
+    mutualFollows: List<MutualFollowUser>,
     currentUserId: String,
     currentUserName: String,
+    currentUserPhotoUrl: String,
     chatViewModel: ChatViewModel
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .animateContentSize(),
+            .animateContentSize()
+            .background(color = Color.Transparent),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
@@ -620,7 +664,7 @@ fun MutualFollowsSection(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(AccentCyan)
+                        .background(LightBlue50)
                 )
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -637,12 +681,14 @@ fun MutualFollowsSection(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            mutualFollows.forEachIndexed { index, (userId, userName) ->
+            mutualFollows.forEachIndexed { index, mutualFollowUser ->
                 AnimatedMutualFollowCard(
-                    userId = userId,
-                    userName = userName,
+                    userId = mutualFollowUser.userId,
+                    userName = mutualFollowUser.userName,
                     currentUserId = currentUserId,
                     currentUserName = currentUserName,
+                    currentUserPhotoUrl = currentUserPhotoUrl,
+                    targetUserPhotoUrl = mutualFollowUser.userPhoto,
                     chatViewModel = chatViewModel,
                     index = index
                 )
@@ -661,6 +707,8 @@ fun AnimatedMutualFollowCard(
     userName: String,
     currentUserId: String,
     currentUserName: String,
+    currentUserPhotoUrl: String,
+    targetUserPhotoUrl: String,
     chatViewModel: ChatViewModel,
     index: Int
 ) {
@@ -696,7 +744,9 @@ fun AnimatedMutualFollowCard(
                         participant1Id = currentUserId,
                         participant2Id = userId,
                         participant1Name = currentUserName,
-                        participant2Name = userName
+                        participant2Name = userName,
+                        participant1Photo = currentUserPhotoUrl,
+                        participant2Photo = targetUserPhotoUrl
                     ) { chatRoom ->
                         val intent = Intent(context, ChatActivity::class.java).apply {
                             putExtra("chatId", chatRoom.chatId)
@@ -723,25 +773,38 @@ fun AnimatedMutualFollowCard(
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(LightBlue300, LightBlue500)
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = userName.take(2).uppercase(),
-                        style = TextStyle(
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
+                // Display user photo if available, otherwise use initials
+                if (targetUserPhotoUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = targetUserPhotoUrl,
+                        contentDescription = "Profile",
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                        placeholder = painterResource(R.drawable.profileemptypic)
                     )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(LightBlue300, LightBlue500)
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = userName.take(2).uppercase(),
+                            style = TextStyle(
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -791,7 +854,9 @@ fun AnimatedMutualFollowCard(
                             participant1Id = currentUserId,
                             participant2Id = userId,
                             participant1Name = currentUserName,
-                            participant2Name = userName
+                            participant2Name = userName,
+                            participant1Photo = currentUserPhotoUrl,
+                            participant2Photo = targetUserPhotoUrl
                         ) { chatRoom ->
                             val intent = Intent(context, ChatActivity::class.java).apply {
                                 putExtra("chatId", chatRoom.chatId)
@@ -831,8 +896,11 @@ fun AnimatedMutualFollowCard(
 
 @Composable
 fun AnimatedChatUserItem(
-    chatRoom: ChatRoom,
-    currentUserId: String,
+    name: String,
+    message: String,
+    timestamp: Long,
+    unreadCount: Int,
+    imageUrl: String?,
     onClick: () -> Unit
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -848,13 +916,7 @@ fun AnimatedChatUserItem(
         label = "chat_item_scale"
     )
 
-    val otherParticipantName = if (chatRoom.participant1Id == currentUserId) {
-        chatRoom.participant2Name
-    } else {
-        chatRoom.participant1Name
-    }
-
-    val lastMessageTime = formatRelativeTime(chatRoom.lastMessageTime)
+    val timeDisplay = formatRelativeTime(timestamp)
 
     AnimatedVisibility(
         visible = visible,
@@ -891,31 +953,33 @@ fun AnimatedChatUserItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box {
-                    Image(
-                        painter = painterResource(R.drawable.sampleimage),
+                    AsyncImage(
+                        model = imageUrl,
                         contentDescription = "Profile",
                         modifier = Modifier
                             .size(64.dp)
                             .clip(CircleShape)
                             .shadow(4.dp, CircleShape),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
+                        placeholder = painterResource(R.drawable.profileemptypic)
                     )
 
-                    // Online indicator
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .align(Alignment.BottomEnd)
-                            .clip(CircleShape)
-                            .background(Color.White)
-                            .padding(2.dp)
-                    ) {
+                    if (unreadCount > 0) {
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
+                                .size(16.dp)
+                                .align(Alignment.BottomEnd)
                                 .clip(CircleShape)
-                                .background(Color(0xFF4CAF50))
-                        )
+                                .background(Color.White)
+                                .padding(2.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF4CAF50))
+                            )
+                        }
                     }
                 }
 
@@ -929,11 +993,11 @@ fun AnimatedChatUserItem(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = otherParticipantName,
+                            text = name,
                             style = TextStyle(
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = LightBlue700
+                                color = Color(0xFF1976D2)
                             ),
                             modifier = Modifier.weight(1f),
                             maxLines = 1,
@@ -941,12 +1005,12 @@ fun AnimatedChatUserItem(
                         )
 
                         Text(
-                            text = lastMessageTime,
+                            text = timeDisplay,
                             style = TextStyle(
                                 fontSize = 12.sp,
-                                color = LightBlue300,
-                                fontWeight = FontWeight.Medium
-                            )
+                                color = Color(0xFF64B5F6),
+                            ),
+                            fontWeight = FontWeight.Medium
                         )
                     }
 
@@ -958,11 +1022,11 @@ fun AnimatedChatUserItem(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = chatRoom.lastMessage,
+                            text = message,
                             style = TextStyle(
                                 fontSize = 14.sp,
                                 color = Color.Gray,
-                                fontWeight = if (chatRoom.unreadCount > 0)
+                                fontWeight = if (unreadCount > 0)
                                     FontWeight.SemiBold else FontWeight.Normal
                             ),
                             maxLines = 1,
@@ -970,7 +1034,7 @@ fun AnimatedChatUserItem(
                             modifier = Modifier.weight(1f)
                         )
 
-                        if (chatRoom.unreadCount > 0) {
+                        if (unreadCount > 0) {
                             Spacer(modifier = Modifier.width(8.dp))
 
                             Box(
@@ -989,8 +1053,8 @@ fun AnimatedChatUserItem(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = if (chatRoom.unreadCount > 99) "99+"
-                                    else chatRoom.unreadCount.toString(),
+                                    text = if (unreadCount > 99) "99+"
+                                    else unreadCount.toString(),
                                     style = TextStyle(
                                         fontSize = 11.sp,
                                         color = Color.White,
@@ -1029,7 +1093,6 @@ fun EmptyStateView(showMutualFollows: Boolean) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Animated Icon
                 val infiniteTransition = rememberInfiniteTransition(label = "empty_icon")
                 val iconScale by infiniteTransition.animateFloat(
                     initialValue = 1f,

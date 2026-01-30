@@ -51,6 +51,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
@@ -61,7 +62,7 @@ import coil.compose.AsyncImage
 import com.example.rojgar.R
 import com.example.rojgar.model.ChatMessage
 import com.example.rojgar.repository.ChatRepositoryImpl
-import com.example.rojgar.ui.theme.DarkBlue3
+import com.example.rojgar.repository.GroupChatRepositoryImpl
 import com.example.rojgar.ui.theme.SkyBlue
 import com.example.rojgar.utils.VoicePlayer
 import com.example.rojgar.utils.VoiceRecorder
@@ -76,7 +77,8 @@ import java.util.*
 
 class ChatActivity : ComponentActivity() {
     private val chatViewModel: ChatViewModel by viewModels {
-        ChatViewModelFactory(ChatRepositoryImpl())
+        ChatViewModelFactory(ChatRepositoryImpl(context = applicationContext),
+            groupChatRepository = GroupChatRepositoryImpl())
     }
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -97,6 +99,7 @@ class ChatActivity : ComponentActivity() {
 
         val receiverId = intent.getStringExtra("receiverId") ?: ""
         val receiverName = intent.getStringExtra("receiverName") ?: "User"
+        val receiverImage = intent.getStringExtra("receiverImage") ?: ""
         val currentUserId = intent.getStringExtra("currentUserId") ?: ""
         val currentUserName = intent.getStringExtra("currentUserName") ?: ""
 
@@ -104,12 +107,15 @@ class ChatActivity : ComponentActivity() {
             participant1Id = currentUserId,
             participant2Id = receiverId,
             participant1Name = currentUserName,
-            participant2Name = receiverName
+            participant2Name = receiverName,
+            participant1Photo = "",
+            participant2Photo = receiverImage
         )
 
         setContent {
             ChatBody(
                 receiverName = receiverName,
+                receiverImage = receiverImage,
                 receiverId = receiverId,
                 currentUserId = currentUserId,
                 currentUserName = currentUserName,
@@ -137,6 +143,7 @@ class ChatActivity : ComponentActivity() {
 @Composable
 fun ChatBody(
     receiverName: String,
+    receiverImage: String,
     receiverId: String,
     currentUserId: String,
     currentUserName: String,
@@ -233,7 +240,7 @@ fun ChatBody(
                     senderId = currentUserId,
                     receiverId = receiverId,
                     senderName = currentUserName,
-                    receiverName = receiverName
+                    receiverName = receiverName,
                 )
             }
         }
@@ -279,16 +286,6 @@ fun ChatBody(
     }
 
     Scaffold(
-        topBar = {
-            ChatTopAppBar(
-                receiverName = receiverName,
-                isReceiverTyping = isReceiverTyping,
-                onBackClick = { activity?.finish() },
-                onCallClick = { /* TODO */ },
-                onVideoCallClick = { /* TODO */ },
-                onInfoClick = { /* TODO */ }
-            )
-        },
         bottomBar = {
             Box {
                 if (isRecording) {
@@ -317,11 +314,20 @@ fun ChatBody(
                                         receiverName = receiverName
                                     )
                                 } ?: run {
-                                    Toast.makeText(context, "Chat room not found", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        "Chat room not found",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                     audioFile.delete()
                                 }
                             } else {
-                                Toast.makeText(context, "Failed to save recording", Toast.LENGTH_SHORT).show()
+                                Log.e("ChatActivity", "Recording failed - file is null or doesn't exist")
+                                Toast.makeText(
+                                    context,
+                                    "Failed to save recording. Please try again.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
                     )
@@ -392,11 +398,12 @@ fun ChatBody(
                 }
             }
         }
-    ) { padding ->
+    ) { paddingValues ->
+        // Apply Scaffold padding to the main container
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(paddingValues) // This applies the padding from Scaffold (topBar and bottomBar)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
@@ -406,66 +413,116 @@ fun ChatBody(
                     )
                 )
         ) {
-            if (loading && messages.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = SkyBlue)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    state = listState,
-                    reverseLayout = false,
-                    verticalArrangement = Arrangement.Bottom
-                ) {
-                    itemsIndexed(
-                        messages,
-                        key = { _, message -> message.messageId }
-                    ) { index, message ->
-                        AnimatedVisibility(
-                            visible = true,
-                            enter = fadeIn() + slideInVertically(initialOffsetY = { 50 }),
-//                            modifier = Modifier.animateItemPlacement()
-                        ) {
-                            Column {
-                                if (shouldShowDateHeader(messages, index)) {
-                                    DateHeader(message.timestamp)
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                }
 
-                                when (message.messageType) {
-                                    "voice" -> VoiceMessageBubble(
-                                        message = message,
-                                        isSentByMe = message.senderId == currentUserId,
-                                        voicePlayer = voicePlayer,
-                                        onLongPress = { showMessageOptions(context, message, chatViewModel) }
-                                    )
-                                    "image" -> ImageMessageBubble(
-                                        message = message,
-                                        isSentByMe = message.senderId == currentUserId,
-                                        onLongPress = { showMessageOptions(context, message, chatViewModel) }
-                                    )
-                                    "video" -> VideoMessageBubble(
-                                        message = message,
-                                        isSentByMe = message.senderId == currentUserId,
-                                        onLongPress = { showMessageOptions(context, message, chatViewModel) }
-                                    )
-                                    "document" -> DocumentMessageBubble(
-                                        message = message,
-                                        isSentByMe = message.senderId == currentUserId,
-                                        onLongPress = { showMessageOptions(context, message, chatViewModel) }
-                                    )
-                                    else -> MessageBubble(
-                                        message = message,
-                                        isSentByMe = message.senderId == currentUserId,
-                                        onLongPress = { showMessageOptions(context, message, chatViewModel) }
-                                    )
+            Column (
+                modifier = Modifier
+                    .fillMaxSize()
+            ){
+                ChatTopAppBar(
+                    receiverName = receiverName,
+                    receiverImage = receiverImage,
+                    isReceiverTyping = isReceiverTyping,
+                    onBackClick = { activity?.finish() },
+                )
+
+                // Message list
+                if (loading && messages.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = SkyBlue)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(
+                                horizontal = 12.dp,
+                                vertical = 8.dp
+                            ),
+                        state = listState,
+                        reverseLayout = false,
+                        verticalArrangement = Arrangement.Top
+                    ) {
+                        itemsIndexed(
+                            messages,
+                            key = { _, message -> message.messageId }
+                        ) { index, message ->
+                            AnimatedVisibility(
+                                visible = true,
+                                enter = fadeIn() + slideInVertically(initialOffsetY = { 50 }),
+                            ) {
+                                Column {
+                                    if (shouldShowDateHeader(messages, index)) {
+                                        DateHeader(message.timestamp)
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                    }
+
+                                    when (message.messageType) {
+                                        "voice" -> VoiceMessageBubble(
+                                            message = message,
+                                            isSentByMe = message.senderId == currentUserId,
+                                            voicePlayer = voicePlayer,
+                                            onLongPress = {
+                                                showMessageOptions(
+                                                    context,
+                                                    message,
+                                                    chatViewModel
+                                                )
+                                            }
+                                        )
+
+                                        "image" -> ImageMessageBubble(
+                                            message = message,
+                                            isSentByMe = message.senderId == currentUserId,
+                                            onLongPress = {
+                                                showMessageOptions(
+                                                    context,
+                                                    message,
+                                                    chatViewModel
+                                                )
+                                            }
+                                        )
+
+                                        "video" -> VideoMessageBubble(
+                                            message = message,
+                                            isSentByMe = message.senderId == currentUserId,
+                                            onLongPress = {
+                                                showMessageOptions(
+                                                    context,
+                                                    message,
+                                                    chatViewModel
+                                                )
+                                            }
+                                        )
+
+                                        "document" -> DocumentMessageBubble(
+                                            message = message,
+                                            isSentByMe = message.senderId == currentUserId,
+                                            onLongPress = {
+                                                showMessageOptions(
+                                                    context,
+                                                    message,
+                                                    chatViewModel
+                                                )
+                                            }
+                                        )
+
+                                        else -> MessageBubble(
+                                            message = message,
+                                            isSentByMe = message.senderId == currentUserId,
+                                            onLongPress = {
+                                                showMessageOptions(
+                                                    context,
+                                                    message,
+                                                    chatViewModel
+                                                )
+                                            }
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(6.dp))
                                 }
-                                Spacer(modifier = Modifier.height(6.dp))
                             }
                         }
                     }
@@ -574,11 +631,9 @@ fun RecordingBar(
 @Composable
 fun ChatTopAppBar(
     receiverName: String,
+    receiverImage: String,
     isReceiverTyping: Boolean,
     onBackClick: () -> Unit,
-    onCallClick: () -> Unit,
-    onVideoCallClick: () -> Unit,
-    onInfoClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -620,8 +675,8 @@ fun ChatTopAppBar(
                         .clip(CircleShape)
                         .background(Color.White)
                 ) {
-                    Image(
-                        painter = painterResource(R.drawable.sampleimage),
+                    AsyncImage(
+                        model = receiverImage,
                         contentDescription = "Profile",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -650,33 +705,6 @@ fun ChatTopAppBar(
                             )
                         }
                     }
-                }
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onCallClick,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.call),
-                        contentDescription = "Call",
-                        modifier = Modifier.size(24.dp),
-                        tint = Color(0xFF1976D2)
-                    )
-                }
-                IconButton(
-                    onClick = onVideoCallClick,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.videocall),
-                        contentDescription = "Video Call",
-                        modifier = Modifier.size(24.dp),
-                        tint = Color(0xFF1976D2)
-                    )
                 }
             }
         }
@@ -1115,7 +1143,10 @@ fun VoiceMessageBubble(
     var isPlaying by remember(message.messageId) { mutableStateOf(false) }
     var currentPosition by remember(message.messageId) { mutableStateOf(0) }
     var duration by remember(message.messageId) { mutableStateOf(0) }
+    var hasError by remember(message.messageId) { mutableStateOf(false) }
+    var errorMessage by remember(message.messageId) { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     val alignment = if (isSentByMe) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = if (isSentByMe) {
@@ -1162,7 +1193,8 @@ fun VoiceMessageBubble(
                             modifier = Modifier
                                 .size(44.dp)
                                 .background(
-                                    color = if (isSentByMe) Color.White.copy(alpha = 0.3f) else Color(0xFFE3F2FD),
+                                    color = if (isSentByMe) Color.White.copy(alpha = 0.3f)
+                                    else Color(0xFFE3F2FD),
                                     shape = CircleShape
                                 )
                                 .clickable {
@@ -1175,30 +1207,52 @@ fun VoiceMessageBubble(
                                             voicePlayer.playAudio(
                                                 audioUrl = message.mediaUrl,
                                                 onCompletion = {
+                                                    Log.d("VoicePlay", "Playback completed")
                                                     isPlaying = false
                                                     currentPosition = 0
+                                                    hasError = false
                                                 },
                                                 onError = { error ->
-                                                    Log.e("VoiceMessage", "Error: $error")
+                                                    Log.e("VoicePlay", "Playback error: $error")
                                                     isPlaying = false
                                                     currentPosition = 0
+                                                    hasError = true
+                                                    errorMessage = error
+
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Cannot play audio: $error",
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
                                                 }
                                             )
+
                                             isPlaying = true
+
                                             coroutineScope.launch {
+                                                delay(500)
                                                 duration = voicePlayer.getDuration()
+                                                Log.d("VoicePlay", "Audio duration: ${duration}ms")
+
                                                 while (isPlaying && voicePlayer.isCurrentlyPlaying()) {
                                                     currentPosition = voicePlayer.getCurrentPosition()
                                                     delay(100)
                                                 }
                                             }
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                "No audio URL available",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                         }
                                     }
                                 },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = if (isPlaying) Icons.Default.PlayArrow else Icons.Default.PlayArrow,
+                                imageVector = if (isPlaying) Icons.Default.PlayArrow
+                                else Icons.Default.PlayArrow,
                                 contentDescription = if (isPlaying) "Pause" else "Play",
                                 tint = if (isSentByMe) Color.White else Color(0xFF1976D2),
                                 modifier = Modifier.size(24.dp)
@@ -1215,19 +1269,24 @@ fun VoiceMessageBubble(
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(2.dp)),
                                 color = if (isSentByMe) Color.White else Color(0xFF1976D2),
-                                trackColor = if (isSentByMe) Color.White.copy(alpha = 0.3f) else Color(0xFFE3F2FD)
+                                trackColor = if (isSentByMe) Color.White.copy(alpha = 0.3f)
+                                else Color(0xFFE3F2FD)
                             )
 
                             Spacer(modifier = Modifier.height(6.dp))
 
                             Text(
-                                text = if (isPlaying && duration > 0) {
-                                    "${formatDuration(currentPosition.toLong())} / ${formatDuration(duration.toLong())}"
-                                } else {
-                                    message.messageText
+                                text = when {
+                                    hasError -> "⚠️ $errorMessage"
+                                    isPlaying && duration > 0 ->
+                                        "${formatDuration(currentPosition.toLong())} / ${formatDuration(duration.toLong())}"
+                                    else -> message.messageText
                                 },
                                 fontSize = 12.sp,
-                                color = if (isSentByMe) Color.White.copy(alpha = 0.8f) else Color.Gray
+                                color = if (isSentByMe) Color.White.copy(alpha = 0.8f)
+                                else if (hasError) Color.Red
+                                else Color.Gray,
+                                maxLines = 2
                             )
                         }
                     }
@@ -1250,7 +1309,8 @@ fun VoiceMessageBubble(
                                 imageVector = Icons.Default.Done,
                                 contentDescription = "Status",
                                 modifier = Modifier.size(14.dp),
-                                tint = if (message.isRead) Color(0xFF00C853) else Color.White.copy(alpha = 0.6f)
+                                tint = if (message.isRead) Color(0xFF00C853)
+                                else Color.White.copy(alpha = 0.6f)
                             )
                         }
                     }

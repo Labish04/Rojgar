@@ -62,7 +62,7 @@ class SavedJobsActivity : ComponentActivity() {
     }
 
     private val jobViewModel by viewModels<JobViewModel> {
-        JobViewModelFactory(JobRepoImpl())
+        JobViewModelFactory(JobRepoImpl(context = this))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -32,19 +32,26 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 
-// Premium Color Palette
-private val DarkBg = Color(0xFF0A0E27)
-private val CardBg = Color(0xFF151932)
-private val CardBgLight = Color(0xFF1E2341)
-private val PrimaryBlue = Color(0xFF4E73DF)
-private val PrimaryPurple = Color(0xFF6F42C1)
-private val SuccessGreen = Color(0xFF1CC88A)
-private val WarningOrange = Color(0xFFF6C23E)
-private val InfoCyan = Color(0xFF36B9CC)
-private val DangerRed = Color(0xFFE74A3B)
-private val TextPrimary = Color(0xFFEBEDF0)
-private val TextSecondary = Color(0xFF858796)
-private val GlowBlue = Color(0xFF4E73DF).copy(alpha = 0.3f)
+// Modern Theme Colors (matching JobSeekerDashboard)
+object AnalyticsTheme {
+    val PrimaryBlue = Color(0xFF3B82F6)
+    val LightBlue = Color(0xFF60A5FA)
+    val DeepBlue = Color(0xFF2563EB)
+    val SkyBlue = Color(0xFFBAE6FD)
+    val IceBlue = Color(0xFFE0F2FE)
+    val AccentBlue = Color(0xFF0EA5E9)
+    val DarkBlue = Color(0xFF1E3A8A)
+    val SurfaceLight = Color(0xFFF0F9FF)
+    val White = Color(0xFFFFFFFF)
+    val TextPrimary = Color(0xFF0F172A)
+    val TextSecondary = Color(0xFF64748B)
+    val GlassWhite = Color(0xCCFFFFFF)
+    val GlassBlue = Color(0x33BFDBFE)
+    val SuccessGreen = Color(0xFF10B981)
+    val WarningOrange = Color(0xFFF59E0B)
+    val InfoCyan = Color(0xFF06B6D4)
+    val DangerRed = Color(0xFFEF4444)
+}
 
 @Composable
 fun AnalyticsScreen(viewModel: AnalyticsViewModel, companyId: String) {
@@ -64,7 +71,7 @@ fun AnalyticsScreen(viewModel: AnalyticsViewModel, companyId: String) {
                 .fillMaxSize()
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(DarkBg, Color(0xFF0F1420))
+                        colors = listOf(AnalyticsTheme.SurfaceLight, AnalyticsTheme.IceBlue)
                     )
                 )
                 .padding(16.dp),
@@ -73,7 +80,7 @@ fun AnalyticsScreen(viewModel: AnalyticsViewModel, companyId: String) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBg)
+                colors = CardDefaults.cardColors(containerColor = AnalyticsTheme.White)
             ) {
                 Column(
                     modifier = Modifier
@@ -86,12 +93,12 @@ fun AnalyticsScreen(viewModel: AnalyticsViewModel, companyId: String) {
                         text = "Login Required",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = AnalyticsTheme.TextPrimary
                     )
                     Text(
                         text = "Please log in to view analytics",
                         fontSize = 14.sp,
-                        color = TextSecondary
+                        color = AnalyticsTheme.TextSecondary
                     )
                 }
             }
@@ -108,7 +115,7 @@ fun AnalyticsScreen(viewModel: AnalyticsViewModel, companyId: String) {
             .fillMaxSize()
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(DarkBg, Color(0xFF0F1420))
+                    colors = listOf(AnalyticsTheme.SurfaceLight, AnalyticsTheme.IceBlue)
                 )
             )
     ) {
@@ -119,7 +126,7 @@ fun AnalyticsScreen(viewModel: AnalyticsViewModel, companyId: String) {
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(48.dp),
-                    color = PrimaryBlue,
+                    color = AnalyticsTheme.PrimaryBlue,
                     strokeWidth = 4.dp
                 )
             }
@@ -197,7 +204,7 @@ fun AnalyticsScreen(viewModel: AnalyticsViewModel, companyId: String) {
                     }
                 }
                 // Bottom spacer
-                item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(32.dp)) }
+                item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(82.dp)) }
             }
         }
     }
@@ -208,7 +215,7 @@ fun EmptyDataCard(title: String, hint: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        colors = CardDefaults.cardColors(containerColor = AnalyticsTheme.White)
     ) {
         Column(
             modifier = Modifier
@@ -221,18 +228,18 @@ fun EmptyDataCard(title: String, hint: String) {
                 text = title,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = AnalyticsTheme.TextPrimary
             )
             Text(
                 text = "No data yet",
                 fontSize = 14.sp,
-                color = TextSecondary,
+                color = AnalyticsTheme.TextSecondary,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = hint,
                 fontSize = 12.sp,
-                color = TextSecondary.copy(alpha = 0.7f)
+                color = AnalyticsTheme.TextSecondary.copy(alpha = 0.7f)
             )
         }
     }
@@ -255,14 +262,14 @@ fun AnimatedHeaderSection() {
                 text = "Analytics Dashboard",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                color = AnalyticsTheme.TextPrimary,
                 style = MaterialTheme.typography.headlineLarge
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Track your recruitment performance",
                 fontSize = 14.sp,
-                color = TextSecondary,
+                color = AnalyticsTheme.TextSecondary,
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -281,28 +288,28 @@ fun AnimatedKeyMetricsRow(profile: CompanyProfileAnalytics, followersCount: Int)
             title = "Total Jobs",
             value = profile.totalJobsPosted.toString(),
             icon = "📊",
-            color = PrimaryBlue,
+            color = AnalyticsTheme.PrimaryBlue,
             delay = 0
         )
         AnimatedMetricCard(
             title = "Applications",
             value = profile.totalApplicationsReceived.toString(),
             icon = "📬",
-            color = InfoCyan,
+            color = AnalyticsTheme.InfoCyan,
             delay = 100
         )
         AnimatedMetricCard(
             title = "Hires",
             value = profile.totalHires.toString(),
             icon = "✅",
-            color = SuccessGreen,
+            color = AnalyticsTheme.SuccessGreen,
             delay = 200
         )
         AnimatedMetricCard(
             title = "Followers",
             value = followersCount.toString(),
             icon = "👥",
-            color = PrimaryPurple,
+            color = AnalyticsTheme.AccentBlue,
             delay = 300
         )
     }
@@ -345,7 +352,7 @@ fun AnimatedMetricCard(
             ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = CardBg
+            containerColor = AnalyticsTheme.White
         )
     ) {
         Box(
@@ -383,12 +390,12 @@ fun AnimatedMetricCard(
                     text = value,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = AnalyticsTheme.TextPrimary
                 )
                 Text(
                     text = title,
                     fontSize = 12.sp,
-                    color = TextSecondary
+                    color = AnalyticsTheme.TextSecondary
                 )
             }
         }
@@ -412,7 +419,7 @@ fun PerformanceLineChart(metrics: ConversionMetrics) {
             .fillMaxWidth()
             .height(280.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        colors = CardDefaults.cardColors(containerColor = AnalyticsTheme.White)
     ) {
         Column(
             modifier = Modifier
@@ -429,18 +436,18 @@ fun PerformanceLineChart(metrics: ConversionMetrics) {
                         text = "Application Trends",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = AnalyticsTheme.TextPrimary
                     )
                     Text(
                         text = "Last 7 days",
                         fontSize = 12.sp,
-                        color = TextSecondary
+                        color = AnalyticsTheme.TextSecondary
                     )
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ChartLegendItem("Applications", PrimaryBlue)
-                    ChartLegendItem("Hired", SuccessGreen)
+                    ChartLegendItem("Applications", AnalyticsTheme.PrimaryBlue)
+                    ChartLegendItem("Hired", AnalyticsTheme.SuccessGreen)
                 }
             }
 
@@ -477,7 +484,7 @@ fun PerformanceLineChart(metrics: ConversionMetrics) {
                     Text(
                         text = "No data yet",
                         fontSize = 14.sp,
-                        color = TextSecondary
+                        color = AnalyticsTheme.TextSecondary
                     )
                 }
             } else {
@@ -485,8 +492,8 @@ fun PerformanceLineChart(metrics: ConversionMetrics) {
                     dataPoints = dataPoints,
                     secondaryDataPoints = hiredPoints,
                     animationProgress = animationProgress,
-                    primaryColor = PrimaryBlue,
-                    secondaryColor = SuccessGreen
+                    primaryColor = AnalyticsTheme.PrimaryBlue,
+                    secondaryColor = AnalyticsTheme.SuccessGreen
                 )
             }
         }
@@ -521,7 +528,7 @@ fun LineChartCanvas(
         for (i in 0..4) {
             val y = size.height * i / 4
             drawLine(
-                color = TextSecondary.copy(alpha = 0.1f),
+                color = AnalyticsTheme.TextSecondary.copy(alpha = 0.1f),
                 start = Offset(0f, y),
                 end = Offset(size.width, y),
                 strokeWidth = 1.dp.toPx()
@@ -627,7 +634,7 @@ fun ChartLegendItem(label: String, color: Color) {
         Text(
             text = label,
             fontSize = 11.sp,
-            color = TextSecondary
+            color = AnalyticsTheme.TextSecondary
         )
     }
 }
@@ -638,7 +645,7 @@ fun AnimatedConversionFunnel(metrics: ConversionMetrics) {
         modifier = Modifier
             .fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        colors = CardDefaults.cardColors(containerColor = AnalyticsTheme.White)
     ) {
         Column(
             modifier = Modifier
@@ -650,7 +657,7 @@ fun AnimatedConversionFunnel(metrics: ConversionMetrics) {
                 text = "Conversion Funnel",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = AnalyticsTheme.TextPrimary
             )
 
             FunnelStage(
@@ -658,7 +665,7 @@ fun AnimatedConversionFunnel(metrics: ConversionMetrics) {
                 value = metrics.totalApplications,
                 total = metrics.totalApplications,
                 percentage = 100f,
-                color = PrimaryBlue,
+                color = AnalyticsTheme.PrimaryBlue,
                 delay = 0
             )
 
@@ -667,7 +674,7 @@ fun AnimatedConversionFunnel(metrics: ConversionMetrics) {
                 value = metrics.totalShortlisted,
                 total = metrics.totalApplications,
                 percentage = metrics.shortlistRate,
-                color = InfoCyan,
+                color = AnalyticsTheme.InfoCyan,
                 delay = 200
             )
 
@@ -677,7 +684,7 @@ fun AnimatedConversionFunnel(metrics: ConversionMetrics) {
                 value = metrics.totalRejected,
                 total = metrics.totalApplications,
                 percentage = if (metrics.totalApplications > 0) (metrics.totalRejected.toFloat() / metrics.totalApplications * 100) else 0f,
-                color = DangerRed,
+                color = AnalyticsTheme.DangerRed,
                 delay = 300
             )
 
@@ -686,12 +693,12 @@ fun AnimatedConversionFunnel(metrics: ConversionMetrics) {
                 value = metrics.totalHired,
                 total = metrics.totalApplications,
                 percentage = metrics.conversionRate,
-                color = SuccessGreen,
+                color = AnalyticsTheme.SuccessGreen,
                 delay = 400
             )
 
             Divider(
-                color = TextSecondary.copy(alpha = 0.2f),
+                color = AnalyticsTheme.TextSecondary.copy(alpha = 0.2f),
                 thickness = 1.dp,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
@@ -706,7 +713,7 @@ fun AnimatedConversionFunnel(metrics: ConversionMetrics) {
                             modifier = Modifier.fillMaxWidth(),
                             label = "Shortlist Rate",
                             percentage = metrics.shortlistRate,
-                            color = InfoCyan
+                            color = AnalyticsTheme.InfoCyan
                         )
                     }
                     Box(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
@@ -714,7 +721,7 @@ fun AnimatedConversionFunnel(metrics: ConversionMetrics) {
                             modifier = Modifier.fillMaxWidth(),
                             label = "Hire Rate",
                             percentage = metrics.conversionRate,
-                            color = SuccessGreen
+                            color = AnalyticsTheme.SuccessGreen
                         )
                     }
                     Box(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
@@ -722,7 +729,7 @@ fun AnimatedConversionFunnel(metrics: ConversionMetrics) {
                             modifier = Modifier.fillMaxWidth(),
                             label = "Rejection Rate",
                             percentage = if (metrics.totalApplications > 0) (metrics.totalRejected.toFloat() / metrics.totalApplications * 100) else 0f,
-                            color = DangerRed
+                            color = AnalyticsTheme.DangerRed
                         )
                     }
                 }
@@ -759,7 +766,7 @@ fun FunnelStage(
             Text(
                 text = label,
                 fontSize = 14.sp,
-                color = TextSecondary,
+                color = AnalyticsTheme.TextSecondary,
                 fontWeight = FontWeight.Medium
             )
             Row(
@@ -770,7 +777,7 @@ fun FunnelStage(
                     text = value.toString(),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = AnalyticsTheme.TextPrimary
                 )
                 Text(
                     text = "%.1f%%".format(percentage),
@@ -786,7 +793,7 @@ fun FunnelStage(
                 .fillMaxWidth()
                 .height(12.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(CardBgLight)
+                .background(AnalyticsTheme.IceBlue)
         ) {
             Box(
                 modifier = Modifier
@@ -813,7 +820,7 @@ fun ConversionRateCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBgLight)
+        colors = CardDefaults.cardColors(containerColor = AnalyticsTheme.IceBlue)
     ) {
         Column(
             modifier = Modifier
@@ -833,7 +840,7 @@ fun ConversionRateCard(
             Text(
                 text = label,
                 fontSize = 12.sp,
-                color = TextSecondary,
+                color = AnalyticsTheme.TextSecondary,
                 textAlign = TextAlign.Center,
                 maxLines = 1
             )
@@ -848,7 +855,7 @@ fun AnalyticsOverviewGrid(profile: CompanyProfileAnalytics) {
             text = "Overview",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            color = AnalyticsTheme.TextPrimary
         )
     }
 }
@@ -865,7 +872,7 @@ fun OverviewCard(
     Card(
         modifier = modifier.height(120.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        colors = CardDefaults.cardColors(containerColor = AnalyticsTheme.White)
     ) {
         Box(
             modifier = Modifier
@@ -891,7 +898,7 @@ fun OverviewCard(
                     Text(
                         text = title,
                         fontSize = 12.sp,
-                        color = TextSecondary
+                        color = AnalyticsTheme.TextSecondary
                     )
                     Text(text = icon, fontSize = 20.sp)
                 }
@@ -901,12 +908,12 @@ fun OverviewCard(
                         text = value,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = AnalyticsTheme.TextPrimary
                     )
                     Text(
                         text = unit,
                         fontSize = 11.sp,
-                        color = TextSecondary
+                        color = AnalyticsTheme.TextSecondary
                     )
                 }
             }
@@ -921,7 +928,7 @@ fun TopJobsBarChart(jobs: List<JobAnalyticsMetrics>) {
             .fillMaxWidth()
             .height(300.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        colors = CardDefaults.cardColors(containerColor = AnalyticsTheme.White)
     ) {
         Column(
             modifier = Modifier
@@ -932,7 +939,7 @@ fun TopJobsBarChart(jobs: List<JobAnalyticsMetrics>) {
                 text = "Top Performing Jobs",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = AnalyticsTheme.TextPrimary
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -973,7 +980,7 @@ fun BarChartCanvas(jobs: List<JobAnalyticsMetrics>) {
             // Draw bar with gradient
             drawRoundRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(PrimaryBlue, PrimaryPurple),
+                    colors = listOf(AnalyticsTheme.PrimaryBlue, AnalyticsTheme.AccentBlue),
                     startY = y,
                     endY = size.height
                 ),
@@ -1005,7 +1012,7 @@ fun CategoryPerformanceSection(categories: List<CategoryPerformance>) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        colors = CardDefaults.cardColors(containerColor = AnalyticsTheme.White)
     ) {
         Column(
             modifier = Modifier
@@ -1017,7 +1024,7 @@ fun CategoryPerformanceSection(categories: List<CategoryPerformance>) {
                 text = "Category Performance",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = AnalyticsTheme.TextPrimary
             )
 
             val maxApplications = categories.maxOfOrNull { it.totalApplications }?.toFloat() ?: 0f
@@ -1065,13 +1072,13 @@ fun CategoryPerformanceBar(
             Text(
                 text = formatCategoryName(category.category),
                 fontSize = 14.sp,
-                color = TextPrimary,
+                color = AnalyticsTheme.TextPrimary,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = "${category.totalApplications} apps",
                 fontSize = 12.sp,
-                color = TextSecondary
+                color = AnalyticsTheme.TextSecondary
             )
         }
 
@@ -1080,7 +1087,7 @@ fun CategoryPerformanceBar(
                 .fillMaxWidth()
                 .height(8.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(CardBgLight)
+                .background(AnalyticsTheme.IceBlue)
         ) {
             Box(
                 modifier = Modifier
@@ -1089,7 +1096,7 @@ fun CategoryPerformanceBar(
                     .clip(RoundedCornerShape(4.dp))
                     .background(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(InfoCyan, PrimaryBlue)
+                            colors = listOf(AnalyticsTheme.InfoCyan, AnalyticsTheme.PrimaryBlue)
                         )
                     )
             )
@@ -1104,7 +1111,7 @@ fun DetailedJobPerformanceSection(jobs: List<JobAnalyticsMetrics>) {
             text = "Detailed Job Performance",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            color = AnalyticsTheme.TextPrimary
         )
 
         jobs.forEach { job ->
@@ -1118,7 +1125,7 @@ fun DetailedJobCard(job: JobAnalyticsMetrics) {
     // determine if job deadline expired to tint the card
     val daysLeftCountForCard = parseDaysLeft(job.deadline)
     val isExpiredCard = daysLeftCountForCard != null && daysLeftCountForCard < 0
-    val cardContainer = if (isExpiredCard) DangerRed.copy(alpha = 0.06f) else CardBg
+    val cardContainer = if (isExpiredCard) AnalyticsTheme.DangerRed.copy(alpha = 0.06f) else AnalyticsTheme.White
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1141,31 +1148,31 @@ fun DetailedJobCard(job: JobAnalyticsMetrics) {
                         text = job.jobTitle,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = AnalyticsTheme.TextPrimary
                     )
                     Text(
                         text = formatCategoryName(job.category),
                         fontSize = 12.sp,
-                        color = TextSecondary
+                        color = AnalyticsTheme.TextSecondary
                     )
                 }
 
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(SuccessGreen.copy(alpha = 0.2f))
+                        .background(AnalyticsTheme.SuccessGreen.copy(alpha = 0.2f))
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = "${job.conversionRate.toInt()}%",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = SuccessGreen
+                        color = AnalyticsTheme.SuccessGreen
                     )
                 }
             }
 
-            Divider(color = CardBgLight, thickness = 1.dp)
+            Divider(color = AnalyticsTheme.IceBlue, thickness = 1.dp)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1176,7 +1183,7 @@ fun DetailedJobCard(job: JobAnalyticsMetrics) {
                         label = "Applications",
                         value = job.totalApplications.toString(),
                         icon = "📨",
-                        color = PrimaryBlue
+                        color = AnalyticsTheme.PrimaryBlue
                     )
                 }
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -1184,7 +1191,7 @@ fun DetailedJobCard(job: JobAnalyticsMetrics) {
                         label = "Shortlisted",
                         value = job.shortlisted.toString(),
                         icon = "⭐",
-                        color = InfoCyan
+                        color = AnalyticsTheme.InfoCyan
                     )
                 }
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -1192,7 +1199,7 @@ fun DetailedJobCard(job: JobAnalyticsMetrics) {
                         label = "Rejected",
                         value = job.rejected.toString(),
                         icon = "❌",
-                        color = DangerRed
+                        color = AnalyticsTheme.DangerRed
                     )
                 }
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -1200,7 +1207,7 @@ fun DetailedJobCard(job: JobAnalyticsMetrics) {
                         label = "Hired",
                         value = job.hired.toString(),
                         icon = "✅",
-                        color = SuccessGreen
+                        color = AnalyticsTheme.SuccessGreen
                     )
                 }
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -1214,7 +1221,7 @@ fun DetailedJobCard(job: JobAnalyticsMetrics) {
                         label = "Days left",
                         value = daysLeftValue,
                         icon = "📅",
-                        color = WarningOrange
+                        color = AnalyticsTheme.WarningOrange
                     )
                 }
             }
@@ -1250,7 +1257,7 @@ fun JobMetricItem(
             Text(
                 text = subtitle,
                 fontSize = 10.sp,
-                color = TextSecondary
+                color = AnalyticsTheme.TextSecondary
             )
         }
         // Special compact rendering for time-like values (e.g., "15 days left", "Expired", "No deadline")
@@ -1267,13 +1274,13 @@ fun JobMetricItem(
                     text = primary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = AnalyticsTheme.TextPrimary
                 )
                 if (secondary.isNotBlank()) {
                     Text(
                         text = secondary,
                         fontSize = 10.sp,
-                        color = TextSecondary
+                        color = AnalyticsTheme.TextSecondary
                     )
                 }
             }
@@ -1282,14 +1289,14 @@ fun JobMetricItem(
                 text = value,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = AnalyticsTheme.TextPrimary
             )
         }
 
         Text(
             text = label,
             fontSize = 11.sp,
-            color = TextSecondary
+            color = AnalyticsTheme.TextSecondary
         )
     }
 }
@@ -1324,7 +1331,7 @@ fun CircularConversionIndicator(
 
                 // Background circle
                 drawCircle(
-                    color = CardBgLight,
+                    color = AnalyticsTheme.IceBlue,
                     radius = radius,
                     center = center,
                     style = Stroke(width = strokeWidth)
@@ -1358,7 +1365,7 @@ fun CircularConversionIndicator(
         Text(
             text = label,
             fontSize = 14.sp,
-            color = TextSecondary,
+            color = AnalyticsTheme.TextSecondary,
             fontWeight = FontWeight.Medium
         )
     }
@@ -1372,7 +1379,7 @@ fun CategoryDonutChart(categories: List<CategoryPerformance>) {
             .fillMaxWidth()
             .height(300.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg)
+        colors = CardDefaults.cardColors(containerColor = AnalyticsTheme.White)
     ) {
         Column(
             modifier = Modifier
@@ -1383,7 +1390,7 @@ fun CategoryDonutChart(categories: List<CategoryPerformance>) {
                 text = "Category Distribution",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = AnalyticsTheme.TextPrimary
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -1448,7 +1455,7 @@ fun DonutChartCanvas(categories: List<CategoryPerformance>) {
 
         // Center circle
         drawCircle(
-            color = CardBg,
+            color = AnalyticsTheme.White,
             radius = radius - strokeWidth / 2
         )
     }
@@ -1470,13 +1477,13 @@ fun CategoryLegendItem(category: String, applications: Int, color: Color) {
             Text(
                 text = formatCategoryName(category),
                 fontSize = 12.sp,
-                color = TextPrimary,
+                color = AnalyticsTheme.TextPrimary,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = "$applications apps",
                 fontSize = 10.sp,
-                color = TextSecondary
+                color = AnalyticsTheme.TextSecondary
             )
         }
     }
@@ -1488,12 +1495,12 @@ fun formatCategoryName(raw: String): String {
 
 fun getCategoryColor(index: Int): Color {
     val colors = listOf(
-        PrimaryBlue,
-        PrimaryPurple,
-        SuccessGreen,
-        InfoCyan,
-        WarningOrange,
-        DangerRed
+        AnalyticsTheme.PrimaryBlue,
+        AnalyticsTheme.AccentBlue,
+        AnalyticsTheme.SuccessGreen,
+        AnalyticsTheme.InfoCyan,
+        AnalyticsTheme.WarningOrange,
+        AnalyticsTheme.DangerRed
     )
     return colors[index % colors.size]
 }
