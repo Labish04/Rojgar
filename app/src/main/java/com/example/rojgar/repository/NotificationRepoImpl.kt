@@ -52,6 +52,17 @@ class NotificationRepoImpl : NotificationRepo {
                             val isRead = notificationSnapshot.child("isRead").getValue(Boolean::class.java) ?: false
                             val typeString = notificationSnapshot.child("type").getValue(String::class.java) ?: "general"
 
+                            // Parse data map
+                            val data = mutableMapOf<String, String>()
+                            val dataSnapshot = notificationSnapshot.child("data")
+                            for (child in dataSnapshot.children) {
+                                val key = child.key
+                                val value = child.getValue(String::class.java)
+                                if (key != null && value != null) {
+                                    data[key] = value
+                                }
+                            }
+
                             // Map notification type from string to enum
                             val type = mapStringToNotificationType(typeString)
 
@@ -235,7 +246,7 @@ class NotificationRepoImpl : NotificationRepo {
             "verification" -> NotificationType.SYSTEM
             "message" -> NotificationType.MESSAGE
             "application_update" -> NotificationType.APPLICATION_STATUS
-            "candidate_alert" -> NotificationType.CANDIDATE_ALERT
+            "candidate_alert", "job_application" -> NotificationType.CANDIDATE_ALERT
             "events", "event" -> NotificationType.EVENTS
             "system" -> NotificationType.SYSTEM
             else -> NotificationType.GENERAL
