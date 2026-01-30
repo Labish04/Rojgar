@@ -35,7 +35,7 @@ class JobSeekerRegisterInstrumentTest {
     // Then user should be navigated to LoginActivity
 
     @Test
-    fun testSuccessfulLogin_navigatesToDashboard() {
+    fun testSuccessfulRegister_navigatesToDashboard() {
         // Click Jobseeker card
         composeRule.onNodeWithTag("jobSeeker")
             .performClick()

@@ -871,7 +871,7 @@ fun CompanyUploadPostBody(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(100.dp))
     }
 
     if (showCategoryBottomSheet) {

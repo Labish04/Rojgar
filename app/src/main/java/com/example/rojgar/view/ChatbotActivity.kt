@@ -79,7 +79,7 @@ class ChatbotViewModelFactory(
 fun ChatbotScreen(
     viewModel: ChatbotViewModel = viewModel(
         factory = ChatbotViewModelFactory(
-            apiKey = "AIzaSyA-xXBS72GOw4UperZr-Zdk9Cv0ngQvQ7U" // Replace with your actual API key
+            apiKey = "AIzaSyDBAm6-5aEGq0z-AYivV3mQj2Ziq4BRhSk"
         )
     )
 ) {
