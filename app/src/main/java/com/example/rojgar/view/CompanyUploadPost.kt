@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -313,6 +314,7 @@ fun JobPostListScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .testTag(tag = "Create Job Post")
                         .height(56.dp)
                         .clip(RoundedCornerShape(28.dp))
                         .background(
@@ -649,6 +651,7 @@ fun CompanyUploadPostBody(
 
         JobPostTextField(
             value = title,
+            tag = "title",
             onValueChange = { title = it },
             label = "Job Title*",
             icon = R.drawable.jobtitleicon,
@@ -658,6 +661,7 @@ fun CompanyUploadPostBody(
 
         JobPostTextField(
             value = position,
+            tag = "position",
             onValueChange = { position = it },
             label = "Position*",
             icon = R.drawable.jobpost_filled,
@@ -669,6 +673,7 @@ fun CompanyUploadPostBody(
         AnimatedDropdownButton(
             selectedText = if (selectedCategories.isEmpty()) "Select Category" else selectedCategories.joinToString(", "),
             icon = R.drawable.jobcategoryicon,
+            tag = "categories",
             tint = Color(0xFF2196F3),
             onClick = { showCategoryBottomSheet = true },
             hasSelection = selectedCategories.isNotEmpty(),
@@ -680,6 +685,7 @@ fun CompanyUploadPostBody(
         AnimatedDropdownButton(
             selectedText = jobType.ifEmpty { "Select Job Type" },
             icon = R.drawable.jobtype,
+            tag = "jobType",
             tint = Color(0xFF2196F3),
             onClick = { showJobTypeBottomSheet = true },
             hasSelection = jobType.isNotEmpty()
@@ -691,6 +697,7 @@ fun CompanyUploadPostBody(
             value = experience,
             onValueChange = { experience = it },
             label = "Experience Required",
+            tag = "experience",
             icon = R.drawable.experience_filled,
             tint = Color(0xFF2196F3)
         )
@@ -700,6 +707,7 @@ fun CompanyUploadPostBody(
             value = education,
             onValueChange = { education = it },
             label = "Education",
+            tag = "education",
             icon = R.drawable.educationboardicon,
             tint = Color(0xFF2196F3)
         )
@@ -709,6 +717,7 @@ fun CompanyUploadPostBody(
             value = skills,
             onValueChange = { skills = it },
             label = "Required Skills",
+            tag = "skills",
             icon = R.drawable.skills_filledicon,
             tint = Color(0xFF2196F3)
         )
@@ -718,6 +727,7 @@ fun CompanyUploadPostBody(
             value = salary,
             onValueChange = { salary = it },
             label = "Salary",
+            tag = "salary",
             icon = R.drawable.salaryicon,
             tint = Color(0xFF2196F3)
         )
@@ -751,7 +761,7 @@ fun CompanyUploadPostBody(
                 },
                 label = { Text("Application Deadline") },
                 placeholder = { Text("Select date and time") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth() .testTag("deadline"),
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     disabledBorderColor = DarkBlue2,
@@ -767,6 +777,7 @@ fun CompanyUploadPostBody(
 
         JobPostTextField(
             value = responsibilities,
+            tag = "responsibilities",
             onValueChange = { responsibilities = it },
             label = "Key Responsibilities",
             icon = R.drawable.responsibilityicon,
@@ -779,6 +790,7 @@ fun CompanyUploadPostBody(
             value = jobDescription,
             onValueChange = { jobDescription = it },
             label = "Job Description",
+            tag = "jobDescription",
             icon = R.drawable.jobdescriptionicon,
             minHeight = 100.dp,
             tint = Color(0xFF2196F3)
@@ -846,7 +858,8 @@ fun CompanyUploadPostBody(
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .weight(1f)
-                    .height(56.dp),
+                    .height(56.dp)
+                    .testTag("post"),
                 colors = ButtonDefaults.buttonColors(containerColor = DarkBlue2),
                 enabled = !isUploadingBanner
             ) {
@@ -899,6 +912,7 @@ fun CompanyUploadPostBody(
 @Composable
 fun AnimatedDropdownButton(
     selectedText: String,
+    tag: String= "",
     icon: Int,
     onClick: () -> Unit,
     hasSelection: Boolean,
@@ -917,6 +931,7 @@ fun AnimatedDropdownButton(
         modifier = Modifier
             .fillMaxWidth()
             .scale(scale)
+            .testTag(tag)
             .clickable {
                 isPressed = true
                 onClick()
@@ -978,6 +993,7 @@ fun AnimatedDropdownButton(
 @Composable
 fun JobPostTextField(
     value: String,
+    tag: String = "",
     onValueChange: (String) -> Unit,
     label: String,
     icon: Int,
@@ -992,12 +1008,13 @@ fun JobPostTextField(
                 painter = painterResource(id = icon),
                 contentDescription = label,
                 tint = Color(0xFF2196F3),
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp).testTag(tag)
             )
         },
         label = { Text(label) },
         modifier = Modifier
             .fillMaxWidth()
+            .testTag(tag)
             .heightIn(min = minHeight),
         shape = RoundedCornerShape(16.dp),
         colors = TextFieldDefaults.colors(
@@ -1013,6 +1030,7 @@ fun JobPostTextField(
 @Composable
 fun JobTypeBottomSheet(
     onDismiss: () -> Unit,
+    tag: String = "",
     onSelect: (String) -> Unit,
     initialSelection: String
 ) {
@@ -1040,6 +1058,7 @@ fun JobTypeBottomSheet(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag(tag)
             .fillMaxHeight(0.75f)
             .background(
                 brush = Brush.verticalGradient(
@@ -1233,6 +1252,7 @@ fun JobTypeBottomSheet(
 
 @Composable
 fun JobTypeItem(
+    tag: String = "",
     name: String,
     isSelected: Boolean,
     onClick: () -> Unit
@@ -1250,6 +1270,7 @@ fun JobTypeItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag(tag)
             .scale(scale)
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
@@ -1316,6 +1337,7 @@ fun JobTypeItem(
 @Composable
 fun CategoryBottomSheet(
     onDismiss: () -> Unit,
+    tag: String = "",
     onSave: (List<String>) -> Unit,
     initialCategories: List<String>
 ) {
@@ -1390,6 +1412,7 @@ fun CategoryBottomSheet(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag(tag)
             .fillMaxHeight(0.75f)
             .background(
                 brush = Brush.verticalGradient(
@@ -1608,6 +1631,7 @@ fun CategoryBottomSheet(
 @Composable
 fun SelectableCategoryItem(
     name: String,
+    tag: String = "",
     isSelected: Boolean,
     onToggle: () -> Unit
 ) {
@@ -1625,6 +1649,7 @@ fun SelectableCategoryItem(
         modifier = Modifier
             .fillMaxWidth()
             .scale(scale)
+            .testTag(tag)
             .clickable { onToggle() },
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         shape = RoundedCornerShape(14.dp),

@@ -46,14 +46,14 @@ class JobViewModel(private val repo: JobRepo) : ViewModel() {
             _loading.postValue(false)
 
             if (success) {
-                Log.d(TAG, "✅ Job post created successfully: ${jobPost.title}")
+                Log.d(TAG, "Job post created successfully: ${jobPost.title}")
 
                 // Send notifications to ALL job seekers
                 sendJobPostNotificationToAll(context, jobPost)
 
                 callback(true, "Job posted successfully! Notifying all job seekers...")
             } else {
-                Log.e(TAG, "❌ Failed to create job post: $message")
+                Log.e(TAG, "Failed to create job post: $message")
                 callback(false, message)
             }
         }

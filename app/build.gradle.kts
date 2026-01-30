@@ -40,9 +40,15 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4")
@@ -82,6 +88,7 @@ dependencies {
     implementation(libs.firebase.database)
     implementation(libs.androidx.appcompat)
     implementation(libs.firebase.messaging)
+    implementation(libs.core.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -100,4 +107,5 @@ dependencies {
     androidTestImplementation("androidx.test:rules:1.2.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation("androidx.test.espresso:espresso-intents:3.5.1")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
 }
